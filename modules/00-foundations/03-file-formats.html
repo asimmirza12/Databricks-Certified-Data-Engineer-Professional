@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>File formats · DE Pro Study Course</title>
+<meta name="description" content="CSV, JSON, Avro, Parquet, Delta Lake and Apache Iceberg: how each stores data, and why the choice changes cost and speed.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="00-03">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 00 · Lesson 03</p>
+  <h1>File formats: CSV, JSON, Parquet, Avro, Delta, Iceberg</h1>
+  <p class="lede">The same data can be saved in very different ways. Pick well and queries read a fraction of the bytes. Pick badly and you pay to read everything, every time.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>00 · Foundations</dd></div>
+    <div><dt>Lesson</dt><dd>03 · File formats</dd></div>
+    <div><dt>Exam objective</dt><dd>Groundwork for S2.1: ingesting Delta, Parquet, JSON, Iceberg, CSV and binary files.</dd></div>
+    <div><dt>Time to read</dt><dd>~16 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq"><li><a class="chip acc" href="02-files-vs-tables.html">00-02 Files vs tables</a></li></ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p>A <span class="def">file format</span> is the agreed layout of the bytes inside a file. It decides three big things: can a human read it, does it carry its own schema, and how much must be read to answer a question.</p>
+  <p>Formats fall into two families:</p>
+  <ul>
+    <li><span class="def">Row-based formats</span> store one whole record after another. Good for writing records as they happen. CSV, JSON and Avro are row-based.</li>
+    <li><span class="def">Columnar formats</span> store all values of one column together, then the next column. Good for analytics, because a query that needs 2 columns out of 12 can skip the other 10. Parquet is columnar.</li>
+  </ul>
+  <p>Columnar files also <span class="def">compress</span> well (shrink by storing repeats cleverly), because values in one column look alike.</p>
+  <p>Then there are <span class="def">table formats</span>: Delta Lake and Apache Iceberg. They are not a new way to lay out bytes. They are Parquet data files <em>plus</em> a log of metadata that records which files make up the table, their column statistics, and every change. That log is what lets them skip whole files and handle updates safely.</p>
+  <div class="analogy">
+    <p>Think of a class's exam results. Row-based is a stack of report cards: one card per student, all subjects on it. To find the class average in maths, you flip through every card. Columnar is one sheet per subject: grab the maths sheet and you are done. A table format adds a librarian's index card listing which sheets exist and the lowest and highest score on each, so you can skip sheets that can't contain what you want.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 260" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">Row-based vs columnar storage</title>
+      <desc id="dia-d">The same four rides are stored two ways. Row-based storage keeps each ride's values together, so a query for prices scans every value. Columnar storage keeps all prices together, so the query reads only the price block.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <text x="20" y="22" font-weight="600">ROW-BASED (CSV, JSON, Avro)</text>
+        <text x="20" y="40" font-size="11" fill="var(--muted)">query: SUM(price) must scan every block</text>
+        <g stroke="var(--line)" fill="var(--surface)">
+          <rect x="20" y="52" width="150" height="26"/><rect x="170" y="52" width="150" height="26"/><rect x="320" y="52" width="150" height="26"/><rect x="470" y="52" width="150" height="26"/>
+        </g>
+        <text x="95" y="70" text-anchor="middle" font-size="11">r1 · bike7 · $12</text><text x="245" y="70" text-anchor="middle" font-size="11">r2 · bike3 · $9</text>
+        <text x="395" y="70" text-anchor="middle" font-size="11">r3 · bike7 · $15</text><text x="545" y="70" text-anchor="middle" font-size="11">r4 · bike1 · $7</text>
+        <rect x="20" y="50" width="150" height="30" fill="none" stroke="var(--warn)" stroke-width="3">
+          <animate attributeName="x" values="20;170;320;470;20" keyTimes="0;.25;.5;.75;1" calcMode="discrete" dur="4s" repeatCount="indefinite"/>
+        </rect>
+        <text x="20" y="130" font-weight="600">COLUMNAR (Parquet; also inside Delta and Iceberg)</text>
+        <text x="20" y="148" font-size="11" fill="var(--muted)">query: SUM(price) reads only the price block</text>
+        <g stroke="var(--line)" fill="var(--surface)">
+          <rect x="20" y="160" width="200" height="26"/><rect x="220" y="160" width="200" height="26"/><rect x="420" y="160" width="200" height="26"/>
+        </g>
+        <text x="120" y="178" text-anchor="middle" font-size="11">r1 r2 r3 r4</text><text x="320" y="178" text-anchor="middle" font-size="11">bike7 bike3 bike7 bike1</text><text x="520" y="178" text-anchor="middle" font-size="11">$12 $9 $15 $7</text>
+        <text x="120" y="204" text-anchor="middle" font-size="11" fill="var(--muted)">ride_id</text><text x="320" y="204" text-anchor="middle" font-size="11" fill="var(--muted)">bike_id</text><text x="520" y="204" text-anchor="middle" font-size="11" fill="var(--muted)">price</text>
+        <rect x="420" y="158" width="200" height="30" fill="none" stroke="var(--ok)" stroke-width="3">
+          <animate attributeName="opacity" values="1;.35;1" dur="2s" repeatCount="indefinite"/>
+        </rect>
+        <text x="20" y="240" font-size="11">Delta / Iceberg add a metadata log: file list + min/max per column → skip whole files.</text>
+      </g>
+    </svg>
+    <figcaption class="cap">Notice: to total prices, the row-based reader (red box) must visit <b>every record</b>. The columnar reader (green box) touches <b>only the price column</b>. Real tables have dozens of columns, so the gap is far bigger than here.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: how much does a query read?</h2>
+  <p>A year of rides: 10 million rows, 12 columns, one file per month. Pick a format and a question. The numbers are <b>made up to show the pattern</b>, not benchmarks.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Format <select id="d-fmt">
+        <option value="csv">CSV</option><option value="json">JSON</option><option value="avro">Avro</option>
+        <option value="parquet">Parquet</option><option value="delta">Delta Lake</option><option value="iceberg">Apache Iceberg</option>
+      </select></label>
+      <label>Question <select id="d-q">
+        <option value="all">Show every column</option>
+        <option value="cols">Total price per bike (2 of 12 columns)</option>
+        <option value="month">All rides in March (1 of 12 months)</option>
+        <option value="update">Fix one wrong price</option>
+      </select></label>
+      <button type="button" class="primary" id="d-run">Run query</button>
+    </div>
+    <div class="flow">
+      <div class="pane"><h4>Size on disk</h4><div class="big" id="d-size">–</div></div>
+      <div class="pane"><h4>Bytes read</h4><div class="big" id="d-read">–</div><div class="meter" aria-hidden="true"><i id="d-bar"></i></div></div>
+      <div class="pane"><h4>Files opened</h4><div class="big" id="d-files">–</div></div>
+    </div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="Query log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p>Reading each format. Note which ones need extra options, because the file does not describe itself:</p>
+<pre><code>base = <span class="c-s">"/Volumes/bike_shop/raw/landing"</span>
+
+<span class="c-c"># CSV: plain text. You must say whether line 1 is a header; types are guessed or given.</span>
+csv_df = spark.read.option(<span class="c-s">"header"</span>, <span class="c-k">True</span>).option(<span class="c-s">"inferSchema"</span>, <span class="c-k">True</span>).csv(f<span class="c-s">"{base}/rides_csv/"</span>)
+
+<span class="c-c"># JSON: text with field names on every record. Nested data is allowed.</span>
+json_df = spark.read.json(f<span class="c-s">"{base}/rides_json/"</span>)
+
+<span class="c-c"># Parquet and Avro: binary files that carry their own schema. No options needed.</span>
+pq_df   = spark.read.parquet(f<span class="c-s">"{base}/rides_parquet/"</span>)
+avro_df = spark.read.format(<span class="c-s">"avro"</span>).load(f<span class="c-s">"{base}/rides_avro/"</span>)
+
+<span class="c-c"># Binary files (images, PDFs): one row per file with path, size and raw bytes</span>
+pics = spark.read.format(<span class="c-s">"binaryFile"</span>).load(f<span class="c-s">"{base}/bike_photos/"</span>)</code></pre>
+  <p>Tables. On Databricks, Delta Lake is the default table format; Iceberg must be asked for:</p>
+<pre><code><span class="c-c">-- Delta is the default: no USING clause needed</span>
+<span class="c-k">CREATE TABLE</span> bike_shop.silver.rides <span class="c-k">AS</span>
+<span class="c-k">SELECT</span> * <span class="c-k">FROM</span> read_files(<span class="c-s">'/Volumes/bike_shop/raw/landing/rides_csv/'</span>, format =&gt; <span class="c-s">'csv'</span>, header =&gt; <span class="c-k">true</span>);
+
+<span class="c-c">-- An Iceberg table must say so explicitly</span>
+<span class="c-k">CREATE TABLE</span> bike_shop.silver.rides_iceberg <span class="c-k">USING ICEBERG AS</span>
+<span class="c-k">SELECT</span> * <span class="c-k">FROM</span> bike_shop.silver.rides;
+
+<span class="c-c">-- Table formats allow safe changes to single rows</span>
+<span class="c-k">UPDATE</span> bike_shop.silver.rides <span class="c-k">SET</span> price = 9.00 <span class="c-k">WHERE</span> ride_id = <span class="c-s">'r0042'</span>;</code></pre>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td>Store analytics data as CSV instead of Parquet</td><td>Files are several times bigger and every query reads every column. Slower and more expensive.</td></tr>
+    <tr><td>Read CSV with <code>inferSchema</code></td><td>Spark scans the data to guess types. Convenient, but slower, and a guess can change between files.</td></tr>
+    <tr><td>Read CSV without <code>header</code></td><td>The column names become <code>_c0</code>, <code>_c1</code>… and the header line is treated as a data row.</td></tr>
+    <tr><td>Plain Parquet folder → Delta table</td><td>Same data files, plus a transaction log: safe updates and deletes, history, file skipping from stored statistics.</td></tr>
+    <tr><td>Delta table → Iceberg table (<code>USING ICEBERG</code>)</td><td>Useful when outside tools need Iceberg. Delta stays the recommended default on Databricks.</td></tr>
+    <tr><td>Keep Delta but let Iceberg tools read it (UniForm)</td><td>Iceberg metadata is generated alongside Delta's, without rewriting the Parquet files. Details in module 02.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th>Format</th><th>Layout</th><th>Human-readable</th><th>Schema inside</th><th>Typical use</th></tr></thead><tbody>
+    <tr><td>CSV</td><td>Row, text</td><td>Yes</td><td>No (header names at best)</td><td>Exports from spreadsheets and old systems</td></tr>
+    <tr><td>JSON</td><td>Row, text</td><td>Yes</td><td>Field names on every record; no types</td><td>App events, APIs, nested data</td></tr>
+    <tr><td>Avro</td><td>Row, binary</td><td>No</td><td>Yes</td><td>Messages on buses like Kafka; fast writes</td></tr>
+    <tr><td>Parquet</td><td>Columnar, binary, compressed</td><td>No</td><td>Yes</td><td>Analytics files</td></tr>
+    <tr><td>Delta Lake</td><td>Parquet + transaction log</td><td>No</td><td>Yes, in the log</td><td>Default table format on Databricks</td></tr>
+    <tr><td>Apache Iceberg</td><td>Parquet + metadata files</td><td>No</td><td>Yes, in metadata</td><td>Tables shared with engines that speak Iceberg</td></tr>
+  </tbody></table></div>
+  <div class="grid3">
+    <div class="card"><p class="tag">Family</p><h3>Row-based</h3><p>CSV, JSON, Avro. Whole records together. Easy to append, costly to analyse.</p></div>
+    <div class="card"><p class="tag">Family</p><h3>Columnar</h3><p>Parquet (and ORC). Columns together, compressed. Fast to analyse.</p></div>
+    <div class="card"><p class="tag">Family</p><h3>Table formats</h3><p>Delta Lake, Iceberg. Columnar files plus a metadata log for safe changes and skipping.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>A dashboard reads 5 years of CSV files every morning</td><td>Slow, costly, and types are re-guessed each time.</td><td>Load once into a Delta table; the dashboard queries the table.</td></tr>
+    <tr><td>A CSV export puts commas inside a product name</td><td>Columns shift and values land in the wrong place.</td><td>Ask for quoting, read with the right <code>quote</code>/<code>escape</code> options, or switch to JSON/Parquet.</td></tr>
+    <tr><td>App events arrive as deeply nested JSON</td><td>Fine to land as-is, awkward to query.</td><td>Keep raw JSON in bronze, flatten into columns later (or use VARIANT, module 03).</td></tr>
+    <tr><td>A partner's tool can only read Iceberg</td><td>They can't use your Delta table directly.</td><td>Create an Iceberg table, or turn on UniForm for the Delta table.</td></tr>
+    <tr><td>Thousands of product photos need tracking</td><td>They aren't rows at all.</td><td>Read them with the <code>binaryFile</code> format to get one row per file.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>"Delta is a file format like Parquet." Not quite: Delta's data files <em>are</em> Parquet. Delta adds the transaction log on top. Same for Iceberg with its metadata files.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>Writing <code>CREATE TABLE … AS SELECT</code> without <code>USING</code> on Databricks gives a <b>Delta</b> table, not Parquet or Iceberg.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Avro</b> (row-based, binary, great for streaming messages) vs <b>Parquet</b> (columnar, great for analytics). Both carry a schema; they suit opposite jobs.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Compression</b> makes files smaller. <b>Column pruning</b> skips columns you didn't ask for. <b>File skipping</b> skips whole files using statistics. Different savings that stack.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="2"><p>1. A query needs 2 of a table's 40 columns. Which layout reads the least data?</p>
+      <ol class="opts"><li><button>CSV</button></li><li><button>JSON</button></li><li><button>Columnar (Parquet, Delta, Iceberg)</button></li><li><button>They all read the same</button></li></ol>
+      <p class="why" hidden>Columnar files keep each column together, so the reader fetches just the 2 columns needed. Row-based formats must read whole records.</p></div>
+    <div class="q" data-answer="0"><p>2. What does Delta Lake add on top of Parquet files?</p>
+      <ol class="opts"><li><button>A transaction log that lists the files, their statistics and every change</button></li><li><button>A different, text-based byte layout</button></li><li><button>Human-readable data files</button></li><li><button>Nothing; it is just a new name</button></li></ol>
+      <p class="why" hidden>Delta's data is stored as Parquet. The log is what enables safe updates, history and skipping files.</p></div>
+    <div class="q" data-answer="3"><p>3. On Databricks you run <code>CREATE TABLE t AS SELECT …</code> with no <code>USING</code>. What format is <code>t</code>?</p>
+      <ol class="opts"><li><button>Parquet</button></li><li><button>Iceberg</button></li><li><button>CSV</button></li><li><button>Delta Lake</button></li></ol>
+      <p class="why" hidden>Delta Lake is the default table format. Iceberg needs <code>USING ICEBERG</code>.</p></div>
+    <div class="q" data-answer="1"><p>4. Which format is a common choice for messages flowing through Kafka?</p>
+      <ol class="opts"><li><button>Parquet</button></li><li><button>Avro</button></li><li><button>Delta Lake</button></li><li><button>Iceberg</button></li></ol>
+      <p class="why" hidden>Avro is compact, row-based and carries a schema, which suits writing one message at a time. Parquet and table formats suit analytics on stored data.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>Row-based formats (CSV, JSON, Avro) keep records together; columnar (Parquet) keeps columns together.</li>
+    <li>Columnar files compress well and let queries skip unneeded columns.</li>
+    <li>Delta Lake and Iceberg are table formats: Parquet files plus metadata for safe changes and file skipping.</li>
+    <li>Delta Lake is Databricks' default table format; Iceberg is chosen with <code>USING ICEBERG</code>.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#avro">Avro</a>
+    <a class="chip" href="../../glossary.html#columnar-format">columnar format</a>
+    <a class="chip" href="../../glossary.html#compression">compression</a>
+    <a class="chip" href="../../glossary.html#csv">CSV</a>
+    <a class="chip" href="../../glossary.html#delta-lake">Delta Lake</a>
+    <a class="chip" href="../../glossary.html#file-format">file format</a>
+    <a class="chip" href="../../glossary.html#file-skipping">file skipping</a>
+    <a class="chip" href="../../glossary.html#iceberg">Apache Iceberg</a>
+    <a class="chip" href="../../glossary.html#json">JSON</a>
+    <a class="chip" href="../../glossary.html#parquet">Parquet</a>
+    <a class="chip" href="../../glossary.html#row-based-format">row-based format</a>
+    <a class="chip" href="../../glossary.html#table-format">table format</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/query/formats/">Data format options</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/functions/read_files"><code>read_files</code> (lists supported formats)</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/delta/">What is Delta Lake?</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/iceberg/">What is Apache Iceberg in Databricks?</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  // Illustrative sizes in MB for the same 10M rows. Shortcut: fixed teaching numbers, not measured.
+  var F = {
+    csv:     { name: 'CSV', size: 1200, col: false, table: false },
+    json:    { name: 'JSON', size: 2000, col: false, table: false },
+    avro:    { name: 'Avro', size: 600, col: false, table: false },
+    parquet: { name: 'Parquet', size: 250, col: true, table: false },
+    delta:   { name: 'Delta Lake', size: 252, col: true, table: true },
+    iceberg: { name: 'Apache Iceberg', size: 252, col: true, table: true }
+  };
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  var mb = function (n) { return n >= 1000 ? (n / 1000).toFixed(1) + ' GB' : Math.round(n) + ' MB'; };
+
+  $('d-run').onclick = function () {
+    var f = F[$('d-fmt').value], q = $('d-q').value, read, files = 12, cls = 'skip';
+    log('skip', '> ' + f.name + ' · ' + $('d-q').selectedOptions[0].text);
+    if (q === 'all') { read = f.size; log('skip', '  every column is needed, so every format reads everything'); }
+    else if (q === 'cols') {
+      if (f.col) { read = f.size * 2 / 12; cls = 'ok'; log('ok', '  columnar: reads only bike_id and price (2 of 12 columns)'); }
+      else { read = f.size; cls = 'bad'; log('bad', '  row-based: must read all 12 columns to find 2'); }
+    } else if (q === 'month') {
+      if (f.table) { read = f.size / 12; files = 1; cls = 'ok'; log('ok', '  metadata log says only 1 file can hold March: 11 files skipped'); }
+      else if (f.col) { read = f.size / 12 + 2; cls = 'skip'; log('skip', '  opens all 12 files to check their footers, then reads March only'); }
+      else { read = f.size; cls = 'bad'; log('bad', '  no statistics: opens and scans all 12 files'); }
+    } else {
+      if (f.table) { read = f.size / 12; files = 1; cls = 'ok'; log('ok', '  UPDATE rewrites one small file and records it in the log, atomically'); }
+      else { read = f.size / 12; files = 1; cls = 'bad'; log('bad', '  no UPDATE: you must rewrite the file yourself. A crash midway leaves a mess'); }
+    }
+    $('d-size').textContent = mb(f.size);
+    $('d-read').textContent = mb(read);
+    $('d-files').textContent = files + ' / 12';
+    $('d-bar').style.width = Math.min(100, 100 * read / 2000) + '%';
+    log(cls, '  read ' + mb(read) + ' of ' + mb(f.size) + ' · ' + files + ' file(s) opened');
+    Course.flash($('d-read'));
+  };
+})();
+</script>
+</body>
+</html>

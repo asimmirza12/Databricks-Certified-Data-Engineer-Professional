@@ -124,6 +124,8 @@ input[type=range]{width:min(320px,100%);accent-color:var(--accent)}
 .flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr));gap:10px}
 .item{font-family:var(--f-mono);font-size:.76rem;padding:5px 8px;border-radius:6px;background:var(--code-bg);overflow-wrap:anywhere;animation:pop .35s ease-out}
 .item.bad{color:var(--warn)} .item.ok{color:var(--ok)}
+.meter{height:10px;border-radius:5px;background:var(--code-bg);overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--accent);transition:width .4s}
 .big{font-family:var(--f-display);font-size:2rem;font-weight:800;font-variant-numeric:tabular-nums}
 @keyframes pop{from{transform:translateY(-6px);opacity:0}to{transform:none;opacity:1}}
 .flash{animation:flash .6s ease-out}

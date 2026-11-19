@@ -17,11 +17,11 @@
   var MODULES = [
     { id: '00', slug: '00-foundations', title: 'Foundations', weight: 'Start here', lessons: [
       ['01', 'what-is-data-engineering', 'What is data engineering?', true],
-      ['02', 'files-vs-tables', 'Files vs tables'],
-      ['03', 'file-formats', 'File formats: CSV, JSON, Parquet, Avro, Delta, Iceberg'],
-      ['04', 'batch-vs-streaming', 'Batch vs streaming'],
-      ['05', 'what-is-spark', 'What is Apache Spark?'],
-      ['06', 'dataframes-and-spark-sql', 'DataFrames and Spark SQL'],
+      ['02', 'files-vs-tables', 'Files vs tables', true],
+      ['03', 'file-formats', 'File formats: CSV, JSON, Parquet, Avro, Delta, Iceberg', true],
+      ['04', 'batch-vs-streaming', 'Batch vs streaming', true],
+      ['05', 'what-is-spark', 'What is Apache Spark?', true],
+      ['06', 'dataframes-and-spark-sql', 'DataFrames and Spark SQL', true],
       ['07', 'cloud-object-storage', 'Cloud object storage'],
       ['08', 'what-is-databricks', 'What is Databricks? Workspace and notebooks'],
       ['09', 'compute-clusters-serverless', 'Compute: clusters, SQL warehouses, serverless'],

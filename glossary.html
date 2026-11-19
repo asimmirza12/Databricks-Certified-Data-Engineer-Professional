@@ -24,30 +24,134 @@
 <section aria-label="Terms">
   <!-- Keep alphabetical. id = lowercase slug used in lesson links: glossary.html#slug -->
   <dl class="gloss">
+    <dt id="action">Action</dt>
+    <dd>A Spark command that needs a real result, such as <code>count()</code>, <code>display()</code> or a write. It makes Spark run the plan. <em>Lesson 00-05.</em></dd>
+    <dt id="availablenow">availableNow</dt>
+    <dd>A streaming trigger that processes all data that is new since the checkpoint, then stops. Used for scheduled incremental jobs; replaced <code>Trigger.Once</code>. <em>Lesson 00-04.</em></dd>
+    <dt id="avro">Avro</dt>
+    <dd>A compact, binary, row-based file format that stores its schema with the data. Common for messages on Kafka. <em>Lesson 00-03.</em></dd>
+    <dt id="batch-processing">Batch processing</dt>
+    <dd>Processing a chunk of collected data in one run, usually on a schedule. <em>Lesson 00-04.</em></dd>
+    <dt id="catalyst">Catalyst optimizer</dt>
+    <dd>Spark's query planner. It turns DataFrame or SQL code into an efficient physical plan. <em>Lesson 00-06.</em></dd>
+    <dt id="checkpoint">Checkpoint</dt>
+    <dd>A folder where a streaming query records what it has already processed, so it can restart where it stopped. <em>Lesson 00-04.</em></dd>
+    <dt id="cluster">Cluster</dt>
+    <dd>A group of computers working together. In Spark: one driver plus executors. <em>Lesson 00-05.</em></dd>
+    <dt id="column">Column</dt>
+    <dd>One named fact stored for every row of a table, such as <code>price</code>. Has a data type. <em>Lesson 00-02.</em></dd>
+    <dt id="columnar-format">Columnar format</dt>
+    <dd>A file layout that stores all values of one column together. Fast for analytics, compresses well. Parquet is columnar. <em>Lesson 00-03.</em></dd>
+    <dt id="compression">Compression</dt>
+    <dd>Storing data in fewer bytes by encoding repeated patterns. Columnar files compress especially well. <em>Lesson 00-03.</em></dd>
     <dt id="consumer">Consumer</dt>
     <dd>Anyone or anything that uses the output of a pipeline: a dashboard, an analyst, a model, an app. <em>Lesson 00-01.</em></dd>
+    <dt id="core">Core</dt>
+    <dd>One processor inside a machine. In Spark, each core runs one task at a time. <em>Lesson 00-05.</em></dd>
+    <dt id="csv">CSV (comma-separated values)</dt>
+    <dd>A plain-text, row-based format: one line per row, values split by commas. No types or schema inside. <em>Lesson 00-03.</em></dd>
     <dt id="data-engineering">Data engineering</dt>
     <dd>The work of moving data from where it is created to where people use it, and making it clean and reliable along the way. <em>Lesson 00-01.</em></dd>
     <dt id="data-pipeline">Data pipeline</dt>
     <dd>A repeatable series of steps that takes data from sources, changes it, and saves the result. Usually runs on a schedule or continuously. <em>Lesson 00-01.</em></dd>
     <dt id="data-quality">Data quality</dt>
     <dd>How far you can trust data: is it complete, correct, on time and free of duplicates? Pipelines add checks on purpose to protect it. <em>Lesson 00-01.</em></dd>
+    <dt id="dataframe">DataFrame</dt>
+    <dd>Spark's table-like object in code: named, typed columns over distributed rows. Lazy: it describes work rather than holding results. <em>Lesson 00-06.</em></dd>
+    <dt id="dataframe-api">DataFrame API</dt>
+    <dd>The set of methods (<code>select</code>, <code>where</code>, <code>groupBy</code>…) used to build DataFrame queries in Python, Scala or R. <em>Lesson 00-06.</em></dd>
+    <dt id="delta-lake">Delta Lake</dt>
+    <dd>An open table format: Parquet data files plus a transaction log. The default table format on Databricks. <em>Lesson 00-03; more in 00-10.</em></dd>
+    <dt id="driver">Driver</dt>
+    <dd>The coordinating process in a Spark cluster. It plans work and hands tasks to executors. <em>Lesson 00-05.</em></dd>
     <dt id="elt">ELT (extract, load, transform)</dt>
     <dd>A pipeline order where raw data is saved first and cleaned later, inside the data platform. Keeps a raw copy for re-processing. <em>Lesson 00-01.</em></dd>
     <dt id="etl">ETL (extract, transform, load)</dt>
     <dd>A pipeline order where data is copied out of a source, cleaned and reshaped, then saved for use. <em>Lesson 00-01.</em></dd>
+    <dt id="event">Event</dt>
+    <dd>A small record of something that happened at a point in time, like "bike 7 unlocked at 09:14". <em>Lesson 00-04.</em></dd>
+    <dt id="executor">Executor</dt>
+    <dd>A worker process in a Spark cluster that runs tasks on partitions of data. On Databricks, one per worker machine. <em>Lesson 00-05.</em></dd>
+    <dt id="file">File</dt>
+    <dd>A named chunk of bytes saved in storage. The computer stores it without knowing what is inside. <em>Lesson 00-02.</em></dd>
+    <dt id="file-format">File format</dt>
+    <dd>The agreed layout of bytes inside a file, such as CSV, JSON or Parquet. <em>Lesson 00-03.</em></dd>
+    <dt id="file-skipping">File skipping</dt>
+    <dd>Not opening files whose stored statistics (like min and max values) prove they can't match a query. Also called data skipping. <em>Lesson 00-03.</em></dd>
+    <dt id="folder">Folder (directory)</dt>
+    <dd>A named container that groups files in storage. <em>Lesson 00-02.</em></dd>
+    <dt id="iceberg">Apache Iceberg</dt>
+    <dd>An open table format: Parquet data files plus metadata files. Supported on Databricks with <code>USING ICEBERG</code>. <em>Lesson 00-03.</em></dd>
     <dt id="idempotent">Idempotent</dt>
     <dd>Safe to repeat: running it again on the same input gives the same result, with no duplicates. <em>Lesson 00-01.</em></dd>
+    <dt id="incremental">Incremental processing</dt>
+    <dd>Processing only data that is new since the last run, instead of everything again. <em>Lesson 00-04.</em></dd>
+    <dt id="json">JSON</dt>
+    <dd>A text, row-based format where each record lists field names and values, and can nest. Common for app events and APIs. <em>Lesson 00-03.</em></dd>
+    <dt id="latency">Latency</dt>
+    <dd>The delay between something happening and its data being available to use. <em>Lesson 00-04.</em></dd>
+    <dt id="lazy-evaluation">Lazy evaluation</dt>
+    <dd>Spark records transformations in a plan and runs nothing until an action asks for a result. <em>Lesson 00-05.</em></dd>
+    <dt id="metadata">Metadata</dt>
+    <dd>Data about data, such as a table's name, schema and list of files. <em>Lesson 00-02.</em></dd>
+    <dt id="micro-batch">Micro-batch</dt>
+    <dd>A very small batch of new data. Spark streaming runs one micro-batch after another. <em>Lesson 00-04.</em></dd>
+    <dt id="null">NULL</dt>
+    <dd>A marker meaning "no value here". Not zero and not an empty string. <em>Lesson 00-02.</em></dd>
+    <dt id="parquet">Parquet</dt>
+    <dd>A binary, columnar, compressed file format that stores its schema. The data files inside Delta and Iceberg tables. <em>Lesson 00-03.</em></dd>
+    <dt id="partition">Partition (Spark)</dt>
+    <dd>A chunk of a DataFrame's rows that one task processes. Not the same as a table partition (module 05). <em>Lesson 00-05.</em></dd>
     <dt id="pyspark">PySpark</dt>
-    <dd>The Python library for working with Apache Spark, the engine that processes data on Databricks. <em>Lesson 00-01; more in 00-05.</em></dd>
+    <dd>The Python library for working with Apache Spark, the engine that processes data on Databricks. <em>Lessons 00-01, 00-06.</em></dd>
     <dt id="query">Query</dt>
     <dd>A question you ask a table, usually written in SQL, such as "what was total revenue last week?". The answer comes back as rows. <em>Lesson 00-01.</em></dd>
+    <dt id="row">Row</dt>
+    <dd>One record in a table, such as one ride. <em>Lesson 00-02.</em></dd>
+    <dt id="row-based-format">Row-based format</dt>
+    <dd>A file layout that stores each record's values together, one record after another. CSV, JSON and Avro. <em>Lesson 00-03.</em></dd>
+    <dt id="schema">Schema (of a table)</dt>
+    <dd>The list of a table's columns and each column's data type. Not the same as a Unity Catalog schema, which is a container (lesson 00-11). <em>Lesson 00-02.</em></dd>
+    <dt id="schema-enforcement">Schema enforcement</dt>
+    <dd>A table rejecting writes whose columns or types don't fit its schema. <em>Lesson 00-02.</em></dd>
+    <dt id="schema-evolution">Schema evolution</dt>
+    <dd>Changing a table's schema to accept new data, for example adding a column with <code>mergeSchema</code>. Opt-in. <em>Lesson 00-02.</em></dd>
+    <dt id="schema-on-read">Schema-on-read</dt>
+    <dd>Working out data's structure when reading it, not when storing it. <em>Lesson 00-02.</em></dd>
+    <dt id="schema-on-write">Schema-on-write</dt>
+    <dd>Fixing the structure first and only accepting data that matches it. How tables work. <em>Lesson 00-02.</em></dd>
+    <dt id="shuffle">Shuffle</dt>
+    <dd>Moving rows between executors so rows with the same key end up together, for example for a group-by or join. Often the slowest step. <em>Lesson 00-05.</em></dd>
+    <dt id="skew">Skew</dt>
+    <dd>Uneven data: one key or partition has far more rows than the others, so one task runs much longer. <em>Lesson 00-05.</em></dd>
     <dt id="source">Source</dt>
     <dd>The system where data is first created or stored before a pipeline reads it, such as an app's database, log files or sensors. <em>Lesson 00-01.</em></dd>
+    <dt id="apache-spark">Apache Spark</dt>
+    <dd>Open-source engine that processes large data in parallel across a cluster of machines. Databricks is built on it. <em>Lesson 00-05.</em></dd>
+    <dt id="spark-job">Spark job</dt>
+    <dd>All the work Spark does to answer one action. Different from a Lakeflow job. <em>Lesson 00-05.</em></dd>
+    <dt id="spark-session">Spark session</dt>
+    <dd>Your connection to Spark, available as <code>spark</code> in Databricks notebooks. <em>Lesson 00-06.</em></dd>
+    <dt id="spark-sql">Spark SQL</dt>
+    <dd>Spark's SQL engine: run SQL text over tables, views and DataFrames. <em>Lesson 00-06.</em></dd>
     <dt id="sql">SQL (Structured Query Language)</dt>
     <dd>The standard language for asking tables questions and changing them. Works in almost every data tool, including Databricks. <em>Lesson 00-01.</em></dd>
+    <dt id="stage">Stage</dt>
+    <dd>A set of tasks that run without moving data between executors. A shuffle starts a new stage. <em>Lesson 00-05.</em></dd>
+    <dt id="streaming">Streaming</dt>
+    <dd>Processing data continuously and incrementally as it arrives, usually in micro-batches. <em>Lesson 00-04.</em></dd>
     <dt id="table">Table</dt>
-    <dd>Data organised in rows and named columns, like a tidy spreadsheet, that you can query with SQL. <em>Lesson 00-01; more in 00-02.</em></dd>
+    <dd>Data organised in rows and named columns, like a tidy spreadsheet, that you can query with SQL. Its rows live in files; the table adds a name, schema and rules. <em>Lessons 00-01, 00-02.</em></dd>
+    <dt id="table-format">Table format</dt>
+    <dd>A way of organising data files plus metadata so they behave as a table with safe changes, such as Delta Lake or Iceberg. <em>Lesson 00-03.</em></dd>
+    <dt id="task">Task</dt>
+    <dd>One unit of Spark work: one stage on one partition, run by one core. <em>Lesson 00-05.</em></dd>
+    <dt id="temporary-view">Temporary view</dt>
+    <dd>A name for a DataFrame that SQL can use, valid only in the current Spark session. Stores no data. <em>Lesson 00-06.</em></dd>
+    <dt id="transformation">Transformation</dt>
+    <dd>A Spark step that defines new data from old, like <code>filter</code> or <code>join</code>. Lazy: it only adds to the plan. <em>Lesson 00-05.</em></dd>
+    <dt id="trigger">Trigger</dt>
+    <dd>The setting that decides when a streaming query runs its next micro-batch. <em>Lesson 00-04.</em></dd>
   </dl>
 </section>
 </main>

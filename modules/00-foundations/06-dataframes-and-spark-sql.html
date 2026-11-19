@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DataFrames and Spark SQL · DE Pro Study Course</title>
+<meta name="description" content="The two ways to ask Spark for data, the DataFrame API and SQL, and why they end up as the same plan.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="00-06">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 00 · Lesson 06</p>
+  <h1>DataFrames and Spark SQL</h1>
+  <p class="lede">You can talk to Spark in Python or in SQL. This lesson shows the handful of operations you will use every day, in both languages side by side.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>00 · Foundations</dd></div>
+    <div><dt>Lesson</dt><dd>06 · DataFrames and Spark SQL</dd></div>
+    <div><dt>Exam objective</dt><dd>Groundwork for transformations with Spark SQL and PySpark (S3.1), UDFs (S1.3) and testing DataFrames (S1.11).</dd></div>
+    <div><dt>Time to read</dt><dd>~15 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq"><li><a class="chip acc" href="05-what-is-spark.html">00-05 What is Apache Spark?</a></li></ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p>A <span class="def">DataFrame</span> is Spark's version of a table inside your program: rows and named, typed columns. It is not the data itself. It is a recipe that says where the data comes from and which steps to apply. (That is the laziness from lesson 00-05.)</p>
+  <p>You can build the recipe two ways:</p>
+  <ul>
+    <li>The <span class="def">DataFrame API</span>: Python methods chained together, like <code>rides.filter(...).groupBy(...)</code>. In Python this is PySpark.</li>
+    <li><span class="def">Spark SQL</span>: ordinary SQL text, like <code>SELECT ... FROM rides WHERE ...</code>.</li>
+  </ul>
+  <p>Both go through the same <span class="def">optimizer</span> (Spark's planner, called Catalyst), which rewrites your recipe into the fastest plan it can find. So the same question gives the same plan and the same speed in either language. Pick whichever reads better for the job, and mix them freely.</p>
+  <p>To use a DataFrame from SQL, give it a temporary name with a <span class="def">temporary view</span>. To use SQL from Python, call <code>spark.sql(...)</code>; it returns a DataFrame.</p>
+  <div class="analogy">
+    <p>Ordering coffee: you can tick boxes on a form (the DataFrame API) or say "large oat latte, extra shot" to the barista (SQL). Both orders reach the same espresso machine (the optimizer) and you get the same coffee, made the same way.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 230" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">Python and SQL meet in one optimizer</title>
+      <desc id="dia-d">A PySpark chain and a SQL query both become a logical plan. The optimizer turns that into one physical plan, which runs as tasks on executors. Both paths produce the same plan.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <rect x="10" y="20" width="200" height="56" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="110" y="42" text-anchor="middle">DataFrame API</text><text x="110" y="62" text-anchor="middle" font-size="11" fill="var(--muted)">rides.filter(...).groupBy</text>
+        <rect x="10" y="150" width="200" height="56" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="110" y="172" text-anchor="middle">Spark SQL</text><text x="110" y="192" text-anchor="middle" font-size="11" fill="var(--muted)">SELECT ... GROUP BY</text>
+        <rect x="270" y="78" width="150" height="70" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="345" y="106" text-anchor="middle" font-weight="600">optimizer</text><text x="345" y="126" text-anchor="middle" font-size="11" fill="var(--muted)">(Catalyst)</text>
+        <rect x="470" y="78" width="170" height="70" rx="10" fill="var(--surface)" stroke="var(--ok)"/>
+        <text x="555" y="106" text-anchor="middle">one physical plan</text><text x="555" y="126" text-anchor="middle" font-size="11" fill="var(--muted)">→ tasks on executors</text>
+        <g fill="none" stroke="var(--line)" stroke-dasharray="3 4">
+          <path id="a" d="M210 48 C245 48 240 100 270 105"/><path id="b" d="M210 178 C245 178 240 125 270 120"/><path id="c" d="M420 113 H470"/>
+        </g>
+      </g>
+      <circle r="5" fill="var(--bronze)" data-rest="240,75"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#a"/></animateMotion></circle>
+      <circle r="5" fill="var(--bronze)" data-rest="240,150"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#b"/></animateMotion></circle>
+      <circle r="5" fill="var(--ok)" data-rest="445,113"><animateMotion dur="1.2s" begin="1.2s" repeatCount="indefinite"><mpath href="#c"/></animateMotion></circle>
+    </svg>
+    <figcaption class="cap">Notice: Python and SQL arrive at the <b>same optimizer</b> and leave as <b>one plan</b>. Language choice is about readability, not speed.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: build a query, see both languages</h2>
+  <p>Eight rides from three made-up towns. Pick the steps; the demo writes the PySpark and SQL for you and shows the result.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Filter town <select id="d-town"><option value="">all towns</option><option>Northport</option><option>Riverside</option><option>Hillview</option></select></label>
+      <label class="tog"><input type="checkbox" id="d-col"> add price_per_min</label>
+      <label>Group by <select id="d-group"><option value="">no grouping</option><option>town</option><option>bike_id</option></select></label>
+      <label class="tog"><input type="checkbox" id="d-sort"> sort by price, highest first</label>
+    </div>
+    <div class="grid2">
+      <div><p class="eyebrow">PySpark</p><pre><code id="d-py"></code></pre></div>
+      <div><p class="eyebrow">Spark SQL</p><pre><code id="d-sql"></code></pre></div>
+    </div>
+    <div class="tbl"><table id="d-out" aria-live="polite" aria-label="Query result"></table></div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="Query log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p>The everyday DataFrame operations:</p>
+<pre><code><span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> functions <span class="c-k">as</span> F
+
+rides = spark.read.table(<span class="c-s">"bike_shop.silver.rides"</span>)
+
+result = (rides
+  .select(<span class="c-s">"ride_id"</span>, <span class="c-s">"town"</span>, <span class="c-s">"minutes"</span>, <span class="c-s">"price"</span>)                     <span class="c-c"># keep some columns</span>
+  .where(F.col(<span class="c-s">"town"</span>) == <span class="c-s">"Riverside"</span>)                              <span class="c-c"># keep some rows (filter = where)</span>
+  .withColumn(<span class="c-s">"price_per_min"</span>, F.round(F.col(<span class="c-s">"price"</span>) / F.col(<span class="c-s">"minutes"</span>), 2))  <span class="c-c"># add a column</span>
+  .orderBy(F.col(<span class="c-s">"price"</span>).desc()))                                <span class="c-c"># sort</span>
+
+display(result)    <span class="c-c"># Databricks notebook helper: shows a table (and is an action)</span></code></pre>
+  <p>Switching between the two languages:</p>
+<pre><code><span class="c-c"># Python -&gt; SQL: give the DataFrame a temporary name for this session</span>
+result.createOrReplaceTempView(<span class="c-s">"riverside_rides"</span>)
+
+<span class="c-c"># SQL -&gt; Python: spark.sql returns a DataFrame you can keep chaining</span>
+top = spark.sql(<span class="c-s">"""
+  SELECT town, COUNT(*) AS rides, SUM(price) AS revenue
+  FROM riverside_rides
+  GROUP BY town
+"""</span>)
+top.printSchema()   <span class="c-c"># columns and types of the result</span></code></pre>
+<pre><code><span class="c-c">-- In a Databricks notebook, a cell starting with %sql runs SQL directly</span>
+<span class="c-c">-- %sql</span>
+<span class="c-k">SELECT</span> town, <span class="c-k">ROUND</span>(<span class="c-k">AVG</span>(price), 2) <span class="c-k">AS</span> avg_price
+<span class="c-k">FROM</span> bike_shop.silver.rides
+<span class="c-k">GROUP BY</span> town
+<span class="c-k">ORDER BY</span> avg_price <span class="c-k">DESC</span>;</code></pre>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td>Write the same query in SQL instead of PySpark</td><td>Same plan, same speed. Only readability changes.</td></tr>
+    <tr><td><code>createOrReplaceTempView</code></td><td>A name for SQL, visible only in your current Spark session. Gone when the session ends; nothing is saved.</td></tr>
+    <tr><td><code>saveAsTable</code> instead of a temp view</td><td>Data is written as a real table that others can query later.</td></tr>
+    <tr><td><code>withColumn</code> using a name that already exists</td><td>Replaces that column instead of adding a new one.</td></tr>
+    <tr><td>Refer to a column that doesn't exist</td><td>An error when Spark analyses the plan, before any data is read.</td></tr>
+    <tr><td>Call <code>withColumn</code> hundreds of times in a loop</td><td>The plan grows huge and slow to optimise. Build the columns in one <code>select</code> instead.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th>Task</th><th>PySpark</th><th>SQL</th></tr></thead><tbody>
+    <tr><td>Pick columns</td><td><code>df.select("a", "b")</code></td><td><code>SELECT a, b FROM t</code></td></tr>
+    <tr><td>Filter rows</td><td><code>df.where(F.col("a") &gt; 5)</code></td><td><code>WHERE a &gt; 5</code></td></tr>
+    <tr><td>New column</td><td><code>df.withColumn("c", F.col("a") * 2)</code></td><td><code>SELECT *, a * 2 AS c</code></td></tr>
+    <tr><td>Group and total</td><td><code>df.groupBy("k").agg(F.sum("a"))</code></td><td><code>SELECT k, SUM(a) … GROUP BY k</code></td></tr>
+    <tr><td>Sort</td><td><code>df.orderBy(F.col("a").desc())</code></td><td><code>ORDER BY a DESC</code></td></tr>
+    <tr><td>Combine tables</td><td><code>df.join(other, "k")</code></td><td><code>JOIN other USING (k)</code></td></tr>
+  </tbody></table></div>
+  <div class="grid2">
+    <div class="card"><h3>Reach for SQL when…</h3><p>the logic is a clear query, analysts will read it, or it runs on a SQL warehouse (which only speaks SQL).</p></div>
+    <div class="card"><h3>Reach for PySpark when…</h3><p>you need loops, functions, tests or reusable code (modules 01 and 03 build on this).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>A colleague rewrites a slow SQL query in PySpark "to make it faster"</td><td>Same plan, same speed. Time wasted.</td><td>Look at the plan (<code>explain()</code> or the query profile) to find the real bottleneck.</td></tr>
+    <tr><td>A temp view works in one notebook but not in another</td><td>Temp views live only in the session that created them.</td><td>Save a table, or create the view in each session.</td></tr>
+    <tr><td>Building a SQL string by pasting in user input</td><td>Risk of broken queries or SQL injection.</td><td>Use the DataFrame API, or parameterised <code>spark.sql(query, args)</code>.</td></tr>
+    <tr><td>A query fails with "cannot resolve column"</td><td>A typo or a column missing upstream.</td><td>Check <code>printSchema()</code> of the input DataFrame.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>"SQL is slower than PySpark" (or the reverse). Both compile to the same optimised plan. Answers built on this claim are wrong.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>A temporary view stores no data and disappears with the session. If something must survive or be shared, it needs a table (or a permanent view).</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><code>filter</code> and <code>where</code> on a DataFrame are the same thing; two names for one method.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p>A Spark <b>DataFrame</b> (lazy, distributed, a plan) vs a <b>pandas</b> DataFrame (in memory on one machine, computed immediately). Module 01 mixes them in pandas UDFs.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="2"><p>1. The same aggregation is written once in PySpark and once in SQL. How do they compare?</p>
+      <ol class="opts"><li><button>SQL is always faster</button></li><li><button>PySpark is always faster</button></li><li><button>Both go through the same optimizer and run the same plan</button></li><li><button>SQL can't do aggregations</button></li></ol>
+      <p class="why" hidden>Both languages are front ends to the same optimizer, so equivalent queries become the same physical plan.</p></div>
+    <div class="q" data-answer="0"><p>2. How do you query a Python DataFrame with SQL?</p>
+      <ol class="opts"><li><button>Register it with <code>createOrReplaceTempView</code>, then use that name in SQL</button></li><li><button>Convert it to CSV first</button></li><li><button>It isn't possible</button></li><li><button>Call <code>display()</code> on it</button></li></ol>
+      <p class="why" hidden>A temporary view gives the DataFrame a name that SQL in the same session can use.</p></div>
+    <div class="q" data-answer="3"><p>3. What does <code>spark.sql("SELECT ...")</code> return?</p>
+      <ol class="opts"><li><button>A Python list</button></li><li><button>A saved table</button></li><li><button>A text string</button></li><li><button>A DataFrame</button></li></ol>
+      <p class="why" hidden>It returns a DataFrame, so you can keep chaining PySpark methods on the result.</p></div>
+    <div class="q" data-answer="1"><p>4. You create a temp view in notebook A. A teammate's notebook B can't see it. Why?</p>
+      <ol class="opts"><li><button>Temp views need admin rights</button></li><li><button>Temp views exist only in the Spark session that created them</button></li><li><button>The view was deleted by the optimizer</button></li><li><button>Views only work in SQL warehouses</button></li></ol>
+      <p class="why" hidden>Temporary views are session-scoped. To share, write a table or create a permanent view.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>A DataFrame is a lazy, distributed table in your program: a recipe, not stored data.</li>
+    <li>The DataFrame API and Spark SQL share one optimizer, so equivalent queries perform the same.</li>
+    <li>Temp views let SQL use a DataFrame; <code>spark.sql</code> lets Python use SQL.</li>
+    <li>Everyday verbs: select, where, withColumn, groupBy/agg, orderBy, join.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#catalyst">Catalyst optimizer</a>
+    <a class="chip" href="../../glossary.html#dataframe">DataFrame</a>
+    <a class="chip" href="../../glossary.html#dataframe-api">DataFrame API</a>
+    <a class="chip" href="../../glossary.html#pyspark">PySpark</a>
+    <a class="chip" href="../../glossary.html#spark-session">Spark session</a>
+    <a class="chip" href="../../glossary.html#spark-sql">Spark SQL</a>
+    <a class="chip" href="../../glossary.html#temporary-view">temporary view</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/pyspark/basics">PySpark basics</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/getting-started/dataframes">Tutorial: load and transform data using DataFrames</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/">SQL language reference</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var RIDES = [
+    { ride_id: 'r01', town: 'Northport', bike_id: 'b7', minutes: 20, price: 6.0 },
+    { ride_id: 'r02', town: 'Riverside', bike_id: 'b3', minutes: 45, price: 11.5 },
+    { ride_id: 'r03', town: 'Hillview', bike_id: 'b7', minutes: 12, price: 4.0 },
+    { ride_id: 'r04', town: 'Riverside', bike_id: 'b1', minutes: 30, price: 8.0 },
+    { ride_id: 'r05', town: 'Northport', bike_id: 'b3', minutes: 60, price: 14.0 },
+    { ride_id: 'r06', town: 'Hillview', bike_id: 'b1', minutes: 25, price: 7.0 },
+    { ride_id: 'r07', town: 'Riverside', bike_id: 'b7', minutes: 15, price: 5.0 },
+    { ride_id: 'r08', town: 'Northport', bike_id: 'b1', minutes: 40, price: 10.0 }
+  ];
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  var r2 = function (n) { return Math.round(n * 100) / 100; };
+
+  function run() {
+    var town = $('d-town').value, addCol = $('d-col').checked, g = $('d-group').value, sort = $('d-sort').checked;
+    var py = ['result = (spark.read.table("rides")'], sql = [], sel = ['*'];
+    var rows = RIDES.slice();
+    if (town) { rows = rows.filter(function (r) { return r.town === town; }); py.push('  .where(F.col("town") == "' + town + '")'); }
+    if (addCol && !g) { rows = rows.map(function (r) { return Object.assign({}, r, { price_per_min: r2(r.price / r.minutes) }); });
+      py.push('  .withColumn("price_per_min", F.round(F.col("price") / F.col("minutes"), 2))'); sel = ['*', 'ROUND(price / minutes, 2) AS price_per_min']; }
+    if (g) {
+      var acc = {};
+      rows.forEach(function (r) { var k = r[g]; acc[k] = acc[k] || { rides: 0, revenue: 0 }; acc[k].rides++; acc[k].revenue = r2(acc[k].revenue + r.price); });
+      rows = Object.keys(acc).sort().map(function (k) { var o = {}; o[g] = k; o.rides = acc[k].rides; o.revenue = acc[k].revenue; return o; });
+      py.push('  .groupBy("' + g + '")', '  .agg(F.count("*").alias("rides"), F.sum("price").alias("revenue"))');
+      sel = [g, 'COUNT(*) AS rides', 'SUM(price) AS revenue'];
+      if (addCol) log('skip', '  price_per_min skipped: it is per ride, not per group');
+    }
+    var sortCol = g ? 'revenue' : 'price';
+    if (sort) { rows.sort(function (a, b) { return b[sortCol] - a[sortCol]; }); py.push('  .orderBy(F.col("' + sortCol + '").desc())'); }
+    py[py.length - 1] += ')';
+    sql.push('SELECT ' + sel.join(', '), 'FROM rides');
+    if (town) sql.push("WHERE town = '" + town + "'");
+    if (g) sql.push('GROUP BY ' + g);
+    if (sort) sql.push('ORDER BY ' + sortCol + ' DESC');
+    $('d-py').textContent = py.join('\n');
+    $('d-sql').textContent = sql.join('\n') + ';';
+    var out = $('d-out'); out.textContent = '';
+    var cols = rows.length ? Object.keys(rows[0]) : ['(no rows)'];
+    var head = out.insertRow(); cols.forEach(function (c) { var th = document.createElement('th'); th.textContent = c; head.appendChild(th); });
+    rows.forEach(function (r) { var tr = out.insertRow(); cols.forEach(function (c) { tr.insertCell().textContent = r[c]; }); });
+    log('ok', '> both versions → same plan · ' + rows.length + ' row(s) returned');
+  }
+  ['d-town', 'd-col', 'd-group', 'd-sort'].forEach(function (id) { $(id).onchange = run; });
+  run();
+})();
+</script>
+</body>
+</html>

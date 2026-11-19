@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Batch vs streaming · DE Pro Study Course</title>
+<meta name="description" content="Batch processing, streaming and the middle ground: how fresh your data is, what it costs, and how Spark remembers what it already processed.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="00-04">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 00 · Lesson 04</p>
+  <h1>Batch vs streaming</h1>
+  <p class="lede">Process data in big scheduled chunks, or continuously as it arrives? The answer is a trade between how fresh the data is and how much compute you pay for.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>00 · Foundations</dd></div>
+    <div><dt>Lesson</dt><dd>04 · Batch vs streaming</dd></div>
+    <div><dt>Exam objective</dt><dd>Groundwork for streaming pipelines (S1.4), streaming tables vs materialized views (S1.6) and stateful streaming (S1.12).</dd></div>
+    <div><dt>Time to read</dt><dd>~15 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq"><li><a class="chip acc" href="01-what-is-data-engineering.html">00-01 What is data engineering?</a></li></ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p>Data usually arrives as <span class="def">events</span>: small records of something that happened, such as "bike 7 unlocked at 09:14".</p>
+  <p><span class="def">Batch processing</span> waits, collects a chunk of events, then processes the whole chunk in one go, usually on a schedule ("every night at 2 a.m."). Between runs, nothing is processed.</p>
+  <p><span class="def">Streaming</span> processes events continuously, shortly after they arrive. In Spark, streaming usually works in <span class="def">micro-batches</span>: very small batches, run one after another, each holding only the events that are new since the last one.</p>
+  <p>The time between an event happening and it showing up in your table is called <span class="def">latency</span>. Streaming gives low latency. Batch gives high latency but can be cheaper, because compute only runs during each scheduled run.</p>
+  <p>A streaming job remembers how far it got using a <span class="def">checkpoint</span>: a small folder where Spark records which data it has already processed. If the job stops and restarts, it continues from the checkpoint instead of starting over. This is also how a scheduled job can be <em>incremental</em>: process only what is new, then stop.</p>
+  <div class="analogy">
+    <p>Batch is a postman who comes once a day and delivers the whole day's letters. Streaming is a pneumatic tube in an office: each message shoots through moments after it is written. The tube is faster, but someone has to keep the air pump running all day.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 230" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">Batch collects then releases; streaming flows continuously</title>
+      <desc id="dia-d">Two lanes of events. In the batch lane, events pile up in a waiting area until a scheduled run moves them all to the table at once. In the streaming lane, events pass through small micro-batches and reach the table within seconds.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <text x="20" y="24" font-weight="600">BATCH</text><text x="80" y="24" font-size="11" fill="var(--muted)">runs on a schedule: high latency, compute only during runs</text>
+        <rect x="250" y="40" width="130" height="50" rx="8" fill="var(--surface)" stroke="var(--bronze)" stroke-dasharray="4 3"/>
+        <text x="315" y="62" text-anchor="middle" font-size="11">waiting…</text><text x="315" y="78" text-anchor="middle" font-size="11" fill="var(--muted)">next run 02:00</text>
+        <rect x="420" y="40" width="80" height="50" rx="8" fill="var(--surface)" stroke="var(--accent)">
+          <animate attributeName="fill" values="var(--surface);var(--surface);var(--accent-soft);var(--surface)" keyTimes="0;.8;.9;1" dur="5s" repeatCount="indefinite"/>
+        </rect>
+        <text x="460" y="70" text-anchor="middle" font-size="11">run</text>
+        <rect x="540" y="40" width="100" height="50" rx="8" fill="var(--surface)" stroke="var(--ok)"/><text x="590" y="70" text-anchor="middle" font-size="11">table</text>
+        <text x="20" y="134" font-weight="600">STREAMING</text><text x="110" y="134" font-size="11" fill="var(--muted)">micro-batch after micro-batch: low latency, compute always on</text>
+        <g fill="var(--surface)" stroke="var(--accent)">
+          <rect x="250" y="150" width="50" height="50" rx="6"/><rect x="335" y="150" width="50" height="50" rx="6"/><rect x="420" y="150" width="50" height="50" rx="6"/>
+        </g>
+        <text x="275" y="180" text-anchor="middle" font-size="11">mb 1</text><text x="360" y="180" text-anchor="middle" font-size="11">mb 2</text><text x="445" y="180" text-anchor="middle" font-size="11">mb 3</text>
+        <rect x="540" y="150" width="100" height="50" rx="8" fill="var(--surface)" stroke="var(--ok)"/><text x="590" y="180" text-anchor="middle" font-size="11">table</text>
+        <text x="20" y="70" font-size="11">events →</text><text x="20" y="180" font-size="11">events →</text>
+        <path id="b-in" d="M90 65 H250" fill="none" stroke="var(--line)" stroke-dasharray="3 4"/>
+        <path id="b-out" d="M380 65 H540" fill="none" stroke="var(--line)" stroke-dasharray="3 4"/>
+        <path id="s" d="M90 175 H540" fill="none" stroke="var(--line)" stroke-dasharray="3 4"/>
+      </g>
+      <circle r="5" fill="var(--bronze)" data-rest="150,65"><animateMotion dur="1.5s" repeatCount="indefinite"><mpath href="#b-in"/></animateMotion></circle>
+      <circle r="5" fill="var(--bronze)" data-rest="200,65"><animateMotion dur="1.5s" begin="0.7s" repeatCount="indefinite"><mpath href="#b-in"/></animateMotion></circle>
+      <g>
+        <circle r="6" fill="var(--ok)" cx="0" cy="0" opacity="0"><animateMotion dur="5s" repeatCount="indefinite" keyPoints="0;0;1;1" keyTimes="0;.8;.95;1" calcMode="linear"><mpath href="#b-out"/></animateMotion><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.79;.8;.95;1" dur="5s" repeatCount="indefinite"/></circle>
+      </g>
+      <circle r="5" fill="var(--accent)" data-rest="210,175"><animateMotion dur="2.5s" repeatCount="indefinite"><mpath href="#s"/></animateMotion></circle>
+      <circle r="5" fill="var(--accent)" data-rest="320,175"><animateMotion dur="2.5s" begin="0.8s" repeatCount="indefinite"><mpath href="#s"/></animateMotion></circle>
+      <circle r="5" fill="var(--accent)" data-rest="490,175"><animateMotion dur="2.5s" begin="1.6s" repeatCount="indefinite"><mpath href="#s"/></animateMotion></circle>
+    </svg>
+    <figcaption class="cap">Notice: in the batch lane, events <b>pile up</b> and reach the table only when the scheduled run fires. In the streaming lane, they reach the table <b>within moments</b>, one small micro-batch at a time.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: freshness vs cost</h2>
+  <p>Ride events arrive every minute. Pick a processing style, then move the clock forward. Watch three numbers: the worst wait for an event, rows read, and minutes of compute paid for.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Style <select id="d-mode">
+        <option value="full">Batch every hour, re-read everything</option>
+        <option value="inc">Batch every hour, only new data (availableNow)</option>
+        <option value="stream">Always-on stream, micro-batch every minute</option>
+      </select></label>
+      <button type="button" id="d-step">+10 minutes</button>
+      <button type="button" class="primary" id="d-day">+4 hours</button>
+      <button type="button" id="d-reset">Reset</button>
+    </div>
+    <div class="flow">
+      <div class="pane"><h4>Sim clock</h4><div class="big" id="d-clock">00:00</div><p class="cap" id="d-wait">Events waiting: 0</p></div>
+      <div class="pane"><h4>Worst wait so far</h4><div class="big" id="d-lat">0 min</div><p class="cap">How stale the table got</p></div>
+      <div class="pane"><h4>Rows read</h4><div class="big" id="d-rows">0</div><p class="cap">Total across all runs</p></div>
+      <div class="pane"><h4>Compute minutes</h4><div class="big" id="d-cpu">0</div><p class="cap">Each scheduled run costs 5 min to start and finish</p></div>
+    </div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="Processing log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p>A batch read: <code>spark.read</code> takes everything that exists right now.</p>
+<pre><code><span class="c-c"># BATCH: read the whole table as it is now, write the result, finish</span>
+events = spark.read.table(<span class="c-s">"bike_shop.bronze.ride_events"</span>)
+(events.filter(<span class="c-s">"event_type = 'unlock'"</span>)
+       .write.mode(<span class="c-s">"overwrite"</span>)
+       .saveAsTable(<span class="c-s">"bike_shop.silver.unlocks"</span>))</code></pre>
+  <p>A streaming read: <code>spark.readStream</code> plus a checkpoint, so each run handles only new rows. The <span class="def">trigger</span> decides when micro-batches run.</p>
+<pre><code><span class="c-c"># STREAMING: read only rows that are new since the last checkpoint</span>
+new_events = spark.readStream.table(<span class="c-s">"bike_shop.bronze.ride_events"</span>)
+
+(new_events.filter(<span class="c-s">"event_type = 'unlock'"</span>)
+   .writeStream
+   .option(<span class="c-s">"checkpointLocation"</span>, <span class="c-s">"/Volumes/bike_shop/silver/checkpoints/unlocks"</span>)  <span class="c-c"># progress is saved here</span>
+   .trigger(availableNow=<span class="c-k">True</span>)    <span class="c-c"># process the backlog in micro-batches, then stop</span>
+   .toTable(<span class="c-s">"bike_shop.silver.unlocks"</span>))
+
+<span class="c-c"># Other triggers (choose one):</span>
+<span class="c-c">#   .trigger(processingTime="1 minute")   keep running; start a micro-batch every minute</span>
+<span class="c-c">#   (no trigger at all)                   keep running; next micro-batch as soon as the last ends</span></code></pre>
+  <p class="note">Running the <code>availableNow</code> version on a schedule gives you batch-style cost with streaming-style "only new data" bookkeeping. You will use this pattern a lot.</p>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td>No trigger set on a stream</td><td>Micro-batches run back to back, as fast as possible. Lowest latency for micro-batch, but compute never stops and the constant checking for new files can add storage API costs.</td></tr>
+    <tr><td><code>trigger(processingTime="10 minutes")</code></td><td>One micro-batch every 10 minutes. Fewer, larger batches; data up to ~10 minutes stale; compute still always on.</td></tr>
+    <tr><td><code>trigger(availableNow=True)</code></td><td>Processes everything new, then stops. Run it from a scheduled job. This replaced the older <code>Trigger.Once</code>, which is deprecated.</td></tr>
+    <tr><td>Real-time mode</td><td>For sub-second needs, such as fraud checks. Has strict compute requirements (classic compute, specific runtime and settings). Covered later; verify details in the docs.</td></tr>
+    <tr><td>Continuous trigger (open-source Spark)</td><td>Not supported on Databricks; the docs point to real-time mode instead.</td></tr>
+    <tr><td>Delete the checkpoint folder</td><td>The stream forgets its progress and re-processes everything from the start. This can create duplicates.</td></tr>
+    <tr><td>Run on serverless notebooks or jobs</td><td>At the time of writing, <code>availableNow</code> is the only trigger supported there. Verify in the docs, since this changes.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th></th><th>Batch (full re-read)</th><th>Incremental batch (availableNow)</th><th>Continuous stream</th></tr></thead><tbody>
+    <tr><td>Latency</td><td>Hours</td><td>Minutes to hours (your schedule)</td><td>Seconds</td></tr>
+    <tr><td>Reads</td><td>Everything, every run</td><td>Only new data</td><td>Only new data</td></tr>
+    <tr><td>Compute</td><td>Only during runs</td><td>Only during runs</td><td>Always on</td></tr>
+    <tr><td>Remembers progress</td><td>No</td><td>Yes, via checkpoint</td><td>Yes, via checkpoint</td></tr>
+    <tr><td>Good for</td><td>Small tables, full rebuilds</td><td>Most daily/hourly pipelines</td><td>Live dashboards, alerts, fraud</td></tr>
+  </tbody></table></div>
+  <div class="grid3">
+    <div class="card"><p class="tag">Trigger</p><h3>Default (none)</h3><p>Next micro-batch as soon as the previous one finishes.</p></div>
+    <div class="card"><p class="tag">Trigger</p><h3>processingTime</h3><p>Fixed interval between micro-batches.</p></div>
+    <div class="card"><p class="tag">Trigger</p><h3>availableNow</h3><p>Drain the backlog, then stop. Schedule it like a batch job.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>The finance report only needs yesterday's numbers</td><td>An always-on stream burns compute all day for no benefit.</td><td>Schedule an <code>availableNow</code> run once a day.</td></tr>
+    <tr><td>The nightly job re-reads 3 years of events and takes longer every month</td><td>Full re-reads grow with history.</td><td>Switch to incremental processing with a checkpoint.</td></tr>
+    <tr><td>Operations want to see bikes that are stuck <em>right now</em></td><td>An hourly batch shows problems up to an hour late.</td><td>Run a continuous stream with a short trigger interval.</td></tr>
+    <tr><td>Someone "cleans up" a folder and deletes the checkpoint</td><td>The next run processes all history again and duplicates rows.</td><td>Protect checkpoint folders; treat them as part of the table.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>"Streaming means always running." Not necessarily: a streaming query with <code>availableNow</code> runs, processes what's new, and stops. Streaming describes <em>incremental</em> processing, not only uptime.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p><code>Trigger.Once</code> is deprecated. When an answer offers both <code>Once</code> and <code>availableNow</code> for scheduled incremental runs, prefer <code>availableNow</code>.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Latency</b> = how long until an event is in the table. <b>Throughput</b> = how many events per second you can handle. A system can be good at one and bad at the other.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Checkpoint</b> (Spark's saved progress for a stream) vs a Delta table <b>version</b> (a snapshot of the table, lesson 00-10). Both mark "where we were", for different things.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="1"><p>1. A dashboard must update within seconds of each event. Which approach fits?</p>
+      <ol class="opts"><li><button>A nightly batch job</button></li><li><button>A continuously running stream</button></li><li><button>An hourly availableNow job</button></li><li><button>A weekly full reload</button></li></ol>
+      <p class="why" hidden>Seconds of latency need a stream that keeps running. Scheduled runs, even incremental ones, leave data stale between runs.</p></div>
+    <div class="q" data-answer="2"><p>2. What does <code>trigger(availableNow=True)</code> do?</p>
+      <ol class="opts"><li><button>Runs one micro-batch every second forever</button></li><li><button>Reads the whole source again from the start</button></li><li><button>Processes all data that is new since the checkpoint, then stops</button></li><li><button>Turns off the checkpoint</button></li></ol>
+      <p class="why" hidden>It drains the backlog (possibly in several micro-batches) and stops, which makes it ideal for scheduled incremental jobs.</p></div>
+    <div class="q" data-answer="0"><p>3. What lets a stream continue where it left off after a restart?</p>
+      <ol class="opts"><li><button>The checkpoint location</button></li><li><button>The trigger interval</button></li><li><button>The table's schema</button></li><li><button>The cluster size</button></li></ol>
+      <p class="why" hidden>The checkpoint records which data has been processed. Without it, Spark cannot know where it stopped.</p></div>
+    <div class="q" data-answer="3"><p>4. A scheduled job takes longer every month because it re-reads all history. What's the best fix?</p>
+      <ol class="opts"><li><button>Run it less often</button></li><li><button>Delete old data</button></li><li><button>Use a bigger cluster forever</button></li><li><button>Make it incremental: a streaming read with a checkpoint and availableNow</button></li></ol>
+      <p class="why" hidden>Incremental processing reads only new data, so run time tracks the amount of new data, not total history.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>Batch processes chunks on a schedule; streaming processes new events continuously in micro-batches.</li>
+    <li>The trade-off is latency (freshness) vs compute cost.</li>
+    <li>A checkpoint remembers progress, so streams restart safely and process only new data.</li>
+    <li><code>availableNow</code> = streaming bookkeeping with batch-style scheduling; it replaced <code>Trigger.Once</code>.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#availablenow">availableNow</a>
+    <a class="chip" href="../../glossary.html#batch-processing">batch processing</a>
+    <a class="chip" href="../../glossary.html#checkpoint">checkpoint</a>
+    <a class="chip" href="../../glossary.html#event">event</a>
+    <a class="chip" href="../../glossary.html#incremental">incremental processing</a>
+    <a class="chip" href="../../glossary.html#latency">latency</a>
+    <a class="chip" href="../../glossary.html#micro-batch">micro-batch</a>
+    <a class="chip" href="../../glossary.html#streaming">streaming</a>
+    <a class="chip" href="../../glossary.html#trigger">trigger</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/structured-streaming/concepts">Structured Streaming concepts</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/structured-streaming/triggers">Configure Structured Streaming trigger intervals</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/serverless/limitations">Serverless compute limitations</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var t, waiting, total, worst, rows, cpu, oldest;
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  var hhmm = function (m) { return String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+  var arrivals = function (m) { return 2 + (m * 7) % 4; }; // fixed pattern: 2-5 events per minute
+
+  function process(label) {
+    var mode = $('d-mode').value;
+    if (!waiting) return;
+    var read = mode === 'full' ? total : waiting;
+    rows += read;
+    if (mode !== 'stream' || label) log(mode === 'full' ? 'bad' : 'ok', '  ' + hhmm(t) + ' run · read ' + read + ' row(s)' + (mode === 'full' ? ' (all history)' : ' (new only)') + ', ' + waiting + ' new');
+    waiting = 0; oldest = null;
+  }
+  function minute() {
+    t++;
+    var n = arrivals(t); waiting += n; total += n;
+    if (oldest === null) oldest = t;
+    var mode = $('d-mode').value;
+    if (mode === 'stream') { cpu += 1; process(); }
+    else if (t % 60 === 0) { cpu += 5; process(true); }
+    if (oldest !== null) worst = Math.max(worst, t - oldest);
+  }
+  function advance(mins) {
+    for (var i = 0; i < mins; i++) minute();
+    if ($('d-mode').value === 'stream') log('ok', '  ' + hhmm(t) + ' · ' + mins + ' micro-batch(es) ran, table is up to date');
+    draw();
+  }
+  function draw() {
+    $('d-clock').textContent = hhmm(t);
+    $('d-wait').textContent = 'Events waiting: ' + waiting;
+    $('d-lat').textContent = worst + ' min';
+    $('d-rows').textContent = rows.toLocaleString();
+    $('d-cpu').textContent = cpu;
+    Course.flash($('d-cpu'));
+  }
+  function reset() { t = 0; waiting = 0; total = 0; worst = 0; rows = 0; cpu = 0; oldest = null; $('d-log').textContent = ''; log('skip', 'clock at 00:00 · style: ' + $('d-mode').selectedOptions[0].text); draw(); }
+  $('d-step').onclick = function () { advance(10); };
+  $('d-day').onclick = function () { advance(240); };
+  $('d-reset').onclick = reset;
+  $('d-mode').onchange = reset;
+  reset();
+})();
+</script>
+</body>
+</html>

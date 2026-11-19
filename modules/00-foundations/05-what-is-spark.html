@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>What is Apache Spark? · DE Pro Study Course</title>
+<meta name="description" content="How Apache Spark splits big data into partitions, hands tasks to executors, and waits until an action before doing any work.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="00-05">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 00 · Lesson 05</p>
+  <h1>What is Apache Spark?</h1>
+  <p class="lede">Spark is the engine under Databricks. It splits a big job into many small pieces and runs them side by side on several machines. Knowing how it does that explains most performance questions later.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>00 · Foundations</dd></div>
+    <div><dt>Lesson</dt><dd>05 · What is Apache Spark?</dd></div>
+    <div><dt>Exam objective</dt><dd>Groundwork for the Spark UI and query profile (S5.5, S8.1), joins and shuffles (S3.1) and compute choices (S1.10).</dd></div>
+    <div><dt>Time to read</dt><dd>~16 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq"><li><a class="chip acc" href="02-files-vs-tables.html">00-02 Files vs tables</a></li></ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p><span class="def">Apache Spark</span> is open-source software for processing large amounts of data across many computers at once. One computer would take hours to read a billion rows; ten computers working together can take minutes.</p>
+  <p>A group of computers working together is a <span class="def">cluster</span>. In a Spark cluster:</p>
+  <ul>
+    <li>The <span class="def">driver</span> is the boss. It reads your code, plans the work, and hands out pieces.</li>
+    <li><span class="def">Executors</span> are the workers. They do the actual reading and calculating. On Databricks, each worker machine runs one executor.</li>
+  </ul>
+  <p>Spark splits data into <span class="def">partitions</span>: chunks of rows that can be processed independently. Each piece of work on one partition is a <span class="def">task</span>. An executor has several <span class="def">cores</span> (processors), and each core runs one task at a time.</p>
+  <p>Two more ideas matter a lot. First, Spark is <span class="def">lazy</span>: steps like "filter" or "join" (<span class="def">transformations</span>) only add to a plan. Nothing runs until you ask for a result, such as "count", "show" or "write" (an <span class="def">action</span>). Waiting lets Spark optimise the whole plan at once.</p>
+  <p>Second, some steps need rows with the same key on the same machine, such as "total per bike". Moving rows between executors to arrange that is a <span class="def">shuffle</span>. Shuffles send data over the network, so they are often the slowest part of a job.</p>
+  <div class="analogy">
+    <p>Picture a restaurant kitchen at dinner rush. The head chef (driver) reads the orders and plans them. Line cooks (executors) each have a few burners (cores). Every dish is split into small jobs (tasks) on portions of ingredients (partitions). The head chef doesn't start anyone cooking until an order is actually placed (an action). And if every cook must pass ingredients to one particular cook to finish a sauce, that hand-off (shuffle) slows the whole kitchen.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 260" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">Driver hands tasks to executors, which read partitions</title>
+      <desc id="dia-d">The driver turns code into tasks and sends them to three executors. Each executor reads its own partitions of the data from storage and works on them in parallel. Results flow back to the driver.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <rect x="250" y="12" width="160" height="56" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="330" y="36" text-anchor="middle" font-weight="600">driver</text><text x="330" y="54" text-anchor="middle" font-size="11" fill="var(--muted)">plans · hands out tasks</text>
+        <g fill="var(--surface)" stroke="var(--line)">
+          <rect x="40" y="120" width="160" height="56" rx="8"/><rect x="250" y="120" width="160" height="56" rx="8"/><rect x="460" y="120" width="160" height="56" rx="8"/>
+        </g>
+        <text x="120" y="142" text-anchor="middle">executor 1</text><text x="330" y="142" text-anchor="middle">executor 2</text><text x="540" y="142" text-anchor="middle">executor 3</text>
+        <g font-size="11" fill="var(--muted)"><text x="120" y="162" text-anchor="middle">core · core</text><text x="330" y="162" text-anchor="middle">core · core</text><text x="540" y="162" text-anchor="middle">core · core</text></g>
+        <g fill="var(--code-bg)" stroke="var(--line)">
+          <rect x="40" y="214" width="70" height="30" rx="4"/><rect x="130" y="214" width="70" height="30" rx="4"/><rect x="250" y="214" width="70" height="30" rx="4"/><rect x="340" y="214" width="70" height="30" rx="4"/><rect x="460" y="214" width="70" height="30" rx="4"/><rect x="550" y="214" width="70" height="30" rx="4"/>
+        </g>
+        <g font-size="11"><text x="75" y="233" text-anchor="middle">part 1</text><text x="165" y="233" text-anchor="middle">part 2</text><text x="285" y="233" text-anchor="middle">part 3</text><text x="375" y="233" text-anchor="middle">part 4</text><text x="495" y="233" text-anchor="middle">part 5</text><text x="585" y="233" text-anchor="middle">part 6</text></g>
+        <g fill="none" stroke="var(--line)" stroke-dasharray="3 4">
+          <path id="t1" d="M290 68 C250 95 150 95 120 120"/><path id="t2" d="M330 68 V120"/><path id="t3" d="M370 68 C410 95 510 95 540 120"/>
+          <path id="r1" d="M75 214 V176"/><path id="r2" d="M285 214 V176"/><path id="r3" d="M585 214 V176"/>
+        </g>
+      </g>
+      <circle r="5" fill="var(--accent)" data-rest="200,96"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#t1"/></animateMotion></circle>
+      <circle r="5" fill="var(--accent)" data-rest="330,96"><animateMotion dur="2.4s" begin="0.3s" repeatCount="indefinite"><mpath href="#t2"/></animateMotion></circle>
+      <circle r="5" fill="var(--accent)" data-rest="460,96"><animateMotion dur="2.4s" begin="0.6s" repeatCount="indefinite"><mpath href="#t3"/></animateMotion></circle>
+      <circle r="5" fill="var(--ok)" data-rest="75,195"><animateMotion dur="1.8s" begin="1.2s" repeatCount="indefinite"><mpath href="#r1"/></animateMotion></circle>
+      <circle r="5" fill="var(--ok)" data-rest="285,195"><animateMotion dur="1.8s" begin="1.4s" repeatCount="indefinite"><mpath href="#r2"/></animateMotion></circle>
+      <circle r="5" fill="var(--ok)" data-rest="585,195"><animateMotion dur="1.8s" begin="1.6s" repeatCount="indefinite"><mpath href="#r3"/></animateMotion></circle>
+    </svg>
+    <figcaption class="cap">Notice: the driver (top) <b>never reads the data itself</b>; it sends tasks (blue). Each executor reads <b>its own partitions</b> (green) from storage, all at the same time. More executors or cores means more tasks in parallel.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: a tiny Spark cluster</h2>
+  <p>A table of rides is split into 12 partitions. Each executor has 2 cores, and each task takes 1 second. First add transformations and notice nothing runs. Then call an action.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Executors <input type="range" id="d-ex" min="1" max="8" value="2" aria-describedby="d-exv"></label><span class="chip" id="d-exv">2 executors · 4 cores</span>
+    </div>
+    <div class="ctrls">
+      <button type="button" id="d-filter">.filter(price &gt; 0)</button>
+      <button type="button" id="d-group">.groupBy("bike_id").sum("price")</button>
+      <button type="button" class="primary" id="d-count">.count() (action)</button>
+      <button type="button" id="d-reset">Reset plan</button>
+    </div>
+    <div class="flow">
+      <div class="pane"><h4>Plan (nothing run yet)</h4><div id="d-plan"></div></div>
+      <div class="pane"><h4>Last job</h4><div class="big" id="d-time">–</div><p class="cap" id="d-detail">No action called yet.</p></div>
+    </div>
+    <div class="pane"><h4>Task waves (each row = one second)</h4><div id="d-waves"></div></div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="Spark log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p>On Databricks, a Spark session called <code>spark</code> is ready in every notebook. You never have to create it.</p>
+<pre><code><span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> functions <span class="c-k">as</span> F
+
+rides = spark.read.table(<span class="c-s">"bike_shop.silver.rides"</span>)       <span class="c-c"># transformation: nothing is read yet</span>
+paid  = rides.filter(F.col(<span class="c-s">"price"</span>) &gt; 0)                 <span class="c-c"># transformation: plan grows</span>
+per_bike = paid.groupBy(<span class="c-s">"bike_id"</span>).agg(F.sum(<span class="c-s">"price"</span>).alias(<span class="c-s">"revenue"</span>))  <span class="c-c"># still nothing; will need a shuffle</span>
+
+per_bike.explain()     <span class="c-c"># prints the plan Spark made. Still no data processed.</span>
+
+per_bike.count()       <span class="c-c"># ACTION: now Spark runs the whole plan as a job</span>
+display(per_bike)      <span class="c-c"># ACTION (Databricks notebooks): runs it again to show results</span>
+
+<span class="c-c"># How many partitions does the data have right now?</span>
+rides.rdd.getNumPartitions()   <span class="c-c"># works on classic compute; serverless may not allow .rdd</span></code></pre>
+  <p class="note">Each action runs the plan again from the start. Calling several actions on the same DataFrame repeats the work. Later lessons show when caching helps and when it hurts.</p>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td>Add more executors (or cores)</td><td>More tasks run at once, so jobs with many partitions finish faster. Once there are more cores than tasks, extra cores sit idle.</td></tr>
+    <tr><td>Too few partitions (e.g. 2 for a huge table)</td><td>Only 2 tasks can run, so most cores wait. Each task is huge and may run out of memory.</td></tr>
+    <tr><td>Far too many tiny partitions</td><td>Each task does almost nothing; time is spent on scheduling overhead instead of work.</td></tr>
+    <tr><td>Add a <code>groupBy</code> or <code>join</code></td><td>Often adds a shuffle: rows move across the network, and the job gains a new <span class="def">stage</span>.</td></tr>
+    <tr><td>Add more transformations</td><td>Nothing runs yet. Spark just extends the plan and optimises it when an action comes.</td></tr>
+    <tr><td>Call several actions on one DataFrame</td><td>The plan runs once per action, repeating the work each time.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th>Transformations (lazy)</th><th>Actions (run the plan)</th></tr></thead><tbody>
+    <tr><td><code>select</code>, <code>filter</code>/<code>where</code>, <code>withColumn</code></td><td><code>count()</code>, <code>collect()</code>, <code>show()</code></td></tr>
+    <tr><td><code>join</code>, <code>groupBy(...).agg(...)</code>, <code>orderBy</code></td><td><code>display()</code> in notebooks</td></tr>
+    <tr><td><code>spark.read...</code> (defining what to read)</td><td><code>write...save()</code> / <code>saveAsTable()</code></td></tr>
+  </tbody></table></div>
+  <h3>The work hierarchy</h3>
+  <div class="grid3">
+    <div class="card"><p class="tag">1 per action</p><h3>Job</h3><p>All the work Spark does to answer one action. (A Spark job is not a Lakeflow job.)</p></div>
+    <div class="card"><p class="tag">split at shuffles</p><h3>Stage</h3><p>A run of steps that need no data movement. Each shuffle starts a new stage.</p></div>
+    <div class="card"><p class="tag">1 per partition</p><h3>Task</h3><p>One stage's work on one partition, run by one core.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>A cluster has 64 cores but a job uses only 4</td><td>The data has only 4 partitions, so only 4 tasks exist.</td><td>Split the data into more partitions, or check why the input is so few files.</td></tr>
+    <tr><td>One task runs 20 minutes while the others take 10 seconds</td><td>One key (say, one very busy bike) has far more rows: data <span class="def">skew</span>.</td><td>Spot it in the Spark UI (module 08); handle skewed keys (module 05).</td></tr>
+    <tr><td><code>collect()</code> on a billion-row DataFrame crashes the notebook</td><td>Every row is pulled back to the driver, which runs out of memory.</td><td>Aggregate or <code>limit</code> first; write large results to a table instead.</td></tr>
+    <tr><td>A notebook calls <code>count()</code> after every step "to check"</td><td>Each count re-runs the plan, multiplying the cost.</td><td>Remove debugging actions from production code.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>"The filter ran when I executed that cell." No: a transformation only builds the plan. The work happens at the first action.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>Adding nodes doesn't speed up a job that has fewer partitions than cores. Parallelism is limited by the number of tasks.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Driver</b> (plans, coordinates, holds notebook state) vs <b>executor</b> (processes partitions). Out-of-memory on the driver often means something was collected to it.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Spark job</b> (work for one action, seen in the Spark UI) vs <b>Lakeflow job</b> (a scheduled workflow of tasks, module 01). Same word, different things.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="1"><p>1. You run <code>df2 = df.filter(...)</code>. What does Spark do?</p>
+      <ol class="opts"><li><button>Reads the data and filters it immediately</button></li><li><button>Adds the filter to the plan; nothing runs yet</button></li><li><button>Writes a new table</button></li><li><button>Sends all rows to the driver</button></li></ol>
+      <p class="why" hidden><code>filter</code> is a transformation. Spark records it and waits for an action before running anything.</p></div>
+    <div class="q" data-answer="3"><p>2. Which of these is an action?</p>
+      <ol class="opts"><li><button><code>select</code></button></li><li><button><code>groupBy(...).agg(...)</code></button></li><li><button><code>join</code></button></li><li><button><code>count()</code></button></li></ol>
+      <p class="why" hidden><code>count()</code> needs a real answer, so it triggers a job. The others only extend the plan.</p></div>
+    <div class="q" data-answer="0"><p>3. Data has 8 partitions. The cluster has 32 cores. How many tasks run at once in a simple stage?</p>
+      <ol class="opts"><li><button>8</button></li><li><button>32</button></li><li><button>40</button></li><li><button>1</button></li></ol>
+      <p class="why" hidden>One task per partition, so only 8 tasks exist. The other 24 cores sit idle.</p></div>
+    <div class="q" data-answer="2"><p>4. Why is a shuffle usually expensive?</p>
+      <ol class="opts"><li><button>It deletes partitions</button></li><li><button>It runs on the driver only</button></li><li><button>It moves rows between executors over the network</button></li><li><button>It disables lazy evaluation</button></li></ol>
+      <p class="why" hidden>Grouping or joining needs matching keys together, so rows travel between machines. Network and disk work make it slow.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>Spark splits data into partitions and runs one task per partition on executor cores, in parallel.</li>
+    <li>The driver plans and coordinates; executors do the work.</li>
+    <li>Transformations are lazy; actions run the plan as a job.</li>
+    <li>Shuffles move data between executors and split a job into stages; they are often the slow part.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#action">action</a>
+    <a class="chip" href="../../glossary.html#apache-spark">Apache Spark</a>
+    <a class="chip" href="../../glossary.html#cluster">cluster</a>
+    <a class="chip" href="../../glossary.html#core">core</a>
+    <a class="chip" href="../../glossary.html#driver">driver</a>
+    <a class="chip" href="../../glossary.html#executor">executor</a>
+    <a class="chip" href="../../glossary.html#lazy-evaluation">lazy evaluation</a>
+    <a class="chip" href="../../glossary.html#partition">partition</a>
+    <a class="chip" href="../../glossary.html#shuffle">shuffle</a>
+    <a class="chip" href="../../glossary.html#skew">skew</a>
+    <a class="chip" href="../../glossary.html#spark-job">Spark job</a>
+    <a class="chip" href="../../glossary.html#stage">stage</a>
+    <a class="chip" href="../../glossary.html#task">task</a>
+    <a class="chip" href="../../glossary.html#transformation">transformation</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/spark/faq">Apache Spark on Databricks</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/pyspark/basics">PySpark basics</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/optimizations/spark-ui-guide/">Spark UI guide</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var PARTS = 12, CORES_PER_EX = 2, plan, jobs;
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  function cores() { return +$('d-ex').value * CORES_PER_EX; }
+
+  function drawPlan() {
+    var p = $('d-plan'); p.textContent = '';
+    ['spark.read.table("rides")'].concat(plan).forEach(function (s) {
+      p.appendChild(Object.assign(document.createElement('div'), { className: 'item', textContent: s }));
+    });
+  }
+  function waves(stage, tasks) {
+    var c = cores(), out = [], n = Math.ceil(tasks / c);
+    for (var w = 0; w < n; w++) {
+      var from = w * c + 1, to = Math.min(tasks, (w + 1) * c);
+      out.push(stage + ' · second ' + (w + 1) + ': tasks ' + from + '–' + to + ' (' + (to - from + 1) + ' of ' + c + ' cores busy)');
+    }
+    return out;
+  }
+  $('d-ex').oninput = function () { $('d-exv').textContent = $('d-ex').value + ' executor' + ($('d-ex').value === '1' ? '' : 's') + ' · ' + cores() + ' cores'; };
+  $('d-filter').onclick = function () { plan.push('.filter(price > 0)'); log('skip', '+ filter added to plan · nothing ran'); drawPlan(); };
+  $('d-group').onclick = function () {
+    if (plan.some(function (s) { return s.indexOf('groupBy') >= 0; })) { log('skip', 'already grouped'); return; }
+    plan.push('.groupBy("bike_id").sum("price")'); log('skip', '+ groupBy added · it will need a shuffle · nothing ran'); drawPlan();
+  };
+  $('d-count').onclick = function () {
+    jobs++;
+    var shuffle = plan.some(function (s) { return s.indexOf('groupBy') >= 0; });
+    var lines = waves('stage 1', PARTS);
+    // shortcut: the post-shuffle stage uses 4 partitions so the second stage stays visible; real Spark picks this itself.
+    if (shuffle) lines = lines.concat(['— shuffle: rows move between executors (+2 s) —'], waves('stage 2', 4));
+    var secs = Math.ceil(PARTS / cores()) + (shuffle ? 2 + Math.ceil(4 / cores()) : 0);
+    var box = $('d-waves'); box.textContent = '';
+    lines.forEach(function (l) { box.appendChild(Object.assign(document.createElement('div'), { className: 'item' + (l.charAt(0) === '—' ? ' bad' : ''), textContent: l })); });
+    $('d-time').textContent = secs + ' s';
+    $('d-detail').textContent = 'Spark job ' + jobs + ': ' + (shuffle ? '2 stages' : '1 stage') + ', ' + (PARTS + (shuffle ? 4 : 0)) + ' tasks on ' + cores() + ' cores.';
+    log('ok', '> count() is an action · job ' + jobs + ' runs ' + plan.length + ' transformation(s)');
+    log(shuffle ? 'bad' : 'ok', '  ' + (shuffle ? 'shuffle needed for groupBy · 2 stages' : 'no shuffle · 1 stage') + ' · done in ' + secs + ' s');
+    if (cores() > PARTS) log('skip', '  note: ' + (cores() - PARTS) + ' core(s) idle, only ' + PARTS + ' partitions exist');
+    Course.flash($('d-time'));
+  };
+  $('d-reset').onclick = function () { plan = []; log('skip', 'plan cleared'); drawPlan(); };
+  plan = []; jobs = 0; drawPlan();
+})();
+</script>
+</body>
+</html>

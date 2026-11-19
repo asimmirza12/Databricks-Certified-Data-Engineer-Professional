@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Files vs tables · DE Pro Study Course</title>
+<meta name="description" content="Why data engineers turn folders of files into tables: names, schemas and rules that make data safe to query.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="00-02">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 00 · Lesson 02</p>
+  <h1>Files vs tables</h1>
+  <p class="lede">Data starts life as files in folders. People want tables. This lesson shows what a table adds on top of files, and why that matters the day a file arrives broken.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>00 · Foundations</dd></div>
+    <div><dt>Lesson</dt><dd>02 · Files vs tables</dd></div>
+    <div><dt>Exam objective</dt><dd>Groundwork. Schemas and schema rules come back in ingestion (S2.1) and pipelines (S1.4).</dd></div>
+    <div><dt>Time to read</dt><dd>~14 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq"><li><a class="chip acc" href="01-what-is-data-engineering.html">00-01 What is data engineering?</a></li></ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p>A <span class="def">file</span> is a named chunk of bytes saved somewhere, like <code>rides_monday.csv</code>. Files sit in <span class="def">folders</span> (also called directories). A computer can store any file, but it does not know what is <em>inside</em> it.</p>
+  <p>A <span class="def">table</span> is data you can ask questions about by name, such as "sum the <code>price</code> column of the <code>rides</code> table". A table has <span class="def">rows</span> (one per thing, like one ride) and <span class="def">columns</span> (one per fact, like price).</p>
+  <p>The key word is <span class="def">schema</span>: the list of a table's columns and the type of each one (<code>price</code> is a decimal number, <code>started_at</code> is a timestamp). Data about data, like the schema, is called <span class="def">metadata</span>.</p>
+  <p>On Databricks, a table's rows still live in files underneath. What makes it a table is the extra layer on top: a name, a schema, and rules. One important rule is <span class="def">schema enforcement</span>: the table refuses writes whose columns or types do not fit its schema. That stops one bad file from quietly spoiling everything.</p>
+  <div class="analogy">
+    <p>A folder of files is a shoebox of paper receipts. Everything is in there, but every shop prints receipts differently, and adding them up means reading each one by hand. A table is a ledger with printed column headings. Anyone can total a column in seconds, and the bookkeeper refuses entries that do not fit the columns.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 240" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">A table is a layer of metadata over files</title>
+      <desc id="dia-d">A query asks for the rides table by name. The table layer holds the name, schema and list of files. It points the query at the right data files in storage. A badly shaped file is stopped at the table layer.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <rect x="20" y="20" width="160" height="44" rx="8" fill="var(--surface)" stroke="var(--accent)"/>
+        <text x="100" y="40" text-anchor="middle">SELECT SUM(price)</text><text x="100" y="56" text-anchor="middle" font-size="11" fill="var(--muted)">FROM rides</text>
+        <rect x="230" y="12" width="230" height="110" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="345" y="34" text-anchor="middle" font-weight="600">table: rides</text>
+        <text x="245" y="58" font-size="11">schema:</text>
+        <text x="245" y="76" font-size="11" fill="var(--muted)">ride_id  STRING</text>
+        <text x="245" y="92" font-size="11" fill="var(--muted)">price    DECIMAL(8,2)</text>
+        <text x="245" y="110" font-size="11">files: part-0, part-1, part-2</text>
+        <g fill="var(--surface)" stroke="var(--line)">
+          <rect x="230" y="170" width="70" height="46" rx="4"/><rect x="310" y="170" width="70" height="46" rx="4"/><rect x="390" y="170" width="70" height="46" rx="4"/>
+        </g>
+        <text x="265" y="198" text-anchor="middle" font-size="11">part-0</text><text x="345" y="198" text-anchor="middle" font-size="11">part-1</text><text x="425" y="198" text-anchor="middle" font-size="11">part-2</text>
+        <text x="345" y="234" text-anchor="middle" font-size="11" fill="var(--muted)">DATA FILES IN STORAGE</text>
+        <rect x="520" y="40" width="120" height="44" rx="6" fill="var(--surface)" stroke="var(--warn)" stroke-dasharray="4 3"/>
+        <text x="580" y="60" text-anchor="middle" font-size="11">wednesday.csv</text><text x="580" y="76" text-anchor="middle" font-size="11" fill="var(--warn)">column: cost ✗</text>
+        <text x="490" y="120" text-anchor="middle" font-size="11" fill="var(--warn)">rejected</text>
+        <g fill="none" stroke="var(--line)" stroke-dasharray="3 4">
+          <path id="q" d="M180 42 H230"/><path id="f0" d="M300 122 C300 150 265 150 265 170"/><path id="f1" d="M345 122 V170"/><path id="f2" d="M390 122 C390 150 425 150 425 170"/>
+          <path id="bad" d="M520 62 C495 62 480 80 470 95"/>
+        </g>
+      </g>
+      <circle r="5" fill="var(--accent)" data-rest="205,42"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#q"/></animateMotion></circle>
+      <circle r="5" fill="var(--ok)" data-rest="290,150"><animateMotion dur="3s" begin="0.6s" repeatCount="indefinite"><mpath href="#f0"/></animateMotion></circle>
+      <circle r="5" fill="var(--ok)" data-rest="345,150"><animateMotion dur="3s" begin="0.9s" repeatCount="indefinite"><mpath href="#f1"/></animateMotion></circle>
+      <circle r="5" fill="var(--ok)" data-rest="400,150"><animateMotion dur="3s" begin="1.2s" repeatCount="indefinite"><mpath href="#f2"/></animateMotion></circle>
+      <circle r="5" fill="var(--warn)" data-rest="480,82"><animateMotion dur="2.5s" repeatCount="indefinite" keyPoints="0;1" keyTimes="0;1"><mpath href="#bad"/></animateMotion></circle>
+    </svg>
+    <figcaption class="cap">Notice: the query names a <b>table</b>, never a file. The table layer knows the <b>schema</b> and which <b>files</b> hold the rows. A file with the wrong shape (red) is <b>stopped at the table layer</b> instead of being mixed in.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: load a week of ride files</h2>
+  <p>Four daily files arrive. Two are fine. Wednesday's app update renamed <code>price</code> to <code>cost</code>. Thursday's file has the word <code>free</code> in the price column. Append each file to the <code>rides</code> table with schema enforcement on, then reset and try again with it off.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog"><input type="checkbox" id="d-enf" checked> Schema enforcement on</label>
+      <button type="button" id="d-reset">Reset table</button>
+    </div>
+    <div class="flow">
+      <div class="pane"><h4>Folder: incoming files</h4><div id="d-files"></div></div>
+      <div class="pane"><h4>Table: rides (ride_id STRING, price DECIMAL)</h4><div id="d-table"></div></div>
+      <div class="pane"><h4>Query: SUM(price)</h4><div class="big" id="d-sum">$0.00</div><p class="cap" id="d-verdict">No rows yet.</p></div>
+    </div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="Load log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p>Reading files directly: you must say where they are and how to read them, every single time.</p>
+<pre><code><span class="c-c"># Files: point at a folder path and describe the format yourself</span>
+monday = (spark.read
+          .option(<span class="c-s">"header"</span>, <span class="c-k">True</span>)
+          .csv(<span class="c-s">"/Volumes/bike_shop/raw/landing/rides/rides_monday.csv"</span>))
+monday.printSchema()   <span class="c-c"># Spark guessed the columns: every CSV value starts as text</span></code></pre>
+  <p>Creating a table: the schema is written down once, and everyone uses the name afterwards.</p>
+<pre><code><span class="c-c">-- A table: a name plus a schema. Its files are managed for you.</span>
+<span class="c-k">CREATE TABLE IF NOT EXISTS</span> bike_shop.bronze.rides (
+  ride_id  <span class="c-k">STRING</span>,
+  price    <span class="c-k">DECIMAL</span>(8,2)
+);
+
+<span class="c-c">-- Anyone can now query by name. No paths, no format options.</span>
+<span class="c-k">SELECT SUM</span>(price) <span class="c-k">FROM</span> bike_shop.bronze.rides;
+
+<span class="c-c">-- See the files and metadata behind the table</span>
+<span class="c-k">DESCRIBE DETAIL</span> bike_shop.bronze.rides;</code></pre>
+<pre><code><span class="c-c"># Appending a file whose columns don't fit fails, by design</span>
+wednesday = spark.read.option(<span class="c-s">"header"</span>, <span class="c-k">True</span>).csv(<span class="c-s">".../rides_wednesday.csv"</span>)
+wednesday.write.mode(<span class="c-s">"append"</span>).saveAsTable(<span class="c-s">"bike_shop.bronze.rides"</span>)
+<span class="c-c"># -&gt; error: the column 'cost' is not in the table's schema</span>
+
+<span class="c-c"># Opting in to schema evolution adds the new column instead (use with care)</span>
+(wednesday.write.mode(<span class="c-s">"append"</span>)
+   .option(<span class="c-s">"mergeSchema"</span>, <span class="c-s">"true"</span>)
+   .saveAsTable(<span class="c-s">"bike_shop.bronze.rides"</span>))</code></pre>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td>Query raw files instead of a table</td><td>Works for a quick look. But every reader must repeat the path and format options, and nothing stops odd files from changing the answer.</td></tr>
+    <tr><td>Schema enforcement (the default for Delta tables)</td><td>Writes with unknown columns, or values that can't be safely converted, fail with an error. Bad data stays out; someone must fix the input.</td></tr>
+    <tr><td>Add <code>mergeSchema</code> on a write</td><td>New columns in the data are added to the table instead of failing. Handy for real change, risky for typos: a misspelled column becomes a permanent new one.</td></tr>
+    <tr><td>Incoming data is missing a nullable column</td><td>The write succeeds and that column is NULL (empty) for the new rows.</td></tr>
+    <tr><td>Incoming data is missing a <code>NOT NULL</code> column</td><td>The write fails, because the table promised that column always has a value.</td></tr>
+    <tr><td>Let Spark guess types from CSV (schema inference)</td><td>Quick, but guesses can be wrong or change from file to file. For production, declare the schema.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th></th><th>Folder of files</th><th>Table</th></tr></thead><tbody>
+    <tr><td>How you find it</td><td>By path: <code>/Volumes/.../rides/</code></td><td>By name: <code>bike_shop.bronze.rides</code></td></tr>
+    <tr><td>Schema</td><td>Worked out when you read it (<span class="def">schema-on-read</span>)</td><td>Fixed when you write (<span class="def">schema-on-write</span>)</td></tr>
+    <tr><td>Bad file arrives</td><td>Silently mixed in</td><td>Write is rejected</td></tr>
+    <tr><td>Access control</td><td>On folders and paths</td><td>On the table, its columns, even its rows (module 06)</td></tr>
+    <tr><td>Change one row</td><td>Rewrite the whole file yourself</td><td><code>UPDATE</code> / <code>DELETE</code> statements (with Delta Lake, lesson 00-10)</td></tr>
+  </tbody></table></div>
+  <h3>Two ways to look at the same data</h3>
+  <div class="grid2">
+    <div class="card"><h3>Schema-on-read</h3><p>Store anything; decide its shape when you read it. Flexible for raw landing zones. Every reader can get a different answer.</p></div>
+    <div class="card"><h3>Schema-on-write</h3><p>Decide the shape first; only matching data gets in. Reliable for tables people trust. Needs a plan for when the source changes.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>The app renames a field overnight</td><td>With enforcement, the nightly load fails loudly. Without it, the new field is lost or lands as NULLs.</td><td>Decide on purpose: map the new name, or allow schema evolution for that table (module 02).</td></tr>
+    <tr><td>Two analysts total "price" from the same folder and get different answers</td><td>Each read the CSV files with different options (header, types).</td><td>Load once into a table; everyone queries the table.</td></tr>
+    <tr><td>A typo adds a column <code>pirce</code></td><td>With <code>mergeSchema</code> always on, the table gains a junk column forever.</td><td>Only allow schema evolution where you expect real change; review new columns.</td></tr>
+    <tr><td>Someone deletes files under a table's folder by hand</td><td>The table may point at files that are gone, and queries fail.</td><td>Never edit a table's files directly; change data with SQL or the DataFrame API.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>"The table rejected my write, so the table is broken." No: rejection is schema enforcement doing its job. The fix is to change the data or opt in to schema evolution, not to drop the table.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>A table is not a copy of data "somewhere else". Its rows are files in storage; the table is the metadata that names, describes and guards them.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Schema enforcement</b> = reject data that doesn't fit. <b>Schema evolution</b> = change the table's schema to fit new data. One protects, the other adapts.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Schema</b> (the list of columns and types) vs a Unity Catalog <b>schema</b> (a container that holds tables, lesson 00-11). Same word, two meanings.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="1"><p>1. What does a table add on top of plain files?</p>
+      <ol class="opts"><li><button>Faster disks</button></li><li><button>A name, a schema and rules about what may be written</button></li><li><button>A second copy of every file</button></li><li><button>Nothing; they are the same thing</button></li></ol>
+      <p class="why" hidden>The rows still live in files. The table is the metadata layer: what it is called, which columns it has, and which writes it accepts.</p></div>
+    <div class="q" data-answer="2"><p>2. A file arrives with an extra column the table doesn't have. Enforcement is on and no schema evolution is set. What happens?</p>
+      <ol class="opts"><li><button>The extra column is silently dropped</button></li><li><button>The table adds the column automatically</button></li><li><button>The write fails with an error</button></li><li><button>The whole table is deleted</button></li></ol>
+      <p class="why" hidden>Columns being written must exist in the table. Adding them needs an explicit opt-in such as <code>mergeSchema</code>.</p></div>
+    <div class="q" data-answer="0"><p>3. The new data is missing a column that the table allows to be empty. What happens?</p>
+      <ol class="opts"><li><button>The write succeeds and that column is NULL for the new rows</button></li><li><button>The write fails</button></li><li><button>The column is removed from the table</button></li><li><button>Old rows lose their values</button></li></ol>
+      <p class="why" hidden>A missing nullable column simply gets NULL. Only a missing NOT NULL column makes the write fail.</p></div>
+    <div class="q" data-answer="3"><p>4. Which phrase describes reading a folder of CSV files and working out the columns at read time?</p>
+      <ol class="opts"><li><button>Schema enforcement</button></li><li><button>Schema evolution</button></li><li><button>Schema-on-write</button></li><li><button>Schema-on-read</button></li></ol>
+      <p class="why" hidden>Schema-on-read decides the shape when reading. Tables use schema-on-write: shape first, then only matching data gets in.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>Files hold bytes; tables add a name, a schema and rules on top of those files.</li>
+    <li>People query tables by name, not by path, so everyone gets the same answer.</li>
+    <li>Schema enforcement rejects writes that don't fit. Schema evolution is a deliberate opt-in.</li>
+    <li>Missing nullable columns become NULL; unknown columns or unsafe types fail the write.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#column">column</a>
+    <a class="chip" href="../../glossary.html#file">file</a>
+    <a class="chip" href="../../glossary.html#folder">folder</a>
+    <a class="chip" href="../../glossary.html#metadata">metadata</a>
+    <a class="chip" href="../../glossary.html#null">NULL</a>
+    <a class="chip" href="../../glossary.html#row">row</a>
+    <a class="chip" href="../../glossary.html#schema">schema</a>
+    <a class="chip" href="../../glossary.html#schema-enforcement">schema enforcement</a>
+    <a class="chip" href="../../glossary.html#schema-evolution">schema evolution</a>
+    <a class="chip" href="../../glossary.html#schema-on-read">schema-on-read</a>
+    <a class="chip" href="../../glossary.html#schema-on-write">schema-on-write</a>
+    <a class="chip" href="../../glossary.html#table">table</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/tables/tables-concepts">Databricks tables concepts</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/tables/schema-enforcement">Schema enforcement</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/data-engineering/schema-evolution">Schema evolution</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var FILES = [
+    { name: 'rides_monday.csv', cols: 'ride_id, price', rows: [['r01', 12], ['r02', 9]] },
+    { name: 'rides_tuesday.csv', cols: 'ride_id, price', rows: [['r03', 15], ['r04', 7]] },
+    { name: 'rides_wednesday.csv', cols: 'ride_id, cost', rows: [['r05', 11], ['r06', 14]], renamed: true },
+    { name: 'rides_thursday.csv', cols: 'ride_id, price', rows: [['r07', 'free'], ['r08', 10]], badType: true }
+  ];
+  var table, done;
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+
+  function draw() {
+    var f = $('d-files'); f.textContent = '';
+    FILES.forEach(function (file, i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = (done[i] ? done[i] + ' · ' : 'Append ') + file.name + ' (' + file.cols + ')';
+      b.disabled = !!done[i];
+      b.onclick = function () { append(i); };
+      f.appendChild(b);
+    });
+    var t = $('d-table'); t.textContent = '';
+    if (!table.length) t.appendChild(Object.assign(document.createElement('p'), { className: 'cap', textContent: 'empty' }));
+    table.forEach(function (r) {
+      var d = document.createElement('div');
+      d.className = 'item' + (r[1] === null ? ' bad' : '');
+      d.textContent = r[0] + '  ' + (r[1] === null ? 'price: NULL' : '$' + r[1].toFixed(2));
+      t.appendChild(d);
+    });
+    var sum = table.reduce(function (s, r) { return s + (r[1] || 0); }, 0);
+    var nulls = table.filter(function (r) { return r[1] === null; }).length;
+    $('d-sum').textContent = '$' + sum.toFixed(2);
+    $('d-verdict').textContent = !table.length ? 'No rows yet.'
+      : nulls ? '✗ ' + nulls + ' ride(s) have no price, so the total is too low.' : '✓ Every row has a valid price.';
+  }
+
+  function append(i) {
+    var file = FILES[i], enf = $('d-enf').checked;
+    log('skip', '> append ' + file.name);
+    if (file.renamed) {
+      if (enf) { done[i] = 'rejected'; log('bad', '  rejected: column "cost" is not in the table schema'); }
+      else { file.rows.forEach(function (r) { table.push([r[0], null]); }); done[i] = 'loaded';
+        log('bad', '  loaded 2 rows: "cost" ignored, price is NULL for both'); }
+    } else if (file.badType) {
+      if (enf) { done[i] = 'rejected'; log('bad', '  rejected: "free" cannot be converted to DECIMAL'); }
+      else { file.rows.forEach(function (r) { table.push([r[0], typeof r[1] === 'number' ? r[1] : null]); }); done[i] = 'loaded';
+        log('bad', '  loaded 2 rows: "free" became NULL without any warning'); }
+    } else {
+      file.rows.forEach(function (r) { table.push([r[0], r[1]]); }); done[i] = 'loaded';
+      log('ok', '  loaded ' + file.rows.length + ' rows');
+    }
+    draw(); Course.flash($('d-sum'));
+  }
+
+  function reset(msg) { table = []; done = {}; if (msg) log('skip', msg); draw(); }
+  $('d-reset').onclick = function () { reset('reset · table emptied'); };
+  // With enforcement off, the table behaves like a plain folder: anything gets in.
+  $('d-enf').onchange = function () { reset('enforcement ' + ($('d-enf').checked ? 'ON' : 'OFF') + ' · table emptied, try the files again'); };
+  reset();
+})();
+</script>
+</body>
+</html>
