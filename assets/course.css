@@ -81,8 +81,9 @@ section>*{min-width:0}
 .prereq{display:flex;flex-wrap:wrap;gap:8px;list-style:none;padding:0}
 
 /* ---------- blocks ---------- */
-.stage{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;display:grid;gap:14px}
-.stage svg{width:100%;height:auto;display:block}
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;display:grid;grid-template-columns:minmax(0,1fr);gap:14px;overflow-x:auto}
+/* diagrams keep a readable size on phones: below 560px wide they scroll sideways inside the stage */
+.stage svg{width:100%;min-width:560px;height:auto;display:block}
 .cap{font-size:.86rem;color:var(--muted)}
 .note{border-left:3px solid var(--accent);padding:4px 0 4px 12px;font-size:.95rem}
 .note.trap{border-left-color:var(--warn)}

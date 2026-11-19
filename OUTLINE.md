@@ -19,7 +19,7 @@ IDs are ours. Weights are per section of the exam guide. Wording is our own summ
 | S1.7 | Build CDC flows with the AUTO CDC APIs, keeping history (SCD 2) or not (SCD 1) |
 | S1.8 | Decide between hand-written Structured Streaming and Spark Declarative Pipelines for a situation |
 | S1.9 | Add branching (If/else) and looping (For each) to jobs |
-| S1.10 | Pick compute and settings: serverless environments and performance mode, high-memory notebooks, retry and auto-optimization settings |
+| S1.10 | Match compute to the work: when serverless fits and how its environments, libraries and performance mode behave; when a notebook task needs extra memory; which automatic behaviours (such as retries) to switch off |
 | S1.11 | Test transformations with `assertDataFrameEqual`, `assertSchemaEqual`, `DataFrame.transform` and a test framework |
 | S1.12 | Use watermarks, output modes, `foreachBatch` and checkpoints so stateful streams recover exactly once |
 | **S2** | **Data ingestion and acquisition — 12%** |
@@ -37,7 +37,7 @@ IDs are ours. Weights are per section of the exam guide. Wording is our own summ
 | S4.1 | Query system tables (billing, compute, access, Lakeflow) to track cost, audit activity and watch workloads |
 | S4.2 | Monitor jobs and pipelines from the REST API, CLI and SDK |
 | S4.3 | Read the pipeline event log for health and data-quality results |
-| S4.4 | Set alerts on business metrics, data quality, cost, warehouse/query health, security events, agent quality and job branches (exam guide says "Lakehouse alerts"; docs say "Databricks SQL alerts" — verify in the docs) |
+| S4.4 | Know what alerts can watch (business numbers, data quality, spend, warehouse and query health, security events, agent quality) and how an alert result can steer a job down a branch. Name: the guide says "Lakehouse alerts", the docs say "Databricks SQL alerts" — verify in the docs |
 | S4.5 | Watch job status and performance in the Jobs UI and Jobs API |
 | **S5** | **Cost and performance optimization — 15%** |
 | S5.1 | Explain how managed tables, predictive optimization and liquid clustering cut maintenance work |
@@ -61,8 +61,8 @@ IDs are ours. Weights are per section of the exam guide. Wording is our own summ
 | S8.3 | Deploy resources with bundles |
 | S8.4 | Set up Git-based CI/CD with Git folders |
 | **S9** | **Data modeling — 5%** |
-| S9.1 | Design table layouts for big tables: partition by grain, cluster by access pattern, compact to keep file sizes even |
-| S9.2 | Design star schemas, using materialized views for pre-computed totals and metric views for shared metric definitions |
+| S9.1 | Lay out a huge Delta or Iceberg table well: which column (if any) earns a partition, which columns to cluster on given how people join it, and how to stop file sizes drifting apart |
+| S9.2 | Build star schemas for reporting, and know when a materialized view should hold pre-computed totals versus when a metric view should hold one shared, governed metric definition |
 
 ## Modules and lessons
 
@@ -99,17 +99,17 @@ IDs are ours. Weights are per section of the exam guide. Wording is our own summ
 | 01-10 | Streaming tables vs materialized views | S1.6 | 01-08 | [ ] |
 | 01-11 | AUTO CDC and SCD Type 1 | S1.7 | 01-10 | [ ] |
 | 01-12 | AUTO CDC and SCD Type 2 | S1.7 | 01-11 | [ ] |
-| 01-13 | Structured Streaming vs Spark Declarative Pipelines | S1.8 | 01-08, 01-21 | [ ] |
-| 01-14 | Lakeflow Jobs in the UI | S1.5 | 00-09 | [ ] |
-| 01-15 | Automating jobs with the API and CLI | S1.5 | 01-14 | [ ] |
-| 01-16 | Job control flow: If/else and For each | S1.9 | 01-14 | [ ] |
-| 01-17 | Serverless compute: environments and performance mode | S1.10 | 00-09, 01-03 | [ ] |
-| 01-18 | Choosing compute: high memory, retries and auto-optimization | S1.10 | 01-17, 01-14 | [ ] |
-| 01-19 | Unit tests with assertDataFrameEqual and assertSchemaEqual | S1.11 | 00-06 | [ ] |
-| 01-20 | Integration tests and testable transforms | S1.11 | 01-19, 01-02 | [ ] |
-| 01-21 | Checkpoints and exactly-once recovery | S1.12 | 00-04 | [ ] |
-| 01-22 | Output modes and watermarks | S1.12 | 01-21 | [ ] |
-| 01-23 | Stateful streaming and foreachBatch | S1.12 | 01-22 | [ ] |
+| 01-13 | Checkpoints and exactly-once recovery | S1.12 | 00-04 | [ ] |
+| 01-14 | Output modes and watermarks | S1.12 | 01-13 | [ ] |
+| 01-15 | Stateful streaming and foreachBatch | S1.12 | 01-14 | [ ] |
+| 01-16 | Structured Streaming vs Spark Declarative Pipelines | S1.8 | 01-08, 01-13 | [ ] |
+| 01-17 | Lakeflow Jobs in the UI | S1.5 | 00-09 | [ ] |
+| 01-18 | Automating jobs with the API and CLI | S1.5 | 01-17 | [ ] |
+| 01-19 | Job control flow: If/else and For each | S1.9 | 01-17 | [ ] |
+| 01-20 | Serverless compute: environments and performance mode | S1.10 | 00-09, 01-03 | [ ] |
+| 01-21 | Choosing compute: high memory, retries and auto-optimization | S1.10 | 01-20, 01-17 | [ ] |
+| 01-22 | Unit tests with assertDataFrameEqual and assertSchemaEqual | S1.11 | 00-06 | [ ] |
+| 01-23 | Integration tests and testable transforms | S1.11 | 01-22, 01-02 | [ ] |
 
 ### Module 02 — Data Ingestion and Acquisition (12%)
 
@@ -117,7 +117,7 @@ IDs are ours. Weights are per section of the exam guide. Wording is our own summ
 |---|---|---|---|---|
 | 02-01 | Reading every format: Delta, Parquet, JSON, Iceberg, CSV, binary | S2.1 | 00-03 | [ ] |
 | 02-02 | Auto Loader from cloud storage | S2.1 | 02-01, 01-09 | [ ] |
-| 02-03 | Message buses: Kafka, Kinesis, Pub/Sub | S2.1 | 01-21 | [ ] |
+| 02-03 | Message buses: Kafka, Kinesis, Pub/Sub | S2.1 | 01-13 | [ ] |
 | 02-04 | Incremental CDC into Delta or Iceberg targets | S2.2 | 01-11 | [ ] |
 | 02-05 | Lakeflow Connect: CDC from SQL Server, MySQL, PostgreSQL | S2.3 | 02-04 | [ ] |
 | 02-06 | OpenSharing: Databricks-to-Databricks and open sharing (formerly Delta Sharing) | S2.4 | 00-11 | [ ] |
@@ -144,11 +144,11 @@ IDs are ours. Weights are per section of the exam guide. Wording is our own summ
 | 04-01 | System tables overview | S4.1 | 00-11 | [ ] |
 | 04-02 | Cost analysis with billing tables | S4.1 | 04-01 | [ ] |
 | 04-03 | Audit, compute and Lakeflow system tables | S4.1 | 04-01 | [ ] |
-| 04-04 | Monitoring with the REST API, CLI and SDK | S4.2 | 01-15 | [ ] |
+| 04-04 | Monitoring with the REST API, CLI and SDK | S4.2 | 01-18 | [ ] |
 | 04-05 | The pipeline event log | S4.3 | 03-07 | [ ] |
 | 04-06 | Alerts: how they work (verify product name in the docs) | S4.4 | 04-01 | [ ] |
 | 04-07 | What to alert on | S4.4 | 04-06 | [ ] |
-| 04-08 | Monitoring jobs in the UI and Jobs API | S4.5 | 01-14, 04-04 | [ ] |
+| 04-08 | Monitoring jobs in the UI and Jobs API | S4.5 | 01-17, 04-04 | [ ] |
 
 ### Module 05 — Cost and Performance Optimization (15%)
 
@@ -171,7 +171,7 @@ IDs are ours. Weights are per section of the exam guide. Wording is our own summ
 | 06-01 | Least-privilege grants on Unity Catalog objects | S6.1 | 00-11 | [ ] |
 | 06-02 | Workspace resource permissions | S6.1 | 06-01 | [ ] |
 | 06-03 | Row filters and column masks | S6.2, S6.3 | 06-01, 01-07 | [ ] |
-| 06-04 | ABAC policies with governed tags | S6.2 | 06-03, 07-01 | [ ] |
+| 06-04 | ABAC policies with governed tags | S6.2 | 06-03 (introduces governed tags; 07-01 goes deeper later) | [ ] |
 | 06-05 | Hashing, tokenization, suppression, generalization | S6.3 | 06-03 | [ ] |
 | 06-06 | A PII-aware pipeline for batch and streaming | S6.4 | 06-05, 01-08 | [ ] |
 | 06-07 | Purging data for retention and right-to-erasure | S6.5 | 05-03, 05-07 | [ ] |
@@ -189,7 +189,7 @@ IDs are ours. Weights are per section of the exam guide. Wording is our own summ
 |---|---|---|---|---|
 | 08-01 | Finding problems in the Spark UI | S8.1 | 00-05 | [ ] |
 | 08-02 | Cluster logs, system tables and query profiles for diagnosis | S8.1 | 08-01, 04-01, 05-08 | [ ] |
-| 08-03 | Repairing failed runs with parameter overrides | S8.2 | 01-14 | [ ] |
+| 08-03 | Repairing failed runs with parameter overrides | S8.2 | 01-17 | [ ] |
 | 08-04 | Deploying resources with bundles | S8.3 | 01-02 | [ ] |
 | 08-05 | Bundle targets and CI/CD | S8.3 | 08-04 | [ ] |
 | 08-06 | Git folders (formerly Repos) | S8.4 | 00-08 | [ ] |

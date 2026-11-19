@@ -43,6 +43,7 @@ still hardcode it so it shows without JavaScript. README.md carries the same tex
   - Declarative Automation Bundles — formerly Databricks Asset Bundles (DABs); CLI command is still `databricks bundle`.
   - AUTO CDC — formerly APPLY CHANGES. · OpenSharing — formerly Delta Sharing. · Git folders — formerly Repos.
   - Disk cache — formerly Delta cache.
+  - Official rename list to check first: https://docs.databricks.com/aws/en/resources/product-name-changes
   - Alerts: exam guide says "Lakehouse alerts", docs say "Databricks SQL alerts" — verify before writing module 04.
 - If something can't be verified, write "verify in the docs" instead of guessing.
 - Every lesson ends with "Official docs" links and `Last verified: YYYY-MM-DD`.
@@ -73,6 +74,7 @@ still hardcode it so it shows without JavaScript. README.md carries the same tex
 - No external assets except Google Fonts (Archivo, IBM Plex Sans, JetBrains Mono). No CDNs, analytics or trackers.
 - Colours only via CSS variables from `course.css`; both themes must read well.
 - Respect `prefers-reduced-motion` (course.js removes SMIL; CSS kills keyframes). Give every element moved by `animateMotion` (drawn at 0,0) a `data-rest="x,y"` resting spot; every lesson must make sense without motion.
+- Diagrams: SVG viewBox about 640–680 wide, text at least 11 units. `.stage svg` has `min-width:560px`, so on phones it scrolls inside its stage instead of shrinking the text.
 - Works at 390 px wide; tap-friendly controls (min 40 px); keyboard reachable; visible focus; no colour-only meaning.
 - New shared styles/behaviour go into `course.css` / `course.js`, never a single page.
 

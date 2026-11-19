@@ -46,7 +46,7 @@
   <ul>
     <li><b>Extract</b>: copy data out of the place it was created (the <span class="def">source</span>).</li>
     <li><b>Transform</b>: clean it, fix it, and reshape it. Remove broken rows. Convert units. Join related data.</li>
-    <li><b>Load</b>: save the result somewhere people can query it, usually a <span class="def">table</span> (rows and named columns, like a tidy spreadsheet).</li>
+    <li><b>Load</b>: save the result somewhere people can <span class="def">query</span> it (ask it questions, like "total revenue last week"), usually a <span class="def">table</span> (rows and named columns, like a tidy spreadsheet).</li>
   </ul>
   <p>The people who use the result are <span class="def">consumers</span>: analysts building dashboards, data scientists training models, and apps showing numbers to customers.</p>
   <div class="analogy">
@@ -67,23 +67,23 @@
           <rect x="10" y="20" width="110" height="36" rx="8"/><rect x="10" y="97" width="110" height="36" rx="8"/><rect x="10" y="174" width="110" height="36" rx="8"/>
         </g>
         <text x="65" y="42" text-anchor="middle">mobile app</text><text x="65" y="119" text-anchor="middle">website</text><text x="65" y="196" text-anchor="middle">bike sensors</text>
-        <text x="65" y="12" text-anchor="middle" fill="var(--muted)" font-size="10">SOURCES</text>
+        <text x="65" y="12" text-anchor="middle" fill="var(--muted)" font-size="11">SOURCES</text>
         <!-- pipeline -->
         <rect x="190" y="60" width="270" height="110" rx="12" fill="var(--accent-soft)" stroke="var(--accent)"/>
-        <text x="325" y="52" text-anchor="middle" fill="var(--muted)" font-size="10">PIPELINE</text>
+        <text x="325" y="52" text-anchor="middle" fill="var(--muted)" font-size="11">PIPELINE</text>
         <g fill="var(--surface)" stroke="var(--accent)">
           <rect x="203" y="97" width="74" height="36" rx="6"/><rect x="288" y="97" width="74" height="36" rx="6"/><rect x="373" y="97" width="74" height="36" rx="6"/>
         </g>
         <text x="240" y="119" text-anchor="middle">extract</text><text x="325" y="119" text-anchor="middle">transform</text><text x="410" y="119" text-anchor="middle">load</text>
-        <text x="325" y="160" text-anchor="middle" fill="var(--warn)" font-size="10">✗ broken rows removed</text>
+        <text x="325" y="160" text-anchor="middle" fill="var(--warn)" font-size="11">✗ broken rows removed</text>
         <!-- table + consumers -->
         <rect x="490" y="90" width="70" height="50" rx="6" fill="var(--surface)" stroke="var(--ok)"/>
         <path d="M490 107h70M490 123h70M513 90v50M537 90v50" stroke="var(--line)"/>
-        <text x="525" y="82" text-anchor="middle" fill="var(--muted)" font-size="10">TABLE</text>
+        <text x="525" y="82" text-anchor="middle" fill="var(--muted)" font-size="11">TABLE</text>
         <g fill="var(--surface)" stroke="var(--line)">
           <rect x="585" y="28" width="68" height="30" rx="6"/><rect x="585" y="100" width="68" height="30" rx="6"/><rect x="585" y="172" width="68" height="30" rx="6"/>
         </g>
-        <text x="619" y="47" text-anchor="middle" font-size="10">dashboard</text><text x="619" y="119" text-anchor="middle" font-size="10">model</text><text x="619" y="191" text-anchor="middle" font-size="10">analyst</text>
+        <text x="619" y="47" text-anchor="middle" font-size="11">dashboard</text><text x="619" y="119" text-anchor="middle" font-size="11">model</text><text x="619" y="191" text-anchor="middle" font-size="11">analyst</text>
         <!-- paths -->
         <g fill="none" stroke="var(--line)" stroke-dasharray="3 4">
           <path id="p1" d="M120 38 C160 38 160 115 203 115"/><path id="p2" d="M120 115 H203"/><path id="p3" d="M120 192 C160 192 160 115 203 115"/>
@@ -144,7 +144,7 @@ clean = (raw
 
 <span class="c-c"># LOAD: save the result as a table anyone with access can query</span>
 clean.write.mode(<span class="c-s">"overwrite"</span>).saveAsTable(<span class="c-s">"bike_shop.silver.rides"</span>)</code></pre>
-  <p>And the same idea in SQL. <code>read_files</code> reads files straight from storage:</p>
+  <p>And the same idea in <span class="def">SQL</span> (Structured Query Language, the standard language for asking tables questions). <code>read_files</code> reads files straight from storage:</p>
 <pre><code><span class="c-c">-- Extract + transform + load in one statement</span>
 <span class="c-k">CREATE OR REPLACE TABLE</span> bike_shop.silver.rides <span class="c-k">AS</span>
 <span class="c-k">SELECT</span> ride_id, bike_id, started_at,
@@ -254,7 +254,9 @@ clean.write.mode(<span class="c-s">"overwrite"</span>).saveAsTable(<span class="
     <a class="chip" href="../../glossary.html#etl">ETL</a>
     <a class="chip" href="../../glossary.html#idempotent">idempotent</a>
     <a class="chip" href="../../glossary.html#pyspark">PySpark</a>
+    <a class="chip" href="../../glossary.html#query">query</a>
     <a class="chip" href="../../glossary.html#source">source</a>
+    <a class="chip" href="../../glossary.html#sql">SQL</a>
     <a class="chip" href="../../glossary.html#table">table</a>
   </p>
   <h3>Official docs</h3>
