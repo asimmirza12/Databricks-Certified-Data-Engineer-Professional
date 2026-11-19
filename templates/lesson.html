@@ -1,0 +1,151 @@
+<!doctype html>
+<!--
+  LESSON TEMPLATE. Copy to modules/<NN-module-slug>/<NN-lesson-slug>.html, then:
+  - set data-lesson="MM-LL" on <body> (must match the manifest in assets/course.js)
+  - lesson pages sit two folders deep, so shared files are ../../assets/...
+  - keep the disclaimer <aside> as the FIRST element in <body>. Do not edit its text.
+  - keep all 14 sections, in this order. Delete these comments when done.
+  - no inline <style>: all styling lives in assets/course.css. Small inline <script> for the demo only.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LESSON TITLE · DE Pro Study Course</title>
+<meta name="description" content="ONE SENTENCE SUMMARY">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="MM-LL">
+<!-- 1. Disclaimer banner (required, unchanged, first element) -->
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module MM · Lesson LL</p>
+  <h1>LESSON TITLE</h1>
+  <p class="lede">One or two plain sentences: what you will be able to do after this lesson.</p>
+</header>
+
+<!-- 2. Where you are -->
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>MM · Module name</dd></div>
+    <div><dt>Lesson</dt><dd>LL · Lesson title</dd></div>
+    <div><dt>Exam objective</dt><dd>S#.# — the objective restated in YOUR OWN plain words (never pasted)</dd></div>
+    <div><dt>Time to read</dt><dd>~N minutes</dd></div>
+  </dl>
+</section>
+
+<!-- 3. Before this -->
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq"><li><a class="chip acc" href="../00-foundations/01-what-is-data-engineering.html">00-01 What is data engineering?</a></li></ul>
+</section>
+
+<!-- 4. The idea in plain English + analogy. Define each term the first time: <span class="def">term</span> means … -->
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p>Short sentences. Define every term on first use.</p>
+  <div class="analogy"><p>An everyday comparison.</p></div>
+</section>
+
+<!-- 5. Animated diagram: inline SVG, colours via var(--token), animateMotion or CSS keyframes.
+     Every moving element needs a sensible static position (course.js strips SMIL for reduced motion). -->
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 640 200" role="img" aria-labelledby="dia-t"><title id="dia-t">Describe the diagram</title></svg>
+    <figcaption class="cap">What the reader should notice.</figcaption>
+  </figure>
+</section>
+
+<!-- 6. Live demo (vanilla JS) where something has state: controls + a .log panel (aria-live). -->
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo</h2>
+  <div class="stage">
+    <div class="ctrls"><button type="button" class="primary" id="demo-run">Run</button></div>
+    <div class="log" id="demo-log" aria-live="polite" aria-label="Demo log"></div>
+  </div>
+</section>
+
+<!-- 7. Code: Python and/or SQL, own examples, comments, realistic made-up names -->
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <pre><code><span class="c-c"># comment</span></code></pre>
+</section>
+
+<!-- 8. What if I change this? -->
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td><code>option</code></td><td>Effect</td></tr>
+  </tbody></table></div>
+</section>
+
+<!-- 9. Comparison table (competing options) and/or card grid (categories) -->
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="grid3"><div class="card"><h3>Category</h3><p>Text</p></div></div>
+</section>
+
+<!-- 10. Real-life scenarios -->
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td></td><td></td><td></td></tr>
+  </tbody></table></div>
+</section>
+
+<!-- 11. Exam traps + don't confuse these -->
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>Text</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p>A vs B</p></div>
+  </div>
+</section>
+
+<!-- 12. Quiz: 3-5 questions. data-answer = 0-based index of the right option. -->
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="0"><p>Question?</p>
+      <ol class="opts"><li><button>Right</button></li><li><button>Wrong</button></li></ol>
+      <p class="why" hidden>Why.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<!-- 13. Takeaways, glossary terms, official docs, last verified -->
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways"><li>Line</li></ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms"><a class="chip" href="../../glossary.html#term">term</a></p>
+  <h3>Official docs</h3>
+  <ul><li><a href="https://docs.databricks.com/">Page title</a></li></ul>
+  <p class="verified">Last verified: YYYY-MM-DD</p>
+</section>
+
+<!-- 14. Previous / next / mark complete (filled by course.js from the manifest) -->
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+</body>
+</html>

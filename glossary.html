@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Glossary · DE Pro Study Course</title>
+<meta name="description" content="Every term used in the course, explained in plain words.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="assets/course.css">
+<script src="assets/course.js"></script>
+</head>
+<body>
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+<header class="hero">
+  <p class="eyebrow">Reference</p>
+  <h1>Glossary</h1>
+  <p class="lede">Every term the course uses, in plain words. Lessons link here the first time a term appears. More terms are added as each module is built.</p>
+  <label for="gloss-search" class="eyebrow">Search terms</label>
+  <div class="ctrls"><input type="search" id="gloss-search" placeholder="e.g. pipeline" autocomplete="off"><span class="chip" id="gloss-count" aria-live="polite"></span></div>
+</header>
+<section aria-label="Terms">
+  <!-- Keep alphabetical. id = lowercase slug used in lesson links: glossary.html#slug -->
+  <dl class="gloss">
+    <dt id="consumer">Consumer</dt>
+    <dd>Anyone or anything that uses the output of a pipeline: a dashboard, an analyst, a model, an app. <em>Lesson 00-01.</em></dd>
+    <dt id="data-engineering">Data engineering</dt>
+    <dd>The work of moving data from where it is created to where people use it, and making it clean and reliable along the way. <em>Lesson 00-01.</em></dd>
+    <dt id="data-pipeline">Data pipeline</dt>
+    <dd>A repeatable series of steps that takes data from sources, changes it, and saves the result. Usually runs on a schedule or continuously. <em>Lesson 00-01.</em></dd>
+    <dt id="data-quality">Data quality</dt>
+    <dd>How far you can trust data: is it complete, correct, on time and free of duplicates? Pipelines add checks on purpose to protect it. <em>Lesson 00-01.</em></dd>
+    <dt id="elt">ELT (extract, load, transform)</dt>
+    <dd>A pipeline order where raw data is saved first and cleaned later, inside the data platform. Keeps a raw copy for re-processing. <em>Lesson 00-01.</em></dd>
+    <dt id="etl">ETL (extract, transform, load)</dt>
+    <dd>A pipeline order where data is copied out of a source, cleaned and reshaped, then saved for use. <em>Lesson 00-01.</em></dd>
+    <dt id="idempotent">Idempotent</dt>
+    <dd>Safe to repeat: running it again on the same input gives the same result, with no duplicates. <em>Lesson 00-01.</em></dd>
+    <dt id="pyspark">PySpark</dt>
+    <dd>The Python library for working with Apache Spark, the engine that processes data on Databricks. <em>Lesson 00-01; more in 00-05.</em></dd>
+    <dt id="source">Source</dt>
+    <dd>The system where data is first created or stored before a pipeline reads it, such as an app's database, log files or sensors. <em>Lesson 00-01.</em></dd>
+    <dt id="table">Table</dt>
+    <dd>Data organised in rows and named columns, like a tidy spreadsheet, that you can query with SQL. <em>Lesson 00-01; more in 00-02.</em></dd>
+  </dl>
+</section>
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+</body>
+</html>

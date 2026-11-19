@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>What is data engineering? · DE Pro Study Course</title>
+<meta name="description" content="A beginner's first look at data engineering: moving raw data from where it is created to where people can trust and use it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="00-01">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 00 · Lesson 01</p>
+  <h1>What is data engineering?</h1>
+  <p class="lede">By the end of this page you can explain, in one breath, what a data engineer builds and why everyone else in a company depends on it.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>00 · Foundations</dd></div>
+    <div><dt>Lesson</dt><dd>01 · What is data engineering?</dd></div>
+    <div><dt>Exam objective</dt><dd>Groundwork. Not tested directly, but every exam section assumes you know these words.</dd></div>
+    <div><dt>Time to read</dt><dd>~12 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <p>Nothing. This is the first lesson. If you can use a spreadsheet, you are ready.</p>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p>Every app, website and machine creates <span class="def">data</span>: facts written down as they happen. A bike rental shop records every ride. Who rode, which bike, how long, how much they paid.</p>
+  <p>That raw data is messy. It sits in many places. Some records are broken. Nobody can answer a simple question like "how much did we earn last week?" by looking at it directly.</p>
+  <p><span class="def">Data engineering</span> is the work of moving data from where it is created to where people can use it, and cleaning it on the way so they can trust it. A <span class="def">data engineer</span> is the person who builds and runs that path.</p>
+  <p>The path itself is called a <span class="def">data pipeline</span>: a series of steps that run again and again, usually on a schedule. A classic pipeline has three steps, known as <span class="def">ETL</span>:</p>
+  <ul>
+    <li><b>Extract</b>: copy data out of the place it was created (the <span class="def">source</span>).</li>
+    <li><b>Transform</b>: clean it, fix it, and reshape it. Remove broken rows. Convert units. Join related data.</li>
+    <li><b>Load</b>: save the result somewhere people can query it, usually a <span class="def">table</span> (rows and named columns, like a tidy spreadsheet).</li>
+  </ul>
+  <p>The people who use the result are <span class="def">consumers</span>: analysts building dashboards, data scientists training models, and apps showing numbers to customers.</p>
+  <div class="analogy">
+    <p>Think of a city's water system. Rain falls in many places (sources). Pipes collect it (extract). A treatment plant filters out dirt (transform). Clean water reaches every tap (load). People turning on a tap never think about the plant, until it breaks. A data engineer runs the treatment plant for data.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 230" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">A data pipeline</title>
+      <desc id="dia-d">Records flow from three sources (mobile app, website, bike sensors) into a pipeline with extract, transform and load steps. Bad records are dropped at transform. Clean records land in a table used by a dashboard, a model and an analyst.</desc>
+      <g font-family="var(--f-mono)" font-size="11" fill="var(--ink)">
+        <!-- sources -->
+        <g fill="var(--surface)" stroke="var(--line)">
+          <rect x="10" y="20" width="110" height="36" rx="8"/><rect x="10" y="97" width="110" height="36" rx="8"/><rect x="10" y="174" width="110" height="36" rx="8"/>
+        </g>
+        <text x="65" y="42" text-anchor="middle">mobile app</text><text x="65" y="119" text-anchor="middle">website</text><text x="65" y="196" text-anchor="middle">bike sensors</text>
+        <text x="65" y="12" text-anchor="middle" fill="var(--muted)" font-size="10">SOURCES</text>
+        <!-- pipeline -->
+        <rect x="190" y="60" width="270" height="110" rx="12" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="325" y="52" text-anchor="middle" fill="var(--muted)" font-size="10">PIPELINE</text>
+        <g fill="var(--surface)" stroke="var(--accent)">
+          <rect x="203" y="97" width="74" height="36" rx="6"/><rect x="288" y="97" width="74" height="36" rx="6"/><rect x="373" y="97" width="74" height="36" rx="6"/>
+        </g>
+        <text x="240" y="119" text-anchor="middle">extract</text><text x="325" y="119" text-anchor="middle">transform</text><text x="410" y="119" text-anchor="middle">load</text>
+        <text x="325" y="160" text-anchor="middle" fill="var(--warn)" font-size="10">✗ broken rows removed</text>
+        <!-- table + consumers -->
+        <rect x="490" y="90" width="70" height="50" rx="6" fill="var(--surface)" stroke="var(--ok)"/>
+        <path d="M490 107h70M490 123h70M513 90v50M537 90v50" stroke="var(--line)"/>
+        <text x="525" y="82" text-anchor="middle" fill="var(--muted)" font-size="10">TABLE</text>
+        <g fill="var(--surface)" stroke="var(--line)">
+          <rect x="585" y="28" width="68" height="30" rx="6"/><rect x="585" y="100" width="68" height="30" rx="6"/><rect x="585" y="172" width="68" height="30" rx="6"/>
+        </g>
+        <text x="619" y="47" text-anchor="middle" font-size="10">dashboard</text><text x="619" y="119" text-anchor="middle" font-size="10">model</text><text x="619" y="191" text-anchor="middle" font-size="10">analyst</text>
+        <!-- paths -->
+        <g fill="none" stroke="var(--line)" stroke-dasharray="3 4">
+          <path id="p1" d="M120 38 C160 38 160 115 203 115"/><path id="p2" d="M120 115 H203"/><path id="p3" d="M120 192 C160 192 160 115 203 115"/>
+          <path d="M447 115 H490"/><path id="q1" d="M560 115 C572 115 572 43 585 43"/><path id="q2" d="M560 115 H585"/><path id="q3" d="M560 115 C572 115 572 187 585 187"/>
+        </g>
+        <path id="flow" d="M203 115 H490" fill="none"/>
+        <path id="drop" d="M325 133 V150" fill="none"/>
+      </g>
+      <!-- moving records: drawn at 0,0; data-rest is where they sit when motion is reduced -->
+      <circle r="5" fill="var(--bronze)" data-rest="160,76"><animateMotion dur="4s" repeatCount="indefinite"><mpath href="#p1"/></animateMotion></circle>
+      <circle r="5" fill="var(--bronze)" data-rest="160,115"><animateMotion dur="4s" begin="1.3s" repeatCount="indefinite"><mpath href="#p2"/></animateMotion></circle>
+      <circle r="5" fill="var(--bronze)" data-rest="160,154"><animateMotion dur="4s" begin="2.6s" repeatCount="indefinite"><mpath href="#p3"/></animateMotion></circle>
+      <circle r="5" fill="var(--warn)" data-rest="325,146"><animateMotion dur="3s" begin="0.5s" repeatCount="indefinite"><mpath href="#drop"/></animateMotion></circle>
+      <circle r="5" fill="var(--ok)" data-rest="468,115"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#flow"/></animateMotion></circle>
+      <circle r="4" fill="var(--ok)" data-rest="572,70"><animateMotion dur="2s" repeatCount="indefinite"><mpath href="#q1"/></animateMotion></circle>
+      <circle r="4" fill="var(--ok)" data-rest="572,115"><animateMotion dur="2s" begin="0.7s" repeatCount="indefinite"><mpath href="#q2"/></animateMotion></circle>
+      <circle r="4" fill="var(--ok)" data-rest="572,160"><animateMotion dur="2s" begin="1.4s" repeatCount="indefinite"><mpath href="#q3"/></animateMotion></circle>
+    </svg>
+    <figcaption class="cap">Notice three things. Raw records (brown) come from <b>many sources</b>. Some are <b>broken</b> (red) and get removed at the transform step. Only <b>clean records</b> (green) reach the table that everyone uses.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: run the bike shop's pipeline</h2>
+  <p>New rides arrive as raw records. Some are broken: a missing price, or a negative one from a refund bug. Run the pipeline with and without the cleaning step and watch what the dashboard says.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <button type="button" id="d-arrive">+ 5 new rides arrive</button>
+      <label class="tog"><input type="checkbox" id="d-clean" checked> Transform step removes broken rows</label>
+      <button type="button" class="primary" id="d-run">Run pipeline</button>
+      <button type="button" id="d-reset">Reset</button>
+    </div>
+    <div class="flow">
+      <div class="pane"><h4>Source: raw rides</h4><div id="d-raw" aria-label="Raw rides waiting"></div></div>
+      <div class="pane"><h4>Table: rides</h4><div id="d-table" aria-label="Rows in the table"></div></div>
+      <div class="pane"><h4>Dashboard: revenue</h4><div class="big" id="d-rev">$0.00</div><p class="cap" id="d-verdict">Run the pipeline to fill the dashboard.</p></div>
+    </div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="Pipeline log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p>You do not need to understand every word yet. Later lessons explain each piece. For now, spot the three steps. Here is the same pipeline in Python, using <span class="def">PySpark</span> (the Python way to talk to Apache Spark, the engine Databricks runs on):</p>
+<pre><code><span class="c-c"># EXTRACT: read the raw ride files the app drops into storage each day</span>
+raw = (spark.read
+       .option(<span class="c-s">"header"</span>, <span class="c-k">True</span>)            <span class="c-c"># first line holds column names</span>
+       .csv(<span class="c-s">"/Volumes/bike_shop/raw/landing/rides/"</span>))
+
+<span class="c-c"># TRANSFORM: keep only rides with a real, positive price</span>
+<span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> functions <span class="c-k">as</span> F
+
+clean = (raw
+         .withColumn(<span class="c-s">"price"</span>, F.col(<span class="c-s">"price"</span>).cast(<span class="c-s">"decimal(8,2)"</span>))  <span class="c-c"># text -> number</span>
+         .filter(F.col(<span class="c-s">"price"</span>).isNotNull() &amp; (F.col(<span class="c-s">"price"</span>) &gt; 0)))
+
+<span class="c-c"># LOAD: save the result as a table anyone with access can query</span>
+clean.write.mode(<span class="c-s">"overwrite"</span>).saveAsTable(<span class="c-s">"bike_shop.silver.rides"</span>)</code></pre>
+  <p>And the same idea in SQL. <code>read_files</code> reads files straight from storage:</p>
+<pre><code><span class="c-c">-- Extract + transform + load in one statement</span>
+<span class="c-k">CREATE OR REPLACE TABLE</span> bike_shop.silver.rides <span class="c-k">AS</span>
+<span class="c-k">SELECT</span> ride_id, bike_id, started_at,
+       <span class="c-k">CAST</span>(price <span class="c-k">AS DECIMAL</span>(8,2)) <span class="c-k">AS</span> price
+<span class="c-k">FROM</span> read_files(<span class="c-s">'/Volumes/bike_shop/raw/landing/rides/'</span>,
+                format =&gt; <span class="c-s">'csv'</span>, header =&gt; <span class="c-k">true</span>)
+<span class="c-k">WHERE</span> <span class="c-k">CAST</span>(price <span class="c-k">AS DECIMAL</span>(8,2)) &gt; 0;   <span class="c-c">-- NULL &gt; 0 is not true, so missing prices drop too</span>
+
+<span class="c-c">-- What a consumer runs afterwards</span>
+<span class="c-k">SELECT SUM</span>(price) <span class="c-k">AS</span> revenue <span class="c-k">FROM</span> bike_shop.silver.rides;</code></pre>
+  <p class="note">The name <code>bike_shop.silver.rides</code> has three parts: catalog, schema, table. You will meet that idea in <b>00-11 Unity Catalog basics</b>, and "silver" in <b>00-12 Medallion architecture</b>.</p>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td>Skip the transform (cleaning) step</td><td>The pipeline is faster to build, but broken rows reach the table. Every number built on it can be wrong, and nobody may notice.</td></tr>
+    <tr><td>Run once a day → run every few minutes</td><td>Fresher numbers, but more compute cost. Going all the way to "as soon as data arrives" is <b>streaming</b> (lesson 00-04).</td></tr>
+    <tr><td>Reload all data every run → load only new data</td><td>Much cheaper as data grows. But the pipeline must remember what it already loaded, or it loads files twice (you saw this risk in the demo).</td></tr>
+    <tr><td>Transform before loading (ETL) → load raw first, transform inside the platform (ELT)</td><td>Keeps an untouched raw copy you can re-process later. This is the usual pattern on Databricks.</td></tr>
+    <tr><td>Add a data quality check that stops the run</td><td>Bad data never reaches users, but the dashboard goes stale until someone fixes the problem. Later lessons show how to warn, drop or stop.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <h3>ETL vs ELT</h3>
+  <div class="tbl"><table><thead><tr><th></th><th>ETL</th><th>ELT</th></tr></thead><tbody>
+    <tr><td>Order</td><td>Extract → Transform → Load</td><td>Extract → Load → Transform</td></tr>
+    <tr><td>Where cleaning happens</td><td>Before data reaches the final store</td><td>Inside the data platform, after raw data lands</td></tr>
+    <tr><td>Raw copy kept?</td><td>Often not</td><td>Yes, so you can rebuild if your logic changes</td></tr>
+    <tr><td>Typical today</td><td>Older warehouse setups</td><td>Lakehouse platforms like Databricks</td></tr>
+  </tbody></table></div>
+  <h3>Who uses the data</h3>
+  <div class="grid3">
+    <div class="card"><h3>Data engineer</h3><p>Builds and runs the pipelines. Cares that data arrives on time, complete and correct.</p></div>
+    <div class="card"><h3>Data analyst</h3><p>Asks business questions with SQL and dashboards. Needs clean, well-named tables.</p></div>
+    <div class="card"><h3>Data scientist</h3><p>Builds models that predict things. Needs lots of reliable history.</p></div>
+    <div class="card"><h3>ML engineer</h3><p>Puts models into production. Needs fresh data feeding them every day.</p></div>
+    <div class="card"><h3>App developer</h3><p>Creates much of the source data, and sometimes shows results back to users.</p></div>
+    <div class="card"><h3>Platform admin</h3><p>Sets up access, cost limits and security for everyone else.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>Revenue on the dashboard doubles overnight</td><td>Yesterday's file was loaded twice, so every ride counts two times.</td><td>Track which files were already loaded, so re-runs are safe (Auto Loader does this; module 02).</td></tr>
+    <tr><td>The app team adds a <code>promo_code</code> field</td><td>The pipeline either fails or quietly ignores the new field.</td><td>Decide how new columns are handled (schema evolution; module 02).</td></tr>
+    <tr><td>The nightly run fails at 2 a.m.</td><td>Nobody notices until a manager sees old numbers at 9 a.m.</td><td>Add retries and an alert when a run fails (modules 01 and 04).</td></tr>
+    <tr><td>A customer asks you to delete their data</td><td>Their rides sit in raw files, tables and old versions.</td><td>Plan deletion across every layer (module 06).</td></tr>
+    <tr><td>The weekly report takes 20 minutes to load</td><td>Every view re-adds millions of raw rows.</td><td>Pre-compute totals in a summary table (module 09).</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <p>The Professional exam does not ask "what is ETL?". It hides these basics inside harder questions, so the words must feel natural.</p>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>"The pipeline ran successfully" does not mean the data is right. A run can succeed and still load broken rows. Quality checks are a separate thing you add on purpose.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>Re-running a pipeline should not change the result if no new data came in. A pipeline with this property is called <span class="def">idempotent</span>. Answers that load duplicates on a re-run are usually wrong.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Pipeline</b> = the steps that move and change data. <b>Job</b> = the scheduled run that starts work (which can include a pipeline). You will see both in module 01.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>ETL</b> cleans before loading. <b>ELT</b> loads raw data first, then cleans inside the platform. Databricks setups are usually ELT.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="2"><p>1. In ETL, what does the "T" step do?</p>
+      <ol class="opts"><li><button>Copies data out of the app that created it</button></li><li><button>Saves data into a table</button></li><li><button>Cleans and reshapes the data</button></li><li><button>Sends the data to a dashboard</button></li></ol>
+      <p class="why" hidden>Transform is the cleaning and reshaping step: removing broken rows, converting types, joining data. Copying out is Extract; saving is Load.</p></div>
+    <div class="q" data-answer="1"><p>2. The bike shop's dashboard shows negative revenue for one day. What most likely happened?</p>
+      <ol class="opts"><li><button>The dashboard has a display bug</button></li><li><button>Broken records (negative prices) reached the table because nothing removed them</button></li><li><button>The pipeline did not run that day</button></li><li><button>The table was too small</button></li></ol>
+      <p class="why" hidden>If the pipeline had not run, you would see old or missing numbers, not negative ones. Negative totals point to bad rows that slipped through without a cleaning or quality step.</p></div>
+    <div class="q" data-answer="0"><p>3. You run the same pipeline twice with no new data, and the row count doubles. Which word describes what the pipeline is <em>missing</em>?</p>
+      <ol class="opts"><li><button>Idempotency</button></li><li><button>Streaming</button></li><li><button>Extraction</button></li><li><button>A dashboard</button></li></ol>
+      <p class="why" hidden>An idempotent pipeline gives the same result no matter how many times it re-runs over the same input. This one re-adds old data each run.</p></div>
+    <div class="q" data-answer="3"><p>4. Why do most modern platforms prefer ELT over ETL?</p>
+      <ol class="opts"><li><button>ELT never needs any cleaning</button></li><li><button>ELT runs only once</button></li><li><button>ELT avoids using tables</button></li><li><button>ELT keeps a raw copy, so you can re-process it when your logic changes</button></li></ol>
+      <p class="why" hidden>ELT still cleans data, just later and inside the platform. Keeping the raw copy means a bug in your cleaning logic can be fixed and re-run over history.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>Data engineering moves data from where it is made to where people use it, and makes it trustworthy on the way.</li>
+    <li>A pipeline is a repeatable set of steps: extract, transform, load (or load first, then transform: ELT).</li>
+    <li>A run that "succeeds" can still load wrong data. Cleaning and quality checks are deliberate design choices.</li>
+    <li>Good pipelines are safe to re-run (idempotent) and only process what is new.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#consumer">consumer</a>
+    <a class="chip" href="../../glossary.html#data-engineering">data engineering</a>
+    <a class="chip" href="../../glossary.html#data-pipeline">data pipeline</a>
+    <a class="chip" href="../../glossary.html#data-quality">data quality</a>
+    <a class="chip" href="../../glossary.html#elt">ELT</a>
+    <a class="chip" href="../../glossary.html#etl">ETL</a>
+    <a class="chip" href="../../glossary.html#idempotent">idempotent</a>
+    <a class="chip" href="../../glossary.html#pyspark">PySpark</a>
+    <a class="chip" href="../../glossary.html#source">source</a>
+    <a class="chip" href="../../glossary.html#table">table</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/data-engineering">Data engineering with Databricks</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/getting-started/data-pipeline-get-started">Tutorial: build an end-to-end data pipeline</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/functions/read_files"><code>read_files</code> function reference</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var raw = [], table = [], next = 1, run = 1, loadedOnce = {};
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+
+  function make() {
+    var n = next++, r = { id: 'ride_' + String(n).padStart(3, '0') };
+    // every 4th ride has no price, every 5th a negative one: fixed pattern, so the demo is repeatable
+    r.price = n % 4 === 0 ? null : n % 5 === 0 ? -(8 + n % 3) : 6 + (n * 7) % 9;
+    return r;
+  }
+  function row(r) {
+    var bad = r.price == null || r.price <= 0;
+    var d = document.createElement('div');
+    d.className = 'item' + (bad ? ' bad' : '');
+    d.textContent = r.id + '  ' + (r.price == null ? 'price: missing ✗' : '$' + r.price.toFixed(2) + (bad ? ' ✗' : ''));
+    return d;
+  }
+  function draw() {
+    $('d-raw').replaceChildren.apply($('d-raw'), raw.length ? raw.map(row) : [Object.assign(document.createElement('p'), { className: 'cap', textContent: 'empty' })]);
+    $('d-table').replaceChildren.apply($('d-table'), table.length ? table.map(row) : [Object.assign(document.createElement('p'), { className: 'cap', textContent: 'empty' })]);
+    var rev = table.reduce(function (s, r) { return s + (r.price || 0); }, 0);
+    var bad = table.filter(function (r) { return r.price == null || r.price <= 0; }).length;
+    var dup = table.length - new Set(table.map(function (r) { return r.id; })).size;
+    $('d-rev').textContent = (rev < 0 ? '-$' : '$') + Math.abs(rev).toFixed(2);
+    $('d-verdict').textContent = !table.length ? 'Run the pipeline to fill the dashboard.'
+      : bad || dup ? '✗ Not trustworthy: ' + (bad ? bad + ' broken row(s)' : '') + (bad && dup ? ', ' : '') + (dup ? dup + ' duplicate(s)' : '') + ' counted.'
+      : '✓ Every row in the table is clean.';
+  }
+  $('d-arrive').onclick = function () {
+    for (var i = 0; i < 5; i++) raw.push(make());
+    log('skip', '+ 5 rides land in the source (' + raw.length + ' waiting)');
+    draw();
+  };
+  $('d-run').onclick = function () {
+    var clean = $('d-clean').checked;
+    log('skip', '> run #' + run++ + ' · extract ' + raw.length + ' raw row(s)');
+    if (!raw.length) { log('skip', '  nothing new to load'); return; }
+    var kept = 0, dropped = 0;
+    raw.forEach(function (r) {
+      var bad = r.price == null || r.price <= 0;
+      if (clean && bad) { dropped++; return; }
+      if (loadedOnce[r.id]) log('bad', '  ' + r.id + ' was already loaded: duplicate!');
+      loadedOnce[r.id] = 1; table.push(r); kept++;
+    });
+    if (clean) log(dropped ? 'ok' : 'skip', '  transform · removed ' + dropped + ' broken row(s)');
+    else log('bad', '  transform skipped · broken rows go straight through');
+    log('ok', '  load · ' + kept + ' row(s) added to table rides');
+    raw = [];
+    draw(); Course.flash($('d-rev'));
+  };
+  $('d-reset').onclick = function () { raw = []; table = []; next = 1; run = 1; loadedOnce = {}; $('d-log').textContent = ''; log('skip', 'reset · source and table emptied'); draw(); };
+  // Re-delivering the same file is a classic real-world bug: show why tracking loaded data matters.
+  var redo = document.createElement('button');
+  redo.type = 'button'; redo.textContent = '↻ Source re-sends the last batch';
+  redo.onclick = function () {
+    var last = table.slice(-5);
+    if (!last.length) { log('skip', 'nothing loaded yet to re-send'); return; }
+    raw = raw.concat(last.map(function (r) { return { id: r.id, price: r.price }; }));
+    log('bad', '~ source re-sends ' + last.length + ' ride(s) it already sent');
+    draw();
+  };
+  $('d-run').after(redo);
+  draw();
+})();
+</script>
+</body>
+</html>
