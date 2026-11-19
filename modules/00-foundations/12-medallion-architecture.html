@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Medallion architecture · DE Pro Study Course</title>
+<meta name="description" content="Bronze, silver and gold: organising a lakehouse into layers that go from raw to trusted to business-ready.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="00-12">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 00 · Lesson 12</p>
+  <h1>Medallion architecture</h1>
+  <p class="lede">The last foundation lesson ties everything together. Most Databricks pipelines move data through three layers, from raw to clean to business-ready. You will see this shape in nearly every exam question about pipelines.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>00 · Foundations</dd></div>
+    <div><dt>Lesson</dt><dd>12 · Medallion architecture</dd></div>
+    <div><dt>Exam objective</dt><dd>Groundwork for Lakeflow pipelines (S1.4), data quality (S3.4) and dimensional models (S9.2).</dd></div>
+    <div><dt>Time to read</dt><dd>~14 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq">
+    <li><a class="chip acc" href="10-delta-lake-basics.html">00-10 Delta Lake basics</a></li>
+    <li><a class="chip acc" href="11-unity-catalog-basics.html">00-11 Unity Catalog basics</a></li>
+  </ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p>The <span class="def">medallion architecture</span> is a common way to organise tables in a lakehouse into three layers, named like Olympic medals:</p>
+  <ul>
+    <li><span class="def">Bronze</span>: raw data, landed as it arrived, plus a few extra columns like when and from which file it came. Nothing is thrown away, so you can always re-process.</li>
+    <li><span class="def">Silver</span>: cleaned and checked data. Duplicates removed, types fixed, bad rows dropped or set aside, related data joined. One trustworthy version of each thing (each ride, each customer).</li>
+    <li><span class="def">Gold</span>: business-ready tables built for a purpose, like daily revenue per town. Often <span class="def">aggregated</span> (rows summed or counted into totals).</li>
+  </ul>
+  <p>Each layer is built from the one before it, so a mistake in gold can be fixed by re-running from silver, and a mistake in silver from bronze. It is a pattern, not a product: Databricks doesn't force it, but its tools are built around it. A common setup is one Unity Catalog schema per layer, like <code>bike_shop.bronze</code>, <code>bike_shop.silver</code> and <code>bike_shop.gold</code>.</p>
+  <div class="analogy">
+    <p>Making orange juice. Bronze is the crate of oranges straight from the farm, bruised ones and all, with a label saying which farm. Silver is the washed, sorted, peeled fruit with the bad ones removed. Gold is the bottled juice on the shop shelf, sized for what customers buy. If a batch of juice tastes wrong, you go back to the washed fruit, not the farm.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 230" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">Data flows from bronze to silver to gold</title>
+      <desc id="dia-d">Raw files land in bronze with every record kept. A cleaning step moves them to silver, removing duplicates and bad rows. An aggregation step builds gold tables, such as daily revenue, which dashboards and models read.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <rect x="10" y="80" width="90" height="60" rx="8" fill="var(--surface)" stroke="var(--line)" stroke-dasharray="4 3"/>
+        <text x="55" y="106" text-anchor="middle" font-size="11">raw files</text><text x="55" y="124" text-anchor="middle" font-size="11" fill="var(--muted)">JSON · CSV</text>
+        <rect x="140" y="60" width="140" height="100" rx="10" fill="var(--surface)" stroke="var(--bronze)" stroke-width="2"/>
+        <text x="210" y="88" text-anchor="middle" font-weight="600" fill="var(--bronze)">BRONZE</text>
+        <text x="210" y="110" text-anchor="middle" font-size="11">as it arrived</text><text x="210" y="128" text-anchor="middle" font-size="11">+ file, load time</text>
+        <rect x="320" y="60" width="140" height="100" rx="10" fill="var(--surface)" stroke="var(--silver)" stroke-width="2"/>
+        <text x="390" y="88" text-anchor="middle" font-weight="600" fill="var(--silver)">SILVER</text>
+        <text x="390" y="110" text-anchor="middle" font-size="11">deduped · typed</text><text x="390" y="128" text-anchor="middle" font-size="11">validated</text>
+        <rect x="500" y="60" width="140" height="100" rx="10" fill="var(--surface)" stroke="var(--gold)" stroke-width="2"/>
+        <text x="570" y="88" text-anchor="middle" font-weight="600" fill="var(--gold)">GOLD</text>
+        <text x="570" y="110" text-anchor="middle" font-size="11">daily revenue</text><text x="570" y="128" text-anchor="middle" font-size="11">per town</text>
+        <text x="390" y="190" text-anchor="middle" font-size="11" fill="var(--warn)">✗ duplicates and bad rows stop here</text>
+        <text x="570" y="190" text-anchor="middle" font-size="11" fill="var(--muted)">→ dashboards, models</text>
+        <g fill="none" stroke="var(--line)" stroke-dasharray="3 4"><path id="a" d="M100 110 H140"/><path id="b" d="M280 110 H320"/><path id="c" d="M460 110 H500"/><path id="x" d="M390 160 V176"/></g>
+      </g>
+      <circle r="5" fill="var(--bronze)" data-rest="120,110"><animateMotion dur="2s" repeatCount="indefinite"><mpath href="#a"/></animateMotion></circle>
+      <circle r="5" fill="var(--silver)" data-rest="300,110"><animateMotion dur="2s" begin="0.6s" repeatCount="indefinite"><mpath href="#b"/></animateMotion></circle>
+      <circle r="5" fill="var(--warn)" data-rest="390,170"><animateMotion dur="2s" begin="0.9s" repeatCount="indefinite"><mpath href="#x"/></animateMotion></circle>
+      <circle r="5" fill="var(--gold)" data-rest="480,110"><animateMotion dur="2s" begin="1.2s" repeatCount="indefinite"><mpath href="#c"/></animateMotion></circle>
+    </svg>
+    <figcaption class="cap">Notice: <b>everything</b> lands in bronze. Duplicates and bad rows (red) are <b>stopped at silver</b>. Gold holds <b>fewer, summarised</b> rows that people actually use.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: push a batch through the layers</h2>
+  <p>A batch of six ride records arrives. One is a duplicate (the app re-sent it) and one has a missing price. Move it through the layers, then try building gold straight from bronze.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <button type="button" id="d-land">1 · Land raw batch in bronze</button>
+      <button type="button" id="d-silver">2 · Bronze → silver</button>
+      <button type="button" id="d-gold">3 · Silver → gold</button>
+      <button type="button" id="d-skip">Shortcut: bronze → gold</button>
+      <button type="button" id="d-reset">Reset</button>
+    </div>
+    <div class="flow">
+      <div class="pane"><h4><span class="chip bronze">bronze</span> rides_raw</h4><div id="d-b"></div></div>
+      <div class="pane"><h4><span class="chip silver">silver</span> rides</h4><div id="d-s"></div></div>
+      <div class="pane"><h4><span class="chip gold">gold</span> revenue_by_town</h4><div id="d-g"></div></div>
+    </div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="Pipeline log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p>Three plain SQL steps. (Module 01 builds the same thing as a Lakeflow pipeline that runs incrementally.)</p>
+<pre><code><span class="c-c">-- BRONZE: land raw files as they are, plus where and when they came from</span>
+<span class="c-k">CREATE OR REPLACE TABLE</span> bike_shop.bronze.rides_raw <span class="c-k">AS</span>
+<span class="c-k">SELECT</span> *, _metadata.file_path <span class="c-k">AS</span> source_file, current_timestamp() <span class="c-k">AS</span> loaded_at
+<span class="c-k">FROM</span> read_files(<span class="c-s">'/Volumes/bike_shop/raw/landing/rides/'</span>, format =&gt; <span class="c-s">'json'</span>);
+
+<span class="c-c">-- SILVER: one clean row per ride, correct types, no broken rows</span>
+<span class="c-k">CREATE OR REPLACE TABLE</span> bike_shop.silver.rides <span class="c-k">AS</span>
+<span class="c-k">SELECT DISTINCT</span>
+  ride_id,
+  town,
+  <span class="c-k">CAST</span>(started_at <span class="c-k">AS TIMESTAMP</span>) <span class="c-k">AS</span> started_at,
+  <span class="c-k">CAST</span>(price <span class="c-k">AS DECIMAL</span>(8,2))   <span class="c-k">AS</span> price
+<span class="c-k">FROM</span> bike_shop.bronze.rides_raw
+<span class="c-k">WHERE</span> ride_id <span class="c-k">IS NOT NULL AND</span> price <span class="c-k">IS NOT NULL</span>;
+
+<span class="c-c">-- GOLD: a business-ready summary</span>
+<span class="c-k">CREATE OR REPLACE TABLE</span> bike_shop.gold.revenue_by_town <span class="c-k">AS</span>
+<span class="c-k">SELECT</span> town, <span class="c-k">DATE</span>(started_at) <span class="c-k">AS</span> ride_date, <span class="c-k">COUNT</span>(*) <span class="c-k">AS</span> rides, <span class="c-k">SUM</span>(price) <span class="c-k">AS</span> revenue
+<span class="c-k">FROM</span> bike_shop.silver.rides
+<span class="c-k">GROUP BY</span> town, <span class="c-k">DATE</span>(started_at);</code></pre>
+  <p class="note"><code>SELECT DISTINCT</code> only removes rows that are identical in every column. Real pipelines usually de-duplicate by key (keep one row per <code>ride_id</code>); module 01 shows how.</p>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td>Clean data while loading bronze</td><td>You lose the raw copy. When a cleaning rule turns out to be wrong, there is nothing to re-process from.</td></tr>
+    <tr><td>Build gold straight from bronze</td><td>Duplicates and bad rows flow into business numbers (try it in the demo).</td></tr>
+    <tr><td>Drop bad rows in silver vs set them aside</td><td>Dropping is simple; setting aside (quarantine) lets someone inspect and fix them. Module 03 covers both.</td></tr>
+    <tr><td>Add more layers (e.g. a "platinum")</td><td>Allowed: it's a pattern, not a rule. More layers mean more tables to maintain.</td></tr>
+    <tr><td>Give analysts access to gold only</td><td>They see clean, agreed numbers and can't build reports on raw data by mistake.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th></th><th>Bronze</th><th>Silver</th><th>Gold</th></tr></thead><tbody>
+    <tr><td>Contents</td><td>Raw, as received</td><td>Cleaned, de-duplicated, validated</td><td>Aggregated, purpose-built</td></tr>
+    <tr><td>Rows</td><td>Most</td><td>Fewer</td><td>Fewest (summaries)</td></tr>
+    <tr><td>Typical users</td><td>Data engineers</td><td>Engineers, data scientists</td><td>Analysts, dashboards, apps</td></tr>
+    <tr><td>Schema</td><td>Loose; may keep raw text</td><td>Strict types</td><td>Business-friendly names</td></tr>
+    <tr><td>Typical table type (module 01)</td><td>Streaming table</td><td>Streaming table</td><td>Materialized view</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>A cleaning bug dropped valid rides for a month</td><td>Silver and gold are wrong for that month.</td><td>Fix the rule and rebuild silver and gold from bronze, which still has every record.</td></tr>
+    <tr><td>Finance and marketing report different revenue</td><td>Each built its own numbers from bronze with different rules.</td><td>Agree on one gold table (or a metric view, module 09) for revenue.</td></tr>
+    <tr><td>The app starts sending a new field</td><td>Bronze keeps it automatically; silver ignores it until you add it.</td><td>Add the column to silver when the business needs it.</td></tr>
+    <tr><td>Bronze grows forever</td><td>Storage costs rise.</td><td>Set a retention policy for raw data if rules allow (module 06).</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>"Bronze should be cleaned so it's useful." No: bronze keeps raw data on purpose, so you can replay. Cleaning belongs in silver.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>Medallion layers are a naming and design pattern, not separate products or storage systems. All three are ordinary tables, often in separate schemas.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Silver</b> = one clean row per real thing (each ride). <b>Gold</b> = totals and answers for a purpose (revenue per town per day).</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p>The <b>medallion architecture</b> (how tables are layered) vs the <b>lakehouse</b> (the overall platform idea, lesson 00-08).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="0"><p>1. Which layer keeps data exactly as it arrived?</p>
+      <ol class="opts"><li><button>Bronze</button></li><li><button>Silver</button></li><li><button>Gold</button></li><li><button>None; raw data is never stored</button></li></ol>
+      <p class="why" hidden>Bronze stores raw data, usually with extra columns like source file and load time.</p></div>
+    <div class="q" data-answer="2"><p>2. Where should duplicates be removed and types fixed?</p>
+      <ol class="opts"><li><button>In the source app</button></li><li><button>Bronze</button></li><li><button>Silver</button></li><li><button>Gold</button></li></ol>
+      <p class="why" hidden>Silver is the clean, validated layer. Bronze stays raw; gold builds on silver.</p></div>
+    <div class="q" data-answer="3"><p>3. A cleaning rule was wrong for weeks. What makes the fix possible?</p>
+      <ol class="opts"><li><button>Gold tables keep every raw row</button></li><li><button>Silver is never overwritten</button></li><li><button>Dashboards cache old results</button></li><li><button>Bronze kept the raw records, so silver and gold can be rebuilt</button></li></ol>
+      <p class="why" hidden>Keeping raw data in bronze is what lets you re-run corrected logic over history.</p></div>
+    <div class="q" data-answer="1"><p>4. Which table belongs in gold?</p>
+      <ol class="opts"><li><button>Raw JSON events with the source file name</button></li><li><button>Daily revenue per town</button></li><li><button>Every ride with fixed types and no duplicates</button></li><li><button>The transaction log</button></li></ol>
+      <p class="why" hidden>Gold holds purpose-built, often aggregated tables. Cleaned row-level rides are silver; raw events are bronze.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>Bronze = raw as received; silver = clean and validated; gold = business-ready, often aggregated.</li>
+    <li>Each layer is built from the previous one, so you can always rebuild downstream.</li>
+    <li>Keep bronze raw. Do cleaning in silver. Point analysts at gold.</li>
+    <li>It's a design pattern, commonly one Unity Catalog schema per layer.</li>
+  </ul>
+  <p class="note">That completes Module 00. You now have the vocabulary for every exam section. Module 01 starts the exam content.</p>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#aggregation">aggregation</a>
+    <a class="chip" href="../../glossary.html#bronze">bronze</a>
+    <a class="chip" href="../../glossary.html#gold">gold</a>
+    <a class="chip" href="../../glossary.html#medallion-architecture">medallion architecture</a>
+    <a class="chip" href="../../glossary.html#silver">silver</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/lakehouse/medallion">What is the medallion lakehouse architecture?</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/lakehouse-architecture/">Data lakehouse architecture</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var RAW = [
+    { id: 'r01', town: 'Northport', price: '6.00' },
+    { id: 'r02', town: 'Riverside', price: '11.50' },
+    { id: 'r03', town: 'Northport', price: '' },
+    { id: 'r04', town: 'Hillview', price: '7.00' },
+    { id: 'r02', town: 'Riverside', price: '11.50' },
+    { id: 'r05', town: 'Riverside', price: '8.00' }
+  ];
+  var bronze, silver, gold;
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  function list(box, rows, fmt, empty) {
+    box.textContent = '';
+    if (!rows.length) { box.appendChild(Object.assign(document.createElement('p'), { className: 'cap', textContent: empty })); return; }
+    rows.forEach(function (r) { var f = fmt(r); box.appendChild(Object.assign(document.createElement('div'), { className: 'item' + (f[1] ? ' ' + f[1] : ''), textContent: f[0] })); });
+  }
+  function draw() {
+    var seen = {};
+    list($('d-b'), bronze, function (r) {
+      var dup = seen[r.id]; seen[r.id] = 1;
+      return [r.id + ' ' + r.town + ' ' + (r.price || '∅') + (dup ? '  (dup)' : '') + (!r.price ? '  (no price)' : ''), dup || !r.price ? 'bad' : ''];
+    }, 'empty');
+    list($('d-s'), silver, function (r) { return [r.id + ' ' + r.town + ' $' + r.price.toFixed(2)]; }, 'empty');
+    list($('d-g'), gold, function (r) { return [r.town + ': ' + r.rides + ' rides, $' + r.revenue.toFixed(2), r.wrong ? 'bad' : 'ok']; }, 'empty');
+  }
+  function aggregate(rows, wrong) {
+    var acc = {};
+    rows.forEach(function (r) { var p = typeof r.price === 'number' ? r.price : parseFloat(r.price) || 0; acc[r.town] = acc[r.town] || { town: r.town, rides: 0, revenue: 0, wrong: wrong }; acc[r.town].rides++; acc[r.town].revenue += p; });
+    return Object.keys(acc).sort().map(function (k) { return acc[k]; });
+  }
+  $('d-land').onclick = function () {
+    if (bronze.length) { log('skip', 'batch already landed'); return; }
+    bronze = RAW.slice(); log('ok', '> bronze: 6 records landed exactly as received (+ source file, load time)'); draw();
+  };
+  $('d-silver').onclick = function () {
+    if (!bronze.length) { log('skip', 'land the batch first'); return; }
+    var seen = {}, dups = 0, bad = 0;
+    silver = [];
+    bronze.forEach(function (r) {
+      if (seen[r.id]) { dups++; return; } seen[r.id] = 1;
+      if (!r.price) { bad++; return; }
+      silver.push({ id: r.id, town: r.town, price: parseFloat(r.price) });
+    });
+    log('ok', '> silver: ' + silver.length + ' clean rides · removed ' + dups + ' duplicate, ' + bad + ' row with no price · price is now a number');
+    draw();
+  };
+  $('d-gold').onclick = function () {
+    if (!silver.length) { log('skip', 'build silver first'); return; }
+    gold = aggregate(silver, false); log('ok', '> gold: revenue per town from silver · numbers are trustworthy'); draw(); Course.flash($('d-g'));
+  };
+  $('d-skip').onclick = function () {
+    if (!bronze.length) { log('skip', 'land the batch first'); return; }
+    gold = aggregate(bronze, true);
+    log('bad', '> gold from bronze: Riverside counts r02 twice ($11.50 extra) and Northport counts a ride with no price');
+    draw(); Course.flash($('d-g'));
+  };
+  $('d-reset').onclick = function () { bronze = []; silver = []; gold = []; log('skip', 'reset'); draw(); };
+  bronze = []; silver = []; gold = []; draw();
+})();
+</script>
+</body>
+</html>

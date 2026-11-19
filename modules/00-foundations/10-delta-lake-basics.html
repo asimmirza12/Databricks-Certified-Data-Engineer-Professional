@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Delta Lake basics · DE Pro Study Course</title>
+<meta name="description" content="How Delta Lake's transaction log turns Parquet files into a reliable table: safe writes, versions, time travel, RESTORE and VACUUM.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="00-10">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 00 · Lesson 10</p>
+  <h1>Delta Lake basics</h1>
+  <p class="lede">Delta Lake is why a pile of files in object storage can behave like a trustworthy database table. One idea does most of the work: a log of every change.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>00 · Foundations</dd></div>
+    <div><dt>Lesson</dt><dd>10 · Delta Lake basics</dd></div>
+    <div><dt>Exam objective</dt><dd>Groundwork for all of module 05 (deletion vectors, clustering, change data feed) and data purging (S6.5).</dd></div>
+    <div><dt>Time to read</dt><dd>~18 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq">
+    <li><a class="chip acc" href="03-file-formats.html">00-03 File formats</a></li>
+    <li><a class="chip acc" href="07-cloud-object-storage.html">00-07 Cloud object storage</a></li>
+  </ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p>A Delta table is a folder holding Parquet data files plus a subfolder called <code>_delta_log</code>. That subfolder is the <span class="def">transaction log</span>: an ordered list of numbered files, one per change. Each change is a <span class="def">commit</span>, and each commit creates a new <span class="def">version</span> of the table (0, 1, 2…).</p>
+  <p>A commit says things like "add file A, remove file B". Data files are never edited (object storage can't, lesson 00-07). To change rows, Delta writes new files and records that old ones are no longer part of the table. Readers look at the log to know which files make up the current version.</p>
+  <p>This gives <span class="def">ACID</span> guarantees, the promises databases make:</p>
+  <ul>
+    <li><b>Atomic</b>: a write fully happens or not at all. A crash halfway leaves no half-written data.</li>
+    <li><b>Consistent</b>: the table always follows its rules, like its schema.</li>
+    <li><b>Isolated</b>: readers see a complete version, never someone's half-finished write.</li>
+    <li><b>Durable</b>: once committed, it stays committed.</li>
+  </ul>
+  <p>Because old versions stay in the log, you can query the past: <span class="def">time travel</span>. You can also roll back with <code>RESTORE</code>. Old files pile up, so <code>VACUUM</code> deletes files that are no longer needed and are older than a retention period (7 days by default).</p>
+  <div class="analogy">
+    <p>A Delta table is like a bank account. The money (data files) sits in the vault. The statement (transaction log) lists every deposit and withdrawal in order. Your balance is worked out from the statement. You can ask "what was my balance last Tuesday?" by reading the statement up to that line. Nobody erases a line; mistakes are fixed by adding a new one.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 260" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">Commits in the transaction log point to data files</title>
+      <desc id="dia-d">Three commits in the log. Version 0 adds file A. Version 1 adds file B. Version 2 is an update: it removes file A and adds file C. The current table is files B and C. File A stays in storage, so version 0 can still be read, until VACUUM deletes it.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <text x="20" y="22" font-weight="600">_delta_log/</text>
+        <g fill="var(--surface)" stroke="var(--accent)">
+          <rect x="20" y="36" width="190" height="44" rx="6"/><rect x="20" y="92" width="190" height="44" rx="6"/><rect x="20" y="148" width="190" height="44" rx="6"/>
+        </g>
+        <text x="30" y="54" font-size="11">v0 · 000…000.json</text><text x="30" y="70" font-size="11" fill="var(--ok)">add A</text>
+        <text x="30" y="110" font-size="11">v1 · 000…001.json</text><text x="30" y="126" font-size="11" fill="var(--ok)">add B</text>
+        <text x="30" y="166" font-size="11">v2 · 000…002.json  UPDATE</text><text x="30" y="182" font-size="11"><tspan fill="var(--warn)">remove A</tspan> · <tspan fill="var(--ok)">add C</tspan></text>
+        <text x="440" y="22" font-weight="600">data files (Parquet)</text>
+        <rect x="440" y="36" width="90" height="44" rx="6" fill="var(--surface)" stroke="var(--line)" stroke-dasharray="4 3"/><text x="485" y="62" text-anchor="middle">A</text>
+        <rect x="440" y="92" width="90" height="44" rx="6" fill="var(--surface)" stroke="var(--ok)"/><text x="485" y="118" text-anchor="middle">B</text>
+        <rect x="440" y="148" width="90" height="44" rx="6" fill="var(--surface)" stroke="var(--ok)"/><text x="485" y="174" text-anchor="middle">C</text>
+        <text x="545" y="62" font-size="11" fill="var(--muted)">old: kept for</text><text x="545" y="76" font-size="11" fill="var(--muted)">time travel</text>
+        <text x="545" y="140" font-size="11" fill="var(--ok)">current</text><text x="545" y="154" font-size="11" fill="var(--ok)">version = B + C</text>
+        <text x="20" y="226" font-size="11">A reader replays the log to v2 → reads B and C only. VACUUM later deletes A.</text>
+        <g fill="none" stroke="var(--line)" stroke-dasharray="3 4">
+          <path d="M210 58 H440"/><path d="M210 114 H440"/><path id="rd" d="M210 170 H440"/>
+        </g>
+        <path id="replay" d="M215 40 V190" fill="none"/>
+      </g>
+      <polygon points="-6,0 6,0 0,10" fill="var(--accent)" data-rest="225,170"><animateMotion dur="4s" repeatCount="indefinite" path="M225 36 V186"/></polygon>
+      <circle r="5" fill="var(--ok)" data-rest="330,170"><animateMotion dur="4s" begin="2s" repeatCount="indefinite"><mpath href="#rd"/></animateMotion></circle>
+    </svg>
+    <figcaption class="cap">Notice: the arrow on the left <b>replays the log</b> in order. The update in v2 doesn't edit file A; it <b>removes A from the table and adds C</b>. File A is still in storage, which is what makes <b>time travel</b> to v0 possible.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: watch the log grow</h2>
+  <p>Change the <code>rides</code> table and watch commits, data files and versions. Then time travel, restore, move the clock forward and vacuum.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <button type="button" id="d-ins">INSERT 2 rides</button>
+      <button type="button" id="d-upd">UPDATE r02 price</button>
+      <button type="button" id="d-del">DELETE r01</button>
+      <button type="button" id="d-days">+8 days</button>
+      <button type="button" id="d-vac">VACUUM</button>
+    </div>
+    <div class="ctrls">
+      <label>Read as of version <input type="range" id="d-ver" min="0" max="0" value="0"></label><span class="chip acc" id="d-verv">v0 (latest)</span>
+      <button type="button" id="d-restore">RESTORE to this version</button>
+    </div>
+    <div class="flow">
+      <div class="pane"><h4>Transaction log (DESCRIBE HISTORY)</h4><div id="d-log2"></div></div>
+      <div class="pane"><h4>Data files in storage</h4><div id="d-files"></div></div>
+      <div class="pane"><h4>Query result at chosen version</h4><div id="d-rows"></div></div>
+    </div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="Delta log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+<pre><code><span class="c-c">-- Every statement below is one commit = one new version</span>
+<span class="c-k">CREATE TABLE</span> bike_shop.silver.rides (ride_id <span class="c-k">STRING</span>, town <span class="c-k">STRING</span>, price <span class="c-k">DECIMAL</span>(8,2));
+<span class="c-k">INSERT INTO</span> bike_shop.silver.rides <span class="c-k">VALUES</span> (<span class="c-s">'r01'</span>, <span class="c-s">'Northport'</span>, 6.00), (<span class="c-s">'r02'</span>, <span class="c-s">'Riverside'</span>, 11.50);
+<span class="c-k">UPDATE</span> bike_shop.silver.rides <span class="c-k">SET</span> price = 9.50 <span class="c-k">WHERE</span> ride_id = <span class="c-s">'r02'</span>;
+<span class="c-k">DELETE FROM</span> bike_shop.silver.rides <span class="c-k">WHERE</span> ride_id = <span class="c-s">'r01'</span>;
+
+<span class="c-c">-- See the log: version, time, operation, who did it</span>
+<span class="c-k">DESCRIBE HISTORY</span> bike_shop.silver.rides;
+
+<span class="c-c">-- Time travel: read an older version</span>
+<span class="c-k">SELECT</span> * <span class="c-k">FROM</span> bike_shop.silver.rides <span class="c-k">VERSION AS OF</span> 1;
+<span class="c-k">SELECT</span> * <span class="c-k">FROM</span> bike_shop.silver.rides <span class="c-k">TIMESTAMP AS OF</span> <span class="c-s">'2026-11-18 09:00:00'</span>;
+
+<span class="c-c">-- Undo: make an old version current again (this is itself a new commit)</span>
+<span class="c-k">RESTORE TABLE</span> bike_shop.silver.rides <span class="c-k">TO VERSION AS OF</span> 1;
+
+<span class="c-c">-- Delete files no longer in the table and older than the retention period (default 7 days)</span>
+<span class="c-k">VACUUM</span> bike_shop.silver.rides;</code></pre>
+<pre><code><span class="c-c"># The same time travel from Python</span>
+v1 = spark.read.option(<span class="c-s">"versionAsOf"</span>, 1).table(<span class="c-s">"bike_shop.silver.rides"</span>)</code></pre>
+  <p class="note">On Unity Catalog managed tables, predictive optimization can run maintenance like <code>VACUUM</code> and <code>OPTIMIZE</code> for you (module 05).</p>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td><code>delta.deletedFileRetentionDuration</code> (default 7 days)</td><td>How long removed files are kept before <code>VACUUM</code> may delete them. Longer = more time travel, more storage cost.</td></tr>
+    <tr><td><code>delta.logRetentionDuration</code> (default 30 days)</td><td>How long history entries are kept. Time travel needs both the log entry <em>and</em> the data files, so in practice the 7-day file retention is the usual limit.</td></tr>
+    <tr><td>Run <code>VACUUM</code></td><td>Old unneeded files are deleted. Time travel to versions that needed them stops working. Storage cost drops.</td></tr>
+    <tr><td>Vacuum with a retention below 7 days</td><td>Not recommended: running queries or streams may still need those files and can fail.</td></tr>
+    <tr><td><code>RESTORE</code> to an older version</td><td>Adds a new commit that makes the old state current. History is kept, so you can restore forward again.</td></tr>
+    <tr><td>Many small inserts</td><td>Many small files. <code>OPTIMIZE</code> compacts them into bigger ones (module 05).</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th></th><th>Plain Parquet folder</th><th>Delta table</th></tr></thead><tbody>
+    <tr><td>Crash during a write</td><td>Half-written files are visible</td><td>Nothing committed, nothing visible</td></tr>
+    <tr><td>Two writers at once</td><td>Can corrupt each other</td><td>Conflicts are detected; one retries or fails cleanly</td></tr>
+    <tr><td>UPDATE / DELETE / MERGE</td><td>Not supported</td><td>Supported</td></tr>
+    <tr><td>History and rollback</td><td>No</td><td>Time travel and RESTORE</td></tr>
+    <tr><td>Schema rules</td><td>None</td><td>Schema enforcement (lesson 00-02)</td></tr>
+  </tbody></table></div>
+  <div class="grid3">
+    <div class="card"><p class="tag">Look back</p><h3>Time travel</h3><p>Read an older version. Changes nothing.</p></div>
+    <div class="card"><p class="tag">Go back</p><h3>RESTORE</h3><p>Make an old version current, as a new commit.</p></div>
+    <div class="card"><p class="tag">Clean up</p><h3>VACUUM</h3><p>Delete files no longer needed past retention. Limits how far back you can look.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>A bad deploy deletes half the rides table at 10:00</td><td>Version 57 is missing rows.</td><td><code>RESTORE TABLE … TO VERSION AS OF 56</code> (check <code>DESCRIBE HISTORY</code> first).</td></tr>
+    <tr><td>An auditor asks what the table looked like last month</td><td>Files from then were vacuumed after 7 days.</td><td>Time travel isn't an archive. Keep snapshots or a history table if you need long lookback.</td></tr>
+    <tr><td>A customer's data must be erased</td><td>DELETE removes it from the current version, but old files still hold it.</td><td>DELETE, then VACUUM once retention passes (module 06).</td></tr>
+    <tr><td>A job crashes mid-write</td><td>No commit was written.</td><td>Re-run it. Readers never saw partial data.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>"DELETE removes the data from storage." Not yet: the rows are gone from the current version, but old files remain until VACUUM, and time travel can still read them.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>"Log retention is 30 days, so I can time travel 30 days back." Usually not: data files are vacuumed after 7 days by default. Both settings matter.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>RESTORE</b> (changes the table, creates a new version) vs <b>VERSION AS OF</b> (only reads the past).</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>VACUUM</b> (deletes unneeded old files) vs <b>OPTIMIZE</b> (rewrites small files into bigger ones). One cleans up, one tidies up.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="2"><p>1. What does an UPDATE do to the data files of a Delta table?</p>
+      <ol class="opts"><li><button>Edits the rows inside the existing file</button></li><li><button>Deletes the old file from storage immediately</button></li><li><button>Writes a new file and records the old one as removed in the log</button></li><li><button>Nothing; it only changes the log</button></li></ol>
+      <p class="why" hidden>Files are never edited. A new file holds the changed rows; the commit marks the old file as removed. (Deletion vectors, module 05, can avoid rewriting the whole file.)</p></div>
+    <div class="q" data-answer="0"><p>2. A job crashes halfway through writing to a Delta table. What do readers see?</p>
+      <ol class="opts"><li><button>The table as it was before the job started</button></li><li><button>Half of the new rows</button></li><li><button>An error until someone repairs the table</button></li><li><button>Duplicate rows</button></li></ol>
+      <p class="why" hidden>Without a commit in the log, the new files aren't part of any version. That is atomicity.</p></div>
+    <div class="q" data-answer="3"><p>3. After VACUUM with default settings, which time travel can fail?</p>
+      <ol class="opts"><li><button>Reading the latest version</button></li><li><button>Reading yesterday's version</button></li><li><button>Running DESCRIBE HISTORY</button></li><li><button>Reading a version whose files were removed more than 7 days ago</button></li></ol>
+      <p class="why" hidden>VACUUM deletes files that left the table more than the retention period ago (7 days by default). Versions that needed them can't be read.</p></div>
+    <div class="q" data-answer="1"><p>4. What does <code>RESTORE TABLE t TO VERSION AS OF 5</code> do?</p>
+      <ol class="opts"><li><button>Deletes versions 6 and later from history</button></li><li><button>Adds a new commit that makes version 5's data current</button></li><li><button>Only shows version 5 without changing anything</button></li><li><button>Runs VACUUM</button></li></ol>
+      <p class="why" hidden>RESTORE writes a new version. History is kept, so the later versions remain visible in DESCRIBE HISTORY.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>A Delta table = Parquet files + <code>_delta_log</code>, a list of commits; each commit is a version.</li>
+    <li>Files are never edited: changes add new files and mark old ones removed. This gives ACID writes.</li>
+    <li>Time travel reads old versions; RESTORE makes one current again as a new commit.</li>
+    <li>VACUUM deletes old files past retention (7 days default), which limits time travel.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#acid">ACID</a>
+    <a class="chip" href="../../glossary.html#commit">commit</a>
+    <a class="chip" href="../../glossary.html#delta-lake">Delta Lake</a>
+    <a class="chip" href="../../glossary.html#optimize">OPTIMIZE</a>
+    <a class="chip" href="../../glossary.html#restore">RESTORE</a>
+    <a class="chip" href="../../glossary.html#time-travel">time travel</a>
+    <a class="chip" href="../../glossary.html#transaction-log">transaction log</a>
+    <a class="chip" href="../../glossary.html#vacuum">VACUUM</a>
+    <a class="chip" href="../../glossary.html#version">version</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/delta/">What is Delta Lake?</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/delta/history">Work with table history (time travel)</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/delta/vacuum">Remove unused data files with VACUUM</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/delta-restore">RESTORE</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var RET = 7; // days, the default deletedFileRetentionDuration
+  var files, commits, day, nextFile, nextRide, viewV;
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+
+  function activeAt(v) { // replay the log up to version v
+    var set = {};
+    for (var i = 0; i <= v; i++) { commits[i].add.forEach(function (f) { set[f] = 1; }); commits[i].remove.forEach(function (f) { delete set[f]; }); }
+    return Object.keys(set);
+  }
+  function latest() { return commits.length - 1; }
+  function commit(op, add, remove) {
+    remove.forEach(function (f) { files[f].removedDay = day; });
+    commits.push({ v: commits.length, op: op, add: add, remove: remove, day: day });
+    viewV = latest();
+    log('ok', '> v' + latest() + ' ' + op + (add.length ? ' · add ' + add.join(', ') : '') + (remove.length ? ' · remove ' + remove.join(', ') : ''));
+    draw();
+  }
+  function newFile(rows) { var n = 'part-' + String(nextFile++).padStart(3, '0'); files[n] = { rows: rows, removedDay: null, gone: false }; return n; }
+  function findRow(id) { var act = activeAt(latest()); for (var i = 0; i < act.length; i++) if (files[act[i]].rows.some(function (r) { return r[0] === id; })) return act[i]; return null; }
+
+  $('d-ins').onclick = function () {
+    var a = 'r' + String(nextRide++).padStart(2, '0'), b = 'r' + String(nextRide++).padStart(2, '0');
+    commit('WRITE (INSERT)', [newFile([[a, 6 + nextRide], [b, 8 + nextRide]])], []);
+  };
+  $('d-upd').onclick = function () {
+    var f = findRow('r02'); if (!f) { log('skip', 'r02 is not in the current version'); return; }
+    var rows = files[f].rows.map(function (r) { return r[0] === 'r02' ? [r[0], r[1] - 2] : r.slice(); });
+    commit('UPDATE', [newFile(rows)], [f]);
+  };
+  $('d-del').onclick = function () {
+    var f = findRow('r01'); if (!f) { log('skip', 'r01 is not in the current version'); return; }
+    var rows = files[f].rows.filter(function (r) { return r[0] !== 'r01'; });
+    commit('DELETE', rows.length ? [newFile(rows)] : [], [f]);
+  };
+  $('d-days').onclick = function () { day += 8; log('skip', '> clock moves forward 8 days (now day ' + day + ')'); draw(); };
+  $('d-vac').onclick = function () {
+    var gone = [];
+    Object.keys(files).forEach(function (n) { var f = files[n]; if (f.removedDay !== null && !f.gone && day - f.removedDay >= RET) { f.gone = true; gone.push(n); } });
+    log(gone.length ? 'bad' : 'skip', '> VACUUM (retain ' + RET + ' days) · deleted ' + (gone.length ? gone.join(', ') : 'nothing: no removed file is old enough'));
+    if (gone.length) commits.push({ v: commits.length, op: 'VACUUM', add: [], remove: [], day: day, meta: true });
+    viewV = latest(); draw();
+  };
+  $('d-ver').oninput = function () { viewV = +$('d-ver').value; draw(); };
+  $('d-restore').onclick = function () {
+    if (viewV === latest()) { log('skip', 'already the latest version'); return; }
+    var target = activeAt(viewV), now = activeAt(latest());
+    if (target.some(function (f) { return files[f].gone; })) { log('bad', '> RESTORE to v' + viewV + ' failed: its files were vacuumed'); return; }
+    commit('RESTORE (to v' + viewV + ')', target.filter(function (f) { return now.indexOf(f) < 0; }), now.filter(function (f) { return target.indexOf(f) < 0; }));
+  };
+
+  function item(text, cls) { return Object.assign(document.createElement('div'), { className: 'item' + (cls ? ' ' + cls : ''), textContent: text }); }
+  function draw() {
+    var L = $('d-log2'); L.textContent = '';
+    commits.slice().reverse().forEach(function (c) { L.appendChild(item('v' + c.v + ' · day ' + c.day + ' · ' + c.op, c.v === viewV ? 'ok' : '')); });
+    var cur = activeAt(latest()), F = $('d-files'); F.textContent = '';
+    Object.keys(files).forEach(function (n) {
+      var f = files[n], s = f.gone ? 'deleted by VACUUM' : cur.indexOf(n) >= 0 ? 'in current version' : 'removed on day ' + f.removedDay + ' (kept)';
+      F.appendChild(item(n + ' · ' + s, f.gone ? 'bad' : cur.indexOf(n) >= 0 ? 'ok' : ''));
+    });
+    var R = $('d-rows'); R.textContent = '';
+    var act = activeAt(viewV), lost = act.filter(function (f) { return files[f].gone; });
+    if (lost.length) R.appendChild(item('✗ cannot read v' + viewV + ': ' + lost.join(', ') + ' vacuumed', 'bad'));
+    else { var rows = []; act.forEach(function (f) { rows = rows.concat(files[f].rows); });
+      rows.sort(function (a, b) { return a[0] < b[0] ? -1 : 1; }).forEach(function (r) { R.appendChild(item(r[0] + '  $' + r[1].toFixed(2))); });
+      if (!rows.length) R.appendChild(item('(empty table)')); }
+    $('d-ver').max = latest(); $('d-ver').value = viewV;
+    $('d-verv').textContent = 'v' + viewV + (viewV === latest() ? ' (latest)' : ' (time travel)');
+  }
+  files = {}; commits = []; day = 0; nextFile = 0; nextRide = 1; viewV = 0;
+  commit('CREATE TABLE + INSERT', [newFile([['r01', 6], ['r02', 11.5]])], []);
+  nextRide = 3;
+})();
+</script>
+</body>
+</html>

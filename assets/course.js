@@ -22,12 +22,12 @@
       ['04', 'batch-vs-streaming', 'Batch vs streaming', true],
       ['05', 'what-is-spark', 'What is Apache Spark?', true],
       ['06', 'dataframes-and-spark-sql', 'DataFrames and Spark SQL', true],
-      ['07', 'cloud-object-storage', 'Cloud object storage'],
-      ['08', 'what-is-databricks', 'What is Databricks? Workspace and notebooks'],
-      ['09', 'compute-clusters-serverless', 'Compute: clusters, SQL warehouses, serverless'],
-      ['10', 'delta-lake-basics', 'Delta Lake basics'],
-      ['11', 'unity-catalog-basics', 'Unity Catalog basics'],
-      ['12', 'medallion-architecture', 'Medallion architecture']
+      ['07', 'cloud-object-storage', 'Cloud object storage', true],
+      ['08', 'what-is-databricks', 'What is Databricks? Workspace and notebooks', true],
+      ['09', 'compute-clusters-serverless', 'Compute: clusters, SQL warehouses, serverless', true],
+      ['10', 'delta-lake-basics', 'Delta Lake basics', true],
+      ['11', 'unity-catalog-basics', 'Unity Catalog basics', true],
+      ['12', 'medallion-architecture', 'Medallion architecture', true]
     ]},
     { id: '01', slug: '01-developing-code', title: 'Developing Code for Data Processing (Python and SQL)', weight: '23%', lessons: [
       ['01', 'bundles-what-and-why', 'Declarative Automation Bundles: what and why'],

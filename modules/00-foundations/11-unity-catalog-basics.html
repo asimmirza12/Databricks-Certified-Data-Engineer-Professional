@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Unity Catalog basics · DE Pro Study Course</title>
+<meta name="description" content="Unity Catalog's three-level naming, managed vs external tables, volumes, and why a query needs permission on the catalog, the schema and the table.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="00-11">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 00 · Lesson 11</p>
+  <h1>Unity Catalog basics</h1>
+  <p class="lede">Unity Catalog is where every table, view, volume and function on Databricks is named, found and protected. Modules 06 and 07 go deep; this lesson gives you the shape of it.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>00 · Foundations</dd></div>
+    <div><dt>Lesson</dt><dd>11 · Unity Catalog basics</dd></div>
+    <div><dt>Exam objective</dt><dd>Groundwork for security (S6.1–S6.5), governance (S7.1, S7.2) and managed tables (S5.1).</dd></div>
+    <div><dt>Time to read</dt><dd>~16 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq">
+    <li><a class="chip acc" href="08-what-is-databricks.html">00-08 What is Databricks?</a></li>
+    <li><a class="chip acc" href="10-delta-lake-basics.html">00-10 Delta Lake basics</a></li>
+  </ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p><span class="def">Unity Catalog</span> is Databricks' system for organising and governing data. <span class="def">Governance</span> means controlling who can see and change what, and keeping a record of it.</p>
+  <p>It arranges everything in a tree. At the top is a <span class="def">metastore</span>: one per cloud region, shared by the workspaces in that region. Inside it:</p>
+  <ul>
+    <li>A <span class="def">catalog</span>: the biggest folder, often one per team, project or environment (like <code>bike_shop</code> or <code>dev</code>).</li>
+    <li>A <span class="def">Unity Catalog schema</span> (also called a database): a folder inside a catalog, like <code>silver</code>. Not the same as a table's column schema!</li>
+    <li>Objects inside a schema: <b>tables</b>, <b>views</b> (saved queries), <b>volumes</b> (governed files) and <b>functions</b>.</li>
+  </ul>
+  <p>So every table has a three-part name, the <span class="def">three-level namespace</span>: <code>catalog.schema.table</code>, like <code>bike_shop.silver.rides</code>.</p>
+  <p>Tables come in two kinds. A <span class="def">managed table</span>'s files are stored and looked after by Unity Catalog: drop the table and its data is deleted (after a short recovery window). An <span class="def">external table</span> points at files in a storage path you manage: drop it and only the registration goes; the files stay.</p>
+  <p>Access works by <span class="def">privileges</span> that you <code>GRANT</code> to users or groups. To read a table you need three: <code>USE CATALOG</code> on its catalog, <code>USE SCHEMA</code> on its schema, and <code>SELECT</code> on the table. Privileges granted on a container also flow down to what's inside it.</p>
+  <div class="analogy">
+    <p>Unity Catalog is a library. The library building (metastore) has floors (catalogs), each floor has rooms (schemas), and rooms hold shelves of books (tables). To read a book, you need to be let onto the floor, into the room, and allowed that book. A pass for the whole room covers every book in it. The library catalogue also records who borrowed what.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 260" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">Unity Catalog object tree and the access check</title>
+      <desc id="dia-d">A tree: metastore, then catalog bike_shop, then schemas bronze, silver and gold, then tables and a volume. A query for bike_shop.gold.daily_revenue is checked at three gates: USE CATALOG, USE SCHEMA and SELECT. Only after passing all three does it read the data.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <rect x="20" y="16" width="140" height="34" rx="6" fill="var(--code-bg)" stroke="var(--line)"/><text x="90" y="38" text-anchor="middle">metastore</text>
+        <rect x="20" y="76" width="140" height="34" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="90" y="98" text-anchor="middle">bike_shop</text>
+        <text x="170" y="98" font-size="11" fill="var(--muted)">catalog</text>
+        <g fill="var(--surface)" stroke="var(--line)"><rect x="20" y="136" width="90" height="30" rx="6"/><rect x="120" y="136" width="90" height="30" rx="6"/></g>
+        <rect x="220" y="136" width="90" height="30" rx="6" fill="var(--surface)" stroke="var(--accent)"/>
+        <text x="65" y="156" text-anchor="middle" font-size="11">bronze</text><text x="165" y="156" text-anchor="middle" font-size="11">silver</text><text x="265" y="156" text-anchor="middle" font-size="11">gold</text>
+        <text x="320" y="156" font-size="11" fill="var(--muted)">schemas</text>
+        <rect x="190" y="196" width="150" height="30" rx="6" fill="var(--surface)" stroke="var(--ok)"/><text x="265" y="216" text-anchor="middle" font-size="11">daily_revenue</text>
+        <text x="20" y="216" font-size="11" fill="var(--muted)">tables · views · volumes · functions →</text>
+        <path d="M90 50 V76 M90 110 V122 H265 V136 M65 122 V136 M165 122 V136 M265 166 V196" fill="none" stroke="var(--line)"/>
+        <text x="420" y="24" font-weight="600">query checks</text>
+        <g fill="var(--surface)" stroke="var(--line)"><rect x="420" y="40" width="220" height="34" rx="6"/><rect x="420" y="90" width="220" height="34" rx="6"/><rect x="420" y="140" width="220" height="34" rx="6"/></g>
+        <text x="430" y="62" font-size="11">1 · USE CATALOG bike_shop</text><text x="430" y="112" font-size="11">2 · USE SCHEMA gold</text><text x="430" y="162" font-size="11">3 · SELECT daily_revenue</text>
+        <rect x="420" y="196" width="220" height="34" rx="6" fill="var(--surface)" stroke="var(--ok)"/><text x="530" y="218" text-anchor="middle" font-size="11" fill="var(--ok)">✓ rows returned</text>
+        <path id="gate" d="M410 30 V214" fill="none"/>
+      </g>
+      <circle r="6" fill="var(--accent)" data-rest="410,157"><animateMotion dur="4s" repeatCount="indefinite"><mpath href="#gate"/></animateMotion></circle>
+    </svg>
+    <figcaption class="cap">Notice: the query (blue dot) must pass <b>three gates in order</b>, one for each level of the name. Missing any one of them means no rows, even if the others are granted.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: why can't Ana read the table?</h2>
+  <p>Ana is in the <code>analysts</code> group. Tick grants for that group, pick a query, and run it. Try granting <code>SELECT</code> on the whole <code>gold</code> schema to see inheritance.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog"><input type="checkbox" class="g" value="USE CATALOG|bike_shop"> USE CATALOG on bike_shop</label>
+      <label class="tog"><input type="checkbox" class="g" value="USE SCHEMA|bike_shop.gold"> USE SCHEMA on gold</label>
+      <label class="tog"><input type="checkbox" class="g" value="SELECT|bike_shop.gold.daily_revenue"> SELECT on gold.daily_revenue</label>
+      <label class="tog"><input type="checkbox" class="g" value="SELECT|bike_shop.gold"> SELECT on schema gold (all its tables)</label>
+    </div>
+    <div class="ctrls">
+      <label>Query <select id="d-q">
+        <option value="bike_shop.gold.daily_revenue">SELECT * FROM bike_shop.gold.daily_revenue</option>
+        <option value="bike_shop.gold.top_bikes">SELECT * FROM bike_shop.gold.top_bikes</option>
+        <option value="bike_shop.silver.rides">SELECT * FROM bike_shop.silver.rides</option>
+      </select></label>
+      <button type="button" class="primary" id="d-run">Run as Ana</button>
+    </div>
+    <div class="flow">
+      <div class="pane"><h4>Grants to analysts (SHOW GRANTS)</h4><div id="d-grants"></div></div>
+      <div class="pane"><h4>Result</h4><div id="d-res"><p class="cap">Not run yet.</p></div></div>
+    </div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="Access log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+<pre><code><span class="c-c">-- Build the tree</span>
+<span class="c-k">CREATE CATALOG IF NOT EXISTS</span> bike_shop;
+<span class="c-k">CREATE SCHEMA IF NOT EXISTS</span> bike_shop.gold <span class="c-k">COMMENT</span> <span class="c-s">'Business-ready tables'</span>;
+
+<span class="c-c">-- A managed table: Unity Catalog chooses and looks after the storage</span>
+<span class="c-k">CREATE TABLE</span> bike_shop.gold.daily_revenue (ride_date <span class="c-k">DATE</span>, town <span class="c-k">STRING</span>, revenue <span class="c-k">DECIMAL</span>(12,2));
+
+<span class="c-c">-- An external table: you name the storage path (it must sit inside an external location you may use)</span>
+<span class="c-k">CREATE TABLE</span> bike_shop.bronze.partner_rides (ride_id <span class="c-k">STRING</span>, price <span class="c-k">DOUBLE</span>)
+<span class="c-k">LOCATION</span> <span class="c-s">'s3://bike-shop-partner-data/rides/'</span>;
+
+<span class="c-c">-- Let the analysts group read one table: three grants</span>
+<span class="c-k">GRANT USE CATALOG ON CATALOG</span> bike_shop <span class="c-k">TO</span> `analysts`;
+<span class="c-k">GRANT USE SCHEMA ON SCHEMA</span> bike_shop.gold <span class="c-k">TO</span> `analysts`;
+<span class="c-k">GRANT SELECT ON TABLE</span> bike_shop.gold.daily_revenue <span class="c-k">TO</span> `analysts`;
+
+<span class="c-c">-- Or every table in gold, now and in future (inheritance)</span>
+<span class="c-k">GRANT SELECT ON SCHEMA</span> bike_shop.gold <span class="c-k">TO</span> `analysts`;
+
+<span class="c-c">-- Check what has been granted</span>
+<span class="c-k">SHOW GRANTS ON SCHEMA</span> bike_shop.gold;</code></pre>
+<pre><code><span class="c-c"># Python uses the same three-part names</span>
+revenue = spark.read.table(<span class="c-s">"bike_shop.gold.daily_revenue"</span>)
+
+<span class="c-c"># Or set defaults so short names work in this session</span>
+spark.sql(<span class="c-s">"USE CATALOG bike_shop"</span>)
+spark.sql(<span class="c-s">"USE SCHEMA gold"</span>)
+revenue = spark.read.table(<span class="c-s">"daily_revenue"</span>)</code></pre>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td>Grant <code>SELECT</code> on the table but not <code>USE SCHEMA</code></td><td>The query is still denied. All three levels are needed.</td></tr>
+    <tr><td>Grant <code>SELECT</code> on the schema instead of each table</td><td>Every current and future table in that schema becomes readable. Less work, broader access.</td></tr>
+    <tr><td>Grant to a group instead of a person</td><td>People join or leave the group; grants don't need editing. The recommended practice.</td></tr>
+    <tr><td><code>DROP TABLE</code> on a managed table</td><td>Metadata goes and data files are scheduled for deletion. <code>UNDROP</code> can recover it within the recovery window (7 days by default; verify for your cloud).</td></tr>
+    <tr><td><code>DROP TABLE</code> on an external table</td><td>Only the registration is removed. The files stay in your storage.</td></tr>
+    <tr><td>Write a two-part name (<code>gold.daily_revenue</code>)</td><td>Spark fills in the current catalog. Fine interactively, risky in jobs where the default catalog may differ.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th></th><th>Managed table</th><th>External table</th></tr></thead><tbody>
+    <tr><td>Who picks the storage path</td><td>Unity Catalog</td><td>You (<code>LOCATION</code>)</td></tr>
+    <tr><td>DROP TABLE</td><td>Data deleted after the recovery window</td><td>Data files stay</td></tr>
+    <tr><td>Automatic maintenance</td><td>Yes, predictive optimization (module 05)</td><td>No</td></tr>
+    <tr><td>Use when</td><td>Default choice for new tables</td><td>Other tools must write to the same files, or data already lives somewhere fixed</td></tr>
+  </tbody></table></div>
+  <h3>What lives in a schema</h3>
+  <div class="grid3">
+    <div class="card"><p class="tag">rows</p><h3>Table</h3><p>Data in rows and columns. Managed or external.</p></div>
+    <div class="card"><p class="tag">saved query</p><h3>View</h3><p>A stored SELECT. Holds no data; reads its source tables when queried.</p></div>
+    <div class="card"><p class="tag">files</p><h3>Volume</h3><p>Governed files at <code>/Volumes/catalog/schema/volume/</code>.</p></div>
+    <div class="card"><p class="tag">logic</p><h3>Function</h3><p>Reusable SQL or Python logic (module 01).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>An analyst has SELECT on a table but gets "permission denied"</td><td>They lack USE CATALOG or USE SCHEMA on a parent.</td><td>Grant the missing USE privilege on the parent.</td></tr>
+    <tr><td>Someone drops a managed table by mistake</td><td>Data is scheduled for deletion.</td><td>Run <code>UNDROP TABLE</code> quickly, within the recovery window.</td></tr>
+    <tr><td>Dev code accidentally writes to production</td><td>The job used a two-part name and the wrong default catalog.</td><td>Use separate <code>dev</code> / <code>prod</code> catalogs and full three-part names (or parameters).</td></tr>
+    <tr><td>Grants list 40 individual people</td><td>Every joiner and leaver needs edits; mistakes creep in.</td><td>Grant to groups.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>"SELECT on the table is enough." It isn't: the reader also needs USE CATALOG and USE SCHEMA on the parents.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>Dropping an external table does <b>not</b> delete its files. Dropping a managed one does (after the recovery window).</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Unity Catalog schema</b> (a container: <code>bike_shop.gold</code>) vs a <b>table schema</b> (its columns and types).</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Metastore</b> (top level, one per region) vs <b>catalog</b> (first level inside it; you create many).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="3"><p>1. In <code>bike_shop.gold.daily_revenue</code>, what is <code>gold</code>?</p>
+      <ol class="opts"><li><button>A catalog</button></li><li><button>A metastore</button></li><li><button>A column</button></li><li><button>A schema</button></li></ol>
+      <p class="why" hidden>The pattern is catalog.schema.table, so <code>gold</code> is the schema.</p></div>
+    <div class="q" data-answer="1"><p>2. Which set of privileges lets a group read one table?</p>
+      <ol class="opts"><li><button>SELECT on the table only</button></li><li><button>USE CATALOG on the catalog, USE SCHEMA on the schema, SELECT on the table</button></li><li><button>MODIFY on the table</button></li><li><button>USE CATALOG only</button></li></ol>
+      <p class="why" hidden>Reading needs a privilege at every level of the name: USE CATALOG, USE SCHEMA and SELECT.</p></div>
+    <div class="q" data-answer="0"><p>3. You drop an external table. What happens to its data files?</p>
+      <ol class="opts"><li><button>They stay in storage</button></li><li><button>They are deleted immediately</button></li><li><button>They are deleted after 7 days</button></li><li><button>They move to a managed location</button></li></ol>
+      <p class="why" hidden>For external tables, Unity Catalog only removes its registration. You manage the files.</p></div>
+    <div class="q" data-answer="2"><p>4. You grant SELECT on schema <code>gold</code>. A new table is created in <code>gold</code> next week. Can the grantee read it?</p>
+      <ol class="opts"><li><button>No, grants only cover existing tables</button></li><li><button>Only after an admin refreshes grants</button></li><li><button>Yes, privileges on a schema flow down to its current and future tables</button></li><li><button>Only if the table is external</button></li></ol>
+      <p class="why" hidden>Privileges are inherited downward, including by objects created later. (They still need USE CATALOG and USE SCHEMA.)</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>Unity Catalog names everything <code>catalog.schema.object</code>, under one metastore per region.</li>
+    <li>Managed tables: Unity Catalog owns the files, and DROP deletes them after a recovery window. External tables: you own the files.</li>
+    <li>Reading a table needs USE CATALOG + USE SCHEMA + SELECT.</li>
+    <li>Grants on a container flow down to everything inside, now and later. Grant to groups.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#catalog">catalog</a>
+    <a class="chip" href="../../glossary.html#external-table">external table</a>
+    <a class="chip" href="../../glossary.html#governance">governance</a>
+    <a class="chip" href="../../glossary.html#managed-table">managed table</a>
+    <a class="chip" href="../../glossary.html#metastore">metastore</a>
+    <a class="chip" href="../../glossary.html#privilege">privilege</a>
+    <a class="chip" href="../../glossary.html#uc-schema">Unity Catalog schema</a>
+    <a class="chip" href="../../glossary.html#three-level-namespace">three-level namespace</a>
+    <a class="chip" href="../../glossary.html#unity-catalog">Unity Catalog</a>
+    <a class="chip" href="../../glossary.html#view">view</a>
+    <a class="chip" href="../../glossary.html#volume">volume</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/">What is Unity Catalog?</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/securable-objects">Unity Catalog securable objects</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/manage-privileges/">Manage privileges in Unity Catalog</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/managed-versus-external">Managed versus external assets</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  function grants() { return [].map.call(document.querySelectorAll('.g:checked'), function (g) { return g.value.split('|'); }); }
+  function has(priv, obj) { // granted directly on obj or on any parent of obj (inheritance)
+    return grants().some(function (g) { return g[0] === priv && (obj === g[1] || obj.indexOf(g[1] + '.') === 0); });
+  }
+  function drawGrants() {
+    var box = $('d-grants'); box.textContent = '';
+    var gs = grants();
+    if (!gs.length) box.appendChild(Object.assign(document.createElement('p'), { className: 'cap', textContent: 'none' }));
+    gs.forEach(function (g) { box.appendChild(Object.assign(document.createElement('div'), { className: 'item', textContent: g[0] + ' ON ' + g[1] })); });
+  }
+  [].forEach.call(document.querySelectorAll('.g'), function (g) { g.onchange = drawGrants; });
+  $('d-run').onclick = function () {
+    var t = $('d-q').value, p = t.split('.'), cat = p[0], sch = p[0] + '.' + p[1];
+    var checks = [['USE CATALOG', cat], ['USE SCHEMA', sch], ['SELECT', t]], ok = true;
+    log('skip', '> ana runs SELECT * FROM ' + t);
+    checks.forEach(function (c, i) {
+      if (!ok) return;
+      var pass = has(c[0], c[1]);
+      var via = pass && !grants().some(function (g) { return g[0] === c[0] && g[1] === c[1]; }) ? ' (inherited from a parent)' : '';
+      log(pass ? 'ok' : 'bad', '  ' + (i + 1) + ' · ' + c[0] + ' on ' + c[1] + ': ' + (pass ? 'yes' + via : 'missing'));
+      if (!pass) ok = false;
+    });
+    var res = $('d-res'); res.textContent = '';
+    res.appendChild(Object.assign(document.createElement('div'), {
+      className: 'item ' + (ok ? 'ok' : 'bad'),
+      textContent: ok ? '✓ 3 rows returned' : '✗ PERMISSION_DENIED: stopped at the first missing privilege'
+    }));
+  };
+  drawGrants();
+})();
+</script>
+</body>
+</html>

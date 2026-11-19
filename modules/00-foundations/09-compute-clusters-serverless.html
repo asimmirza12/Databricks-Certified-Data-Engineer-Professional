@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Compute: clusters, SQL warehouses, serverless · DE Pro Study Course</title>
+<meta name="description" content="The kinds of compute on Databricks, what each is for, and the settings that decide cost: autoscaling, auto-termination and access mode.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="00-09">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 00 · Lesson 09</p>
+  <h1>Compute: clusters, SQL warehouses, serverless</h1>
+  <p class="lede">Code needs machines to run on. Databricks offers several kinds, and picking the right one is half of controlling cost. This lesson gives you the map.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>00 · Foundations</dd></div>
+    <div><dt>Lesson</dt><dd>09 · Compute: clusters, SQL warehouses, serverless</dd></div>
+    <div><dt>Exam objective</dt><dd>Groundwork for choosing compute and configuration (S1.10), library installs (S1.2) and cost analysis (S4.1).</dd></div>
+    <div><dt>Time to read</dt><dd>~16 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq"><li><a class="chip acc" href="08-what-is-databricks.html">00-08 What is Databricks?</a></li></ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p><span class="def">Compute</span> means the machines that run your code. On Databricks there are three main families:</p>
+  <ul>
+    <li><span class="def">Serverless compute</span>: you just run code; Databricks picks, starts and scales the machines in its own cloud account. It starts in seconds. Available for notebooks, jobs, pipelines and SQL. For most new work, Databricks recommends it.</li>
+    <li><span class="def">Classic compute</span> (a cluster you configure): you choose the machine types, number of workers and software version. It runs in your cloud account and takes a few minutes to start. Two flavours: <span class="def">all-purpose compute</span> for interactive notebooks, and <span class="def">jobs compute</span>, created for one job run and shut down after.</li>
+    <li><span class="def">SQL warehouses</span>: compute that only runs SQL, built for dashboards and queries. Types are serverless, pro and classic.</li>
+  </ul>
+  <p>Databricks bills compute in <span class="def">DBUs</span> (Databricks Units): a measure of processing power used per hour. Different compute types charge different DBU rates, and on classic compute you also pay your cloud provider for the machines.</p>
+  <p>On a classic cluster, the software version is the <span class="def">Databricks Runtime</span> (Spark plus libraries; "LTS" versions get long-term support). Who may share the cluster is the <span class="def">access mode</span>: <b>Standard</b> (formerly Shared) lets many users share it safely; <b>Dedicated</b> (formerly Single user) belongs to one user or group.</p>
+  <div class="analogy">
+    <p>Getting around a city. Serverless is a taxi: wave, ride, pay for the trip. Classic all-purpose is owning a car: set it up how you like, but it costs money while parked unless you switch it off. Jobs compute is a rental for one trip, returned straight after. A SQL warehouse is a bus route built for one job: carrying lots of short SQL trips.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 250" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">Autoscaling and auto-termination on a classic cluster</title>
+      <desc id="dia-d">A timeline of a working day. Workers rise when queries arrive and fall when work drops, between a minimum and maximum. After a period of no activity, the cluster terminates itself and billing stops.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <line x1="40" y1="200" x2="640" y2="200" stroke="var(--line)"/>
+        <text x="40" y="222" font-size="11" fill="var(--muted)">09:00</text><text x="300" y="222" font-size="11" fill="var(--muted)">13:00</text><text x="580" y="222" font-size="11" fill="var(--muted)">17:00</text>
+        <text x="40" y="24" font-size="11" fill="var(--muted)">workers</text>
+        <line x1="40" y1="60" x2="640" y2="60" stroke="var(--warn)" stroke-dasharray="4 4"/><text x="560" y="54" font-size="11" fill="var(--warn)">max 8</text>
+        <line x1="40" y1="175" x2="470" y2="175" stroke="var(--muted)" stroke-dasharray="4 4"/><text x="44" y="170" font-size="11" fill="var(--muted)">min 2</text>
+        <path d="M40 175 H110 L130 95 H210 L230 140 H300 L320 60 H380 L400 175 H470 L470 200" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+        <rect x="470" y="150" width="80" height="22" rx="4" fill="var(--surface)" stroke="var(--line)"/><text x="510" y="165" text-anchor="middle" font-size="11">idle 30 min</text>
+        <text x="600" y="190" text-anchor="middle" font-size="11" fill="var(--ok)">terminated</text><text x="600" y="176" text-anchor="middle" font-size="11" fill="var(--ok)">$0</text>
+        <path id="now" d="M40 200 H640" fill="none"/>
+      </g>
+      <g data-rest="320,0">
+        <line x1="0" y1="40" x2="0" y2="200" stroke="var(--ink)" stroke-width="2"/>
+        <animateMotion dur="8s" repeatCount="indefinite" path="M40 0 H640"/>
+      </g>
+    </svg>
+    <figcaption class="cap">Notice: with <b>autoscaling</b>, workers grow between a minimum and maximum as work arrives (blue). After the <b>auto-termination</b> time with no activity, the cluster shuts down and stops billing. The moving line is the clock.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: pick compute, then tune a cluster</h2>
+  <p><b>Part 1.</b> Choose a workload to see what usually fits. <b>Part 2.</b> An analyst uses an all-purpose cluster from 09:00, works in bursts, and leaves at 15:00. Change auto-termination and see how many hours you pay for.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Workload <select id="d-work">
+        <option value="explore">Explore data in a notebook</option>
+        <option value="etl">Nightly scheduled ETL</option>
+        <option value="bi">Analysts' dashboards and SQL queries</option>
+        <option value="pipe">A Lakeflow pipeline</option>
+        <option value="special">Code needs R, the RDD API or GPUs</option>
+      </select></label>
+    </div>
+    <div class="note" id="d-pick" aria-live="polite"></div>
+    <div class="ctrls">
+      <label>Auto-termination <select id="d-term"><option value="10">10 min</option><option value="30" selected>30 min</option><option value="120">120 min</option><option value="0">never</option></select></label>
+      <label>Workers <select id="d-w"><option value="2">fixed 2</option><option value="8">fixed 8</option><option value="auto" selected>autoscale 2–8</option></select></label>
+      <button type="button" class="primary" id="d-run">Simulate the day</button>
+    </div>
+    <div class="flow">
+      <div class="pane"><h4>Cluster on for</h4><div class="big" id="d-on">–</div></div>
+      <div class="pane"><h4>Worker-hours billed</h4><div class="big" id="d-wh">–</div></div>
+      <div class="pane"><h4>Busy-time slowdowns</h4><div class="big" id="d-slow">–</div></div>
+    </div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="Compute log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p>You usually create compute in the UI. Behind the scenes it is a small JSON definition, which you will later keep in bundles (module 01). A classic all-purpose cluster:</p>
+<pre><code>{
+  <span class="c-s">"cluster_name"</span>: <span class="c-s">"analyst-exploration"</span>,
+  <span class="c-s">"spark_version"</span>: <span class="c-s">"&lt;an LTS Databricks Runtime version&gt;"</span>,
+  <span class="c-s">"node_type_id"</span>: <span class="c-s">"&lt;a machine type from your cloud&gt;"</span>,
+  <span class="c-s">"autoscale"</span>: { <span class="c-s">"min_workers"</span>: 2, <span class="c-s">"max_workers"</span>: 8 },
+  <span class="c-s">"autotermination_minutes"</span>: 30,
+  <span class="c-s">"data_security_mode"</span>: <span class="c-s">"USER_ISOLATION"</span>
+}</code></pre>
+  <p class="cap"><code>USER_ISOLATION</code> is the API value for Standard access mode (verify in the docs, as API names change less often than UI names).</p>
+  <p>A job task on serverless needs no cluster definition at all. In a bundle it looks like this (no <code>new_cluster</code> block):</p>
+<pre><code><span class="c-k">resources</span>:
+  <span class="c-k">jobs</span>:
+    <span class="c-k">nightly_rides</span>:
+      <span class="c-k">tasks</span>:
+        - <span class="c-k">task_key</span>: clean_rides
+          <span class="c-k">notebook_task</span>:
+            <span class="c-k">notebook_path</span>: ../src/clean_rides.ipynb
+          <span class="c-c"># no cluster settings: the task runs on serverless compute</span></code></pre>
+<pre><code><span class="c-c">-- On a SQL warehouse, you just write SQL</span>
+<span class="c-k">SELECT</span> town, <span class="c-k">SUM</span>(price) <span class="c-k">AS</span> revenue
+<span class="c-k">FROM</span> bike_shop.gold.daily_revenue
+<span class="c-k">GROUP BY</span> town;</code></pre>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td>Auto-termination shorter (e.g. 10 min)</td><td>Less idle billing, but users wait for a restart after a coffee break (classic start-up takes minutes).</td></tr>
+    <tr><td>Auto-termination off</td><td>The cluster bills all night and all weekend until someone stops it.</td></tr>
+    <tr><td>Autoscaling instead of a fixed size</td><td>Workers follow the load between min and max: cheaper when quiet, faster when busy.</td></tr>
+    <tr><td>Run a scheduled job on all-purpose compute</td><td>Works, but all-purpose usually has a higher DBU rate and stays on between runs. Use jobs compute or serverless.</td></tr>
+    <tr><td>Standard access mode → Dedicated</td><td>Needed for some features (such as R, RDD APIs, GPU ML runtimes); the cluster is then tied to one user or group.</td></tr>
+    <tr><td>Classic → serverless</td><td>No sizing or start-up wait; Databricks manages scaling. Some features and settings aren't available on serverless (module 01).</td></tr>
+    <tr><td>Turn on Photon</td><td>A faster engine for SQL and DataFrame work; it can change the DBU rate. Check whether your workload benefits.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th></th><th>Serverless</th><th>All-purpose (classic)</th><th>Jobs compute (classic)</th><th>SQL warehouse</th></tr></thead><tbody>
+    <tr><td>Best for</td><td>Most new notebooks, jobs and pipelines</td><td>Interactive work needing custom setup</td><td>Scheduled jobs needing custom setup</td><td>BI dashboards and SQL</td></tr>
+    <tr><td>Start-up</td><td>Seconds</td><td>Minutes</td><td>Minutes, per run</td><td>Seconds (serverless type) to minutes</td></tr>
+    <tr><td>You configure</td><td>Almost nothing</td><td>Everything</td><td>Everything, per job</td><td>Size and scaling</td></tr>
+    <tr><td>Runs in</td><td>Databricks' account</td><td>Your account</td><td>Your account</td><td>Depends on type</td></tr>
+    <tr><td>Languages</td><td>Python and SQL (check the docs for others)</td><td>Python, SQL, Scala, R</td><td>Python, SQL, Scala, R</td><td>SQL only</td></tr>
+  </tbody></table></div>
+  <div class="grid3">
+    <div class="card"><p class="tag">SQL warehouse type</p><h3>Serverless</h3><p>Starts in seconds, full feature set. The UI default and the usual recommendation.</p></div>
+    <div class="card"><p class="tag">SQL warehouse type</p><h3>Pro</h3><p>Runs in your account; slower start. For regions without serverless or special networking.</p></div>
+    <div class="card"><p class="tag">SQL warehouse type</p><h3>Classic</h3><p>Entry-level performance, for simple interactive exploration.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>Monday's bill shows a cluster ran all weekend</td><td>Auto-termination was off and someone forgot to stop it.</td><td>Always set auto-termination; enforce it with compute policies (module 01).</td></tr>
+    <tr><td>A 5-minute nightly job waits 6 minutes for its cluster</td><td>Classic start-up dominates the run.</td><td>Run it on serverless, which starts in seconds.</td></tr>
+    <tr><td>A team's R code fails on a shared cluster</td><td>R needs Dedicated access mode on classic compute.</td><td>Use a Dedicated cluster for that team.</td></tr>
+    <tr><td>Dashboards slow down every morning at 9</td><td>Many users hit one small warehouse at once.</td><td>Let the warehouse scale out to more clusters at busy times.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>Scheduling production jobs on an all-purpose cluster is a classic wrong answer. Prefer jobs compute or serverless for scheduled work.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>Old names: "Shared" access mode is now <b>Standard</b>; "Single user" is now <b>Dedicated</b>. Questions may use either.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Autoscaling</b> (changes the number of workers while running) vs <b>auto-termination</b> (shuts the whole cluster down after idle time).</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>SQL warehouse</b> (SQL-only compute for queries and BI) vs <b>cluster</b> (general Spark compute for any language).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="1"><p>1. A nightly ETL notebook runs for 10 minutes. Which compute is the poorest choice?</p>
+      <ol class="opts"><li><button>Serverless compute for jobs</button></li><li><button>An always-on all-purpose cluster</button></li><li><button>Jobs compute created for the run</button></li><li><button>Any of these is equally good</button></li></ol>
+      <p class="why" hidden>An always-on all-purpose cluster bills between runs and usually at a higher rate. Jobs compute and serverless only run when the job does.</p></div>
+    <div class="q" data-answer="3"><p>2. What does auto-termination do?</p>
+      <ol class="opts"><li><button>Removes workers when load drops</button></li><li><button>Deletes the cluster's configuration</button></li><li><button>Stops jobs that run too long</button></li><li><button>Shuts the cluster down after a set idle time</button></li></ol>
+      <p class="why" hidden>Auto-termination stops an idle cluster so it stops billing. Removing workers under low load is autoscaling.</p></div>
+    <div class="q" data-answer="0"><p>3. Which compute is built only for SQL queries and dashboards?</p>
+      <ol class="opts"><li><button>A SQL warehouse</button></li><li><button>Jobs compute</button></li><li><button>A Dedicated cluster</button></li><li><button>The driver</button></li></ol>
+      <p class="why" hidden>SQL warehouses run SQL only and are tuned for many short queries from BI tools.</p></div>
+    <div class="q" data-answer="2"><p>4. "Single user" access mode is now called…</p>
+      <ol class="opts"><li><button>Standard</button></li><li><button>Serverless</button></li><li><button>Dedicated</button></li><li><button>Pro</button></li></ol>
+      <p class="why" hidden>Single user became Dedicated; Shared became Standard.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>Three families: serverless (managed, starts fast), classic clusters (you configure), SQL warehouses (SQL only).</li>
+    <li>Scheduled work belongs on jobs compute or serverless, not all-purpose clusters.</li>
+    <li>Autoscaling fits workers to load; auto-termination stops idle clusters billing.</li>
+    <li>Access modes: Standard (formerly Shared) and Dedicated (formerly Single user).</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#access-mode">access mode</a>
+    <a class="chip" href="../../glossary.html#all-purpose-compute">all-purpose compute</a>
+    <a class="chip" href="../../glossary.html#auto-termination">auto-termination</a>
+    <a class="chip" href="../../glossary.html#autoscaling">autoscaling</a>
+    <a class="chip" href="../../glossary.html#classic-compute">classic compute</a>
+    <a class="chip" href="../../glossary.html#compute">compute</a>
+    <a class="chip" href="../../glossary.html#databricks-runtime">Databricks Runtime</a>
+    <a class="chip" href="../../glossary.html#dbu">DBU</a>
+    <a class="chip" href="../../glossary.html#jobs-compute">jobs compute</a>
+    <a class="chip" href="../../glossary.html#photon">Photon</a>
+    <a class="chip" href="../../glossary.html#serverless-compute">serverless compute</a>
+    <a class="chip" href="../../glossary.html#sql-warehouse">SQL warehouse</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/compute/choose-compute">Compute selection recommendations</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/configure">Compute configuration reference</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/sql-warehouse/warehouse-types">SQL warehouse types</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/serverless/">Serverless compute</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  var PICK = {
+    explore: 'Serverless compute for notebooks is the usual first choice. Use an all-purpose classic cluster only if you need custom libraries, init scripts or settings serverless lacks.',
+    etl: 'Serverless compute for jobs, or jobs compute created per run. Not an always-on all-purpose cluster.',
+    bi: 'A SQL warehouse, ideally the serverless type. It speaks SQL only and handles many short queries.',
+    pipe: 'Serverless pipelines are the default recommendation. Classic pipeline compute exists when you need custom settings.',
+    special: 'Classic compute in Dedicated access mode (formerly Single user). Standard mode and serverless don\'t support everything.'
+  };
+  $('d-work').onchange = function () { $('d-pick').textContent = '→ ' + PICK[$('d-work').value]; };
+  $('d-work').onchange();
+
+  // The analyst's day in 10-minute slots from 09:00: needed workers per slot (0 = idle). Fixed pattern.
+  var DAY = [3,3,6,8,8,2,0,0,0,0,0,0, 4,4,7,7,2,0,0,0,0,0,0,0, 0,0,0,0,0,0, 5,5,3,0,0,0];
+  $('d-run').onclick = function () {
+    var term = +$('d-term').value, w = $('d-w').value, on = 0, wh = 0, slow = 0, idle = 0, running = true, restarts = 0;
+    var end = term === 0 ? 24 * 6 - 6 * 9 : DAY.length + 24; // never: runs until midnight (and beyond)
+    for (var s = 0; s < end; s++) {
+      var need = s < DAY.length ? DAY[s] : 0;
+      if (need > 0) { if (!running) { running = true; restarts++; } idle = 0; }
+      else if (running) { idle += 10; if (term && idle >= term) running = false; }
+      if (!running) continue;
+      on += 10;
+      var workers = w === 'auto' ? Math.max(2, Math.min(8, need)) : +w;
+      wh += workers * 10 / 60;
+      if (need > workers) slow++;
+    }
+    var h = function (m) { return Math.floor(m / 60) + 'h ' + String(m % 60).padStart(2, '0') + 'm'; };
+    $('d-on').textContent = term === 0 ? h(on) + '+' : h(on);
+    $('d-wh').textContent = wh.toFixed(1);
+    $('d-slow').textContent = slow + ' slot(s)';
+    log('skip', '> day simulated · auto-termination ' + (term ? term + ' min' : 'never') + ' · workers ' + (w === 'auto' ? 'autoscale 2–8' : 'fixed ' + w));
+    log(term === 0 ? 'bad' : 'ok', '  on for ' + h(on) + (term === 0 ? ' and still running at midnight' : '') + ' · ' + restarts + ' restart(s) after idling');
+    if (slow) log('bad', '  ' + slow + ' busy slot(s) needed more workers than the cluster had');
+    if (term === 10 && restarts) log('skip', '  each restart on classic compute makes the analyst wait a few minutes');
+    Course.flash($('d-wh'));
+  };
+})();
+</script>
+</body>
+</html>

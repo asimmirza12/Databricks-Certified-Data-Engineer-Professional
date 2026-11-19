@@ -76,12 +76,12 @@ IDs are ours. Weights are per section of the exam guide. Wording is our own summ
 | 00-04 | Batch vs streaming | groundwork (S1.4, S1.12) | 00-01 | [x] |
 | 00-05 | What is Apache Spark? | groundwork | 00-02 | [x] |
 | 00-06 | DataFrames and Spark SQL | groundwork (S3.1) | 00-05 | [x] |
-| 00-07 | Cloud object storage | groundwork | 00-02 | [ ] |
-| 00-08 | What is Databricks? Workspace and notebooks | groundwork | 00-05, 00-07 | [ ] |
-| 00-09 | Compute: clusters, SQL warehouses, serverless | groundwork (S1.10) | 00-08 | [ ] |
-| 00-10 | Delta Lake basics | groundwork (S5) | 00-03, 00-07 | [ ] |
-| 00-11 | Unity Catalog basics | groundwork (S6, S7) | 00-08, 00-10 | [ ] |
-| 00-12 | Medallion architecture | groundwork | 00-10, 00-11 | [ ] |
+| 00-07 | Cloud object storage | groundwork | 00-02 | [x] |
+| 00-08 | What is Databricks? Workspace and notebooks | groundwork | 00-05, 00-07 | [x] |
+| 00-09 | Compute: clusters, SQL warehouses, serverless | groundwork (S1.10) | 00-08 | [x] |
+| 00-10 | Delta Lake basics | groundwork (S5) | 00-03, 00-07 | [x] |
+| 00-11 | Unity Catalog basics | groundwork (S6, S7) | 00-08, 00-10 | [x] |
+| 00-12 | Medallion architecture | groundwork | 00-10, 00-11 | [x] |
 
 ### Module 01 — Developing Code for Data Processing (23%)
 

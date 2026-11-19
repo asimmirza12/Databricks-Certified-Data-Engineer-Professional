@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>What is Databricks? · DE Pro Study Course</title>
+<meta name="description" content="What the Databricks platform is, how its control plane and compute plane split the work, and how notebooks keep state as you run cells.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="00-08">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 00 · Lesson 08</p>
+  <h1>What is Databricks? Workspace and notebooks</h1>
+  <p class="lede">Databricks wraps Spark, storage and governance into one web platform. This lesson maps its main parts and shows how a notebook remembers things between cells.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>00 · Foundations</dd></div>
+    <div><dt>Lesson</dt><dd>08 · What is Databricks? Workspace and notebooks</dd></div>
+    <div><dt>Exam objective</dt><dd>Groundwork for bundles (S1.1), jobs (S1.5), Git folders (S8.4) and debugging (S8.1).</dd></div>
+    <div><dt>Time to read</dt><dd>~14 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq">
+    <li><a class="chip acc" href="05-what-is-spark.html">00-05 What is Apache Spark?</a></li>
+    <li><a class="chip acc" href="07-cloud-object-storage.html">00-07 Cloud object storage</a></li>
+  </ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p><span class="def">Databricks</span> is a cloud platform for data engineering, analytics and AI. It runs on AWS, Azure or Google Cloud. You open it in a web browser; it runs Spark for you, stores data in your cloud storage, and governs who can see what.</p>
+  <p>The idea of keeping all data in cheap object storage, in open table formats, and running both data engineering and analytics on it is called a <span class="def">lakehouse</span>: a data lake's low cost with a data warehouse's reliability.</p>
+  <p>Databricks splits into two halves:</p>
+  <ul>
+    <li>The <span class="def">control plane</span>: the web app and back-end services, run by Databricks. It stores your notebooks, jobs and settings.</li>
+    <li>The <span class="def">compute plane</span>: where data is actually processed. <em>Serverless</em> compute runs in Databricks' cloud account; <em>classic</em> compute runs in your own cloud account. Either way, your data stays in your storage.</li>
+  </ul>
+  <p>A <span class="def">workspace</span> is your team's space in the web app: folders of notebooks and files, jobs, pipelines, dashboards, and the data catalog.</p>
+  <p>A <span class="def">notebook</span> is a web document made of <span class="def">cells</span>. Each cell holds code (Python, SQL, Scala or R) or text. You run cells one at a time and see results under each. Variables made in one cell stay in memory for later cells: that memory is the notebook's <span class="def">state</span>, and it lives on the attached compute.</p>
+  <div class="analogy">
+    <p>Think of a shared office kitchen run by a catering company. The company's head office (control plane) keeps the recipes, rotas and rules. The actual cooking happens on stoves (compute plane), either the caterer's own (serverless) or ones installed in your building (classic). Your ingredients never leave your pantry (your cloud storage).</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 260" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">Control plane, compute plane and storage</title>
+      <desc id="dia-d">A user's browser talks to the control plane, which holds the web app and notebooks. When a cell runs, the control plane sends the command to compute, either serverless or classic. Compute reads and writes data in the customer's cloud storage, governed by Unity Catalog.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <rect x="10" y="100" width="100" height="50" rx="8" fill="var(--surface)" stroke="var(--line)"/><text x="60" y="130" text-anchor="middle">browser</text>
+        <rect x="160" y="20" width="200" height="90" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="260" y="44" text-anchor="middle" font-weight="600">control plane</text>
+        <text x="260" y="66" text-anchor="middle" font-size="11">web app · notebooks · jobs</text><text x="260" y="84" text-anchor="middle" font-size="11">Unity Catalog</text>
+        <text x="260" y="102" text-anchor="middle" font-size="11" fill="var(--muted)">run by Databricks</text>
+        <rect x="160" y="150" width="200" height="90" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="260" y="174" text-anchor="middle" font-weight="600">compute plane</text>
+        <text x="260" y="196" text-anchor="middle" font-size="11">serverless (Databricks' account)</text><text x="260" y="214" text-anchor="middle" font-size="11">classic (your account)</text>
+        <rect x="430" y="150" width="210" height="90" rx="10" fill="var(--surface)" stroke="var(--ok)"/>
+        <text x="535" y="180" text-anchor="middle" font-weight="600">your cloud storage</text><text x="535" y="202" text-anchor="middle" font-size="11">tables · volumes · files</text>
+        <text x="535" y="220" text-anchor="middle" font-size="11" fill="var(--muted)">data stays here</text>
+        <g fill="none" stroke="var(--line)" stroke-dasharray="3 4">
+          <path id="u" d="M110 120 C135 120 135 70 160 70"/><path id="c" d="M260 110 V150"/><path id="d" d="M360 195 H430"/>
+        </g>
+      </g>
+      <circle r="5" fill="var(--accent)" data-rest="135,95"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#u"/></animateMotion></circle>
+      <circle r="5" fill="var(--accent)" data-rest="260,130"><animateMotion dur="3s" begin="1s" repeatCount="indefinite"><mpath href="#c"/></animateMotion></circle>
+      <circle r="5" fill="var(--ok)" data-rest="395,195"><animateMotion dur="3s" begin="2s" repeatCount="indefinite"><mpath href="#d"/></animateMotion></circle>
+    </svg>
+    <figcaption class="cap">Notice the path of one cell run: browser → <b>control plane</b> (which holds your notebook) → <b>compute</b> (which does the work) → <b>your storage</b> (where data lives). The data never has to sit in the control plane.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: notebook state</h2>
+  <p>A tiny notebook. Run cells in different orders. Then detach the compute and see what is forgotten. (Simulated: no real Spark here.)</p>
+  <div class="stage">
+    <div class="ctrls">
+      <button type="button" id="d-all" class="primary">Run all</button>
+      <button type="button" id="d-detach">Detach and reattach compute</button>
+      <span class="chip" id="d-state">state: empty</span>
+    </div>
+    <div id="d-cells" class="quiz"></div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="Notebook log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p>A notebook has a default language. A <span class="def">magic command</span> at the top of a cell (starting with <code>%</code>) switches that one cell:</p>
+<pre><code><span class="c-c"># Cell 1 (Python, the notebook's default language)</span>
+rides = spark.read.table(<span class="c-s">"bike_shop.silver.rides"</span>)
+rides.createOrReplaceTempView(<span class="c-s">"rides_v"</span>)   <span class="c-c"># lets SQL cells see it</span>
+
+<span class="c-c"># Cell 2</span>
+<span class="c-c"># %sql</span>
+<span class="c-c"># SELECT town, COUNT(*) AS rides FROM rides_v GROUP BY town</span>
+
+<span class="c-c"># Cell 3: install a library for this notebook only</span>
+<span class="c-c"># %pip install great-tables</span>
+
+<span class="c-c"># Cell 4: run another notebook here, sharing its variables</span>
+<span class="c-c"># %run ./shared/helpers</span>
+
+<span class="c-c"># Cell 5: a text cell for notes</span>
+<span class="c-c"># %md</span>
+<span class="c-c"># ## Ride counts by town</span></code></pre>
+  <p>Notebooks are also files you can version in Git. A Python notebook saved as source looks like this:</p>
+<pre><code><span class="c-c"># Databricks notebook source</span>
+rides = spark.read.table(<span class="c-s">"bike_shop.silver.rides"</span>)
+
+<span class="c-c"># COMMAND ----------</span>
+
+display(rides.groupBy(<span class="c-s">"town"</span>).count())</code></pre>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td>Run cells out of order</td><td>A cell may use a variable that doesn't exist yet, or an old value. "Run all" from the top is the honest test.</td></tr>
+    <tr><td>Detach compute, or let it shut down</td><td>All in-memory state (variables, temp views, <code>%pip</code> installs) is lost. Code and saved tables remain.</td></tr>
+    <tr><td><code>%pip install</code> in a notebook</td><td>The library is available to this notebook's session only. Module 01 covers proper dependency management.</td></tr>
+    <tr><td><code>%run ./other_notebook</code></td><td>Runs that notebook inside this one, so its functions and variables become available here.</td></tr>
+    <tr><td>Serverless instead of classic compute</td><td>No machines to manage and fast start-up; compute runs in Databricks' account. Some low-level features differ (lesson 00-09).</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th></th><th>Control plane</th><th>Compute plane</th></tr></thead><tbody>
+    <tr><td>Runs</td><td>Web app, notebook storage, job scheduler, Unity Catalog services</td><td>Spark clusters, SQL warehouses, serverless compute</td></tr>
+    <tr><td>Who manages it</td><td>Databricks</td><td>Databricks (serverless) or you (classic, in your cloud account)</td></tr>
+    <tr><td>Touches your data?</td><td>Holds code and metadata</td><td>Reads and writes your data</td></tr>
+  </tbody></table></div>
+  <h3>Things you'll find in a workspace</h3>
+  <div class="grid3">
+    <div class="card"><h3>Notebooks and files</h3><p>Code, organised in folders. Git folders link them to a Git repository (module 08).</p></div>
+    <div class="card"><h3>Catalog</h3><p>Browse catalogs, schemas, tables and volumes governed by Unity Catalog (lesson 00-11).</p></div>
+    <div class="card"><h3>Compute</h3><p>Clusters, SQL warehouses and serverless settings (lesson 00-09).</p></div>
+    <div class="card"><h3>Jobs and pipelines</h3><p>Lakeflow Jobs schedule work; Lakeflow pipelines define data flows (module 01).</p></div>
+    <div class="card"><h3>SQL editor and dashboards</h3><p>Write queries and build charts for analysts.</p></div>
+    <div class="card"><h3>Settings and permissions</h3><p>Who can use which workspace objects (module 06).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>A notebook works for its author but fails in a scheduled job</td><td>The author ran cells out of order, or relied on state from an earlier session.</td><td>Restart and "Run all" before scheduling.</td></tr>
+    <tr><td>After lunch, "name 'rides' is not defined"</td><td>The compute auto-terminated and memory was cleared.</td><td>Re-run from the top; keep important results in tables.</td></tr>
+    <tr><td>Ten notebooks copy-paste the same cleaning function</td><td>A bug fix must be made ten times.</td><td>Put shared code in a Python module or package (module 01).</td></tr>
+    <tr><td>A colleague asks to "just email the data"</td><td>Data leaves governance.</td><td>Grant them access to the table in Unity Catalog instead.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>"Databricks stores my table data in the control plane." No: table data lives in cloud storage. The control plane holds code, settings and metadata services.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>Notebook state is not saved. Variables, temp views and <code>%pip</code> installs disappear when compute detaches or restarts.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Workspace</b> (a team's environment in the web app) vs <b>account</b> (the top level that can hold many workspaces and shared settings).</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><code>%run</code> (runs another notebook inline, sharing variables) vs running a notebook as a <b>job task</b> (separate run, separate state).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="2"><p>1. Where does the data in your Databricks tables live?</p>
+      <ol class="opts"><li><button>In the control plane</button></li><li><button>On the notebook page</button></li><li><button>In cloud object storage</button></li><li><button>On the driver's disk</button></li></ol>
+      <p class="why" hidden>Tables are files in cloud storage. The control plane runs the web app and services; compute reads and writes the storage.</p></div>
+    <div class="q" data-answer="0"><p>2. Your compute restarts. What is lost?</p>
+      <ol class="opts"><li><button>Variables, temp views and notebook-scoped libraries</button></li><li><button>The notebook's code</button></li><li><button>Saved tables</button></li><li><button>The workspace</button></li></ol>
+      <p class="why" hidden>Notebook state lives in memory on compute. Code is stored in the workspace and tables in storage, so both survive.</p></div>
+    <div class="q" data-answer="3"><p>3. In a Python notebook, how do you run one cell as SQL?</p>
+      <ol class="opts"><li><button>Rename the notebook to .sql</button></li><li><button>Use a SQL warehouse instead</button></li><li><button>Wrap the query in quotes</button></li><li><button>Start the cell with <code>%sql</code></button></li></ol>
+      <p class="why" hidden>Magic commands like <code>%sql</code>, <code>%md</code> and <code>%pip</code> change what one cell does. (Calling <code>spark.sql("…")</code> in Python also works.)</p></div>
+    <div class="q" data-answer="1"><p>4. Serverless compute runs where?</p>
+      <ol class="opts"><li><button>In your own cloud account</button></li><li><button>In Databricks' cloud account, in your workspace's region</button></li><li><button>On your laptop</button></li><li><button>In the browser</button></li></ol>
+      <p class="why" hidden>Serverless compute is managed by Databricks in its own account. Classic compute runs in your cloud account.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>Databricks = Spark + storage + governance as one web platform: a lakehouse.</li>
+    <li>The control plane holds the app and your code; the compute plane processes data; data stays in your storage.</li>
+    <li>Notebooks run cells in Python, SQL, Scala or R; magic commands switch a cell's behaviour.</li>
+    <li>Notebook state is in memory and vanishes when compute detaches. Save results in tables.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#cell">cell</a>
+    <a class="chip" href="../../glossary.html#compute-plane">compute plane</a>
+    <a class="chip" href="../../glossary.html#control-plane">control plane</a>
+    <a class="chip" href="../../glossary.html#databricks">Databricks</a>
+    <a class="chip" href="../../glossary.html#lakehouse">lakehouse</a>
+    <a class="chip" href="../../glossary.html#magic-command">magic command</a>
+    <a class="chip" href="../../glossary.html#notebook">notebook</a>
+    <a class="chip" href="../../glossary.html#notebook-state">notebook state</a>
+    <a class="chip" href="../../glossary.html#workspace">workspace</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/getting-started/high-level-architecture">High-level architecture</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/workspace/">Navigate the workspace</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/notebooks/">Databricks notebooks</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var CELLS = [
+    { code: 'rides = spark.read.table("bike_shop.silver.rides")', needs: [], makes: ['rides'], out: 'DataFrame[ride_id, town, price]' },
+    { code: 'rides.createOrReplaceTempView("rides_v")', needs: ['rides'], makes: ['rides_v'], out: 'temp view rides_v created' },
+    { code: '%sql\nSELECT town, COUNT(*) FROM rides_v GROUP BY town', needs: ['rides_v'], makes: [], out: 'Northport 3 · Riverside 3 · Hillview 2' },
+    { code: 'print(f"{rides.count()} rides")', needs: ['rides'], makes: [], out: '8 rides' }
+  ];
+  var state, count;
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+
+  function runCell(i) {
+    var c = CELLS[i], missing = c.needs.filter(function (n) { return !state[n]; });
+    count++;
+    var out = $('d-out' + i);
+    if (missing.length) {
+      out.textContent = '[' + count + '] ' + (missing[0] === 'rides_v' ? 'Error: TABLE_OR_VIEW_NOT_FOUND rides_v' : 'Error: name "' + missing[0] + '" is not defined');
+      out.className = 'item bad';
+      log('bad', '> cell ' + (i + 1) + ' failed: needs ' + missing.join(', ') + ' from an earlier cell');
+    } else {
+      c.makes.forEach(function (n) { state[n] = true; });
+      out.textContent = '[' + count + '] ' + c.out;
+      out.className = 'item ok';
+      log('ok', '> cell ' + (i + 1) + ' ran' + (c.makes.length ? ' · now in memory: ' + c.makes.join(', ') : ''));
+    }
+    paint();
+  }
+  function paint() {
+    var k = Object.keys(state);
+    $('d-state').textContent = 'state: ' + (k.length ? k.join(', ') : 'empty');
+  }
+  var box = $('d-cells');
+  CELLS.forEach(function (c, i) {
+    var d = document.createElement('div'); d.className = 'q';
+    var pre = document.createElement('pre'); pre.textContent = c.code;
+    var b = document.createElement('button'); b.type = 'button'; b.textContent = '▶ Run cell ' + (i + 1); b.onclick = function () { runCell(i); };
+    var o = document.createElement('div'); o.id = 'd-out' + i; o.className = 'cap'; o.textContent = 'not run';
+    d.append(pre, b, o); box.appendChild(d);
+  });
+  $('d-all').onclick = function () { log('skip', '> run all, top to bottom'); CELLS.forEach(function (_, i) { runCell(i); }); };
+  $('d-detach').onclick = function () {
+    state = {}; count = 0;
+    CELLS.forEach(function (_, i) { var o = $('d-out' + i); o.className = 'cap'; o.textContent = 'not run'; });
+    log('bad', '> compute detached · memory cleared: variables and temp views are gone. Code is kept.');
+    paint();
+  };
+  state = {}; count = 0; paint();
+  log('skip', 'try running cell 3 first, then use Run all');
+})();
+</script>
+</body>
+</html>

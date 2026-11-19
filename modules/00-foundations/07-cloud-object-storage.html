@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cloud object storage · DE Pro Study Course</title>
+<meta name="description" content="Where lakehouse data physically lives: buckets, objects and keys, why folders are an illusion, and how Databricks reaches the storage safely.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="00-07">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 00 · Lesson 07</p>
+  <h1>Cloud object storage</h1>
+  <p class="lede">Every table, file and checkpoint you will meet lives in cloud object storage. It is cheap and nearly endless, but it does not behave like the disk in your laptop. Those differences explain many design choices later.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>00 · Foundations</dd></div>
+    <div><dt>Lesson</dt><dd>07 · Cloud object storage</dd></div>
+    <div><dt>Exam objective</dt><dd>Groundwork for ingestion from cloud storage (S2.1), managed vs external storage (S5.1) and governed storage access (S6.1).</dd></div>
+    <div><dt>Time to read</dt><dd>~14 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq"><li><a class="chip acc" href="02-files-vs-tables.html">00-02 Files vs tables</a></li></ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p><span class="def">Cloud object storage</span> is a storage service you rent from a cloud provider: Amazon S3, Azure Data Lake Storage (ADLS) or Google Cloud Storage (GCS). You pay for what you store, and it grows without limit.</p>
+  <p>Storage is split into <span class="def">buckets</span> (Azure calls them containers). A bucket holds <span class="def">objects</span>. An object is a file plus a little metadata, found by its <span class="def">key</span>: its full name, like <code>landing/rides/2026/11/19/rides_0001.json</code>.</p>
+  <p>Here is the surprise: there are no real folders. The slashes are just characters in the key. Tools <em>show</em> folders by grouping keys that share a beginning, called a <span class="def">prefix</span>. So "rename a folder" really means copying and deleting every object under that prefix, one by one.</p>
+  <p>Objects are also written whole. You cannot change one line inside an object; you replace the entire object. That is why table formats like Delta Lake write <em>new</em> files and record changes in a log instead of editing files in place.</p>
+  <p>On Databricks, you normally reach storage through Unity Catalog (lesson 00-11). It keeps the cloud passwords, called <span class="def">credentials</span>, and decides who may read which paths. A <span class="def">volume</span> gives files a friendly governed path like <code>/Volumes/bike_shop/raw/landing/</code>.</p>
+  <div class="analogy">
+    <p>Object storage is a giant coat-check room. You hand over a coat, get a ticket with a long number, and the attendant can find it instantly by that ticket. There are no shelves you can rearrange, and to change a button you hand in a whole new coat. If you want "everything from table 12", the attendant reads every ticket starting with 12.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 250" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">Folders are prefixes of flat keys</title>
+      <desc id="dia-d">On the left, a folder tree as tools display it. On the right, the same bucket as it really is: a flat list of keys. Listing the prefix rides/2026/11/ simply picks out the keys that start with it.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <text x="20" y="22" font-weight="600">WHAT TOOLS SHOW</text>
+        <text x="20" y="50">📁 rides/</text><text x="40" y="74">📁 2026/</text><text x="60" y="98">📁 10/</text><text x="60" y="122">📁 11/</text>
+        <text x="80" y="146" font-size="11">a.json</text><text x="80" y="168" font-size="11">b.json</text>
+        <text x="340" y="22" font-weight="600">WHAT IS REALLY STORED</text>
+        <g fill="var(--surface)" stroke="var(--line)">
+          <rect x="340" y="36" width="300" height="28" rx="4"/><rect x="340" y="70" width="300" height="28" rx="4"/><rect x="340" y="104" width="300" height="28" rx="4"/><rect x="340" y="138" width="300" height="28" rx="4"/>
+        </g>
+        <text x="350" y="55" font-size="11">rides/2026/10/x.json</text>
+        <text x="350" y="89" font-size="11">rides/2026/11/a.json</text>
+        <text x="350" y="123" font-size="11">rides/2026/11/b.json</text>
+        <text x="350" y="157" font-size="11">weather/2026/11/c.json</text>
+        <rect x="338" y="68" width="304" height="66" rx="6" fill="none" stroke="var(--ok)" stroke-width="3">
+          <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.3;.4;.9;1" dur="4s" repeatCount="indefinite"/>
+        </rect>
+        <text x="340" y="196" font-size="11">LIST prefix "rides/2026/11/"</text>
+        <text x="340" y="214" font-size="11" fill="var(--muted)">= every key that begins with it (green)</text>
+        <path id="scan" d="M330 50 V160" fill="none"/>
+        <text x="20" y="214" font-size="11" fill="var(--muted)">the tree is drawn from slashes in the keys</text>
+      </g>
+      <polygon points="0,-6 10,0 0,6" fill="var(--accent)" data-rest="322,84"><animateMotion dur="4s" repeatCount="indefinite"><mpath href="#scan"/></animateMotion></polygon>
+    </svg>
+    <figcaption class="cap">Notice: the folder tree on the left is <b>drawn from the slashes</b>. Storage itself is a flat list of keys. Listing a "folder" means <b>scanning keys for a prefix</b> (the arrow and green box).</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: a bucket with no folders</h2>
+  <p>Each button shows how many storage requests the action really takes. Requests cost time and money, so this is what data engineers count.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Files per day <select id="d-n"><option>3</option><option selected>50</option><option>2000</option></select></label>
+      <button type="button" id="d-list">List rides/2026/11/19/</button>
+      <button type="button" id="d-rename">Rename rides/ → trips/</button>
+      <button type="button" id="d-edit">Fix one row in one file</button>
+      <button type="button" id="d-reset">Reset</button>
+    </div>
+    <div class="flow">
+      <div class="pane"><h4>Bucket: bike-shop-landing</h4><div id="d-keys"></div></div>
+      <div class="pane"><h4>Requests sent</h4><div class="big" id="d-req">0</div><p class="cap" id="d-note">Pick an action.</p></div>
+    </div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="Storage log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p>The same storage, addressed three ways. Prefer the governed volume path:</p>
+<pre><code><span class="c-c"># Raw cloud URIs (each cloud has its own scheme). Unity Catalog checks you may use them.</span>
+s3_path   = <span class="c-s">"s3://bike-shop-landing/rides/2026/11/19/"</span>
+adls_path = <span class="c-s">"abfss://landing@bikeshopstore.dfs.core.windows.net/rides/2026/11/19/"</span>
+gcs_path  = <span class="c-s">"gs://bike-shop-landing/rides/2026/11/19/"</span>
+
+<span class="c-c"># A Unity Catalog volume: a governed, friendly path to the same kind of storage</span>
+vol_path = <span class="c-s">"/Volumes/bike_shop/raw/landing/rides/2026/11/19/"</span>
+
+<span class="c-c"># List what's there (dbutils is a Databricks notebook helper)</span>
+display(dbutils.fs.ls(vol_path))
+
+<span class="c-c"># Read it like any other files</span>
+rides = spark.read.json(vol_path)</code></pre>
+<pre><code><span class="c-c">-- Create a managed volume to hold raw files</span>
+<span class="c-k">CREATE VOLUME IF NOT EXISTS</span> bike_shop.raw.landing;
+
+<span class="c-c">-- List files in it with SQL</span>
+<span class="c-k">LIST</span> <span class="c-s">'/Volumes/bike_shop/raw/landing/rides/'</span>;</code></pre>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td>Use a volume path instead of a raw <code>s3://</code> URI</td><td>Same files, but access goes through Unity Catalog permissions and you never handle cloud keys.</td></tr>
+    <tr><td>Write millions of tiny files</td><td>Listing and opening each one costs a request, so reads crawl. Bigger files (lesson 00-10, module 05) are faster.</td></tr>
+    <tr><td>"Rename" a folder with many files</td><td>Every object is copied and deleted. Slow and costly for big prefixes; avoid renaming data folders.</td></tr>
+    <tr><td>Change one row in a file</td><td>The whole object is rewritten. Table formats handle this for you by writing new files and logging the change.</td></tr>
+    <tr><td>Use DBFS mounts (old pattern)</td><td>Deprecated: mounts skip Unity Catalog governance and don't work with serverless. Use volumes or external locations.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th></th><th>Laptop disk</th><th>Cloud object storage</th></tr></thead><tbody>
+    <tr><td>Folders</td><td>Real</td><td>An illusion made from key prefixes</td></tr>
+    <tr><td>Edit part of a file</td><td>Yes</td><td>No: replace the whole object</td></tr>
+    <tr><td>Rename a folder</td><td>Instant</td><td>Copy + delete every object</td></tr>
+    <tr><td>Size limit</td><td>The disk</td><td>Practically none</td></tr>
+    <tr><td>Shared by many machines at once</td><td>No</td><td>Yes: that's why Spark clusters use it</td></tr>
+  </tbody></table></div>
+  <div class="grid3">
+    <div class="card"><p class="tag">AWS</p><h3>Amazon S3</h3><p>Paths start <code>s3://</code>. Buckets hold objects.</p></div>
+    <div class="card"><p class="tag">Azure</p><h3>ADLS Gen2</h3><p>Paths start <code>abfss://</code>. Containers hold objects.</p></div>
+    <div class="card"><p class="tag">Google Cloud</p><h3>Cloud Storage</h3><p>Paths start <code>gs://</code>. Buckets hold objects.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>An app writes one tiny JSON file per event</td><td>Millions of small files; listing alone takes minutes.</td><td>Ingest with Auto Loader, which tracks new files efficiently (module 02), and write tables in bigger files.</td></tr>
+    <tr><td>Someone pastes a cloud access key into a notebook</td><td>The key leaks to anyone who sees the notebook.</td><td>Let Unity Catalog hold credentials; use volumes and external locations.</td></tr>
+    <tr><td>Old code uses <code>/mnt/landing</code></td><td>It breaks on serverless and bypasses governance.</td><td>Move it to a volume path under <code>/Volumes/</code>.</td></tr>
+    <tr><td>A team renames a 2 TB data folder</td><td>Hours of copying, and readers see half-moved data.</td><td>Don't rename storage; change the table or volume that points at it.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>Answers that use DBFS mounts or put access keys in code are almost always wrong on a modern exam. Look for volumes, external locations and Unity Catalog permissions.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>"Just edit the file in place." Object storage can't; table formats write new files and log the change instead.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Volume</b> (governed files, path <code>/Volumes/…</code>) vs <b>table</b> (governed rows and columns). Both live under a Unity Catalog schema.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Bucket/container</b> (a cloud storage unit) vs <b>catalog</b> (a Unity Catalog container for schemas). One is storage, one is organisation.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="1"><p>1. In object storage, what is a "folder" really?</p>
+      <ol class="opts"><li><button>A separate storage device</button></li><li><button>A shared prefix of object keys</button></li><li><button>A special object that holds others</button></li><li><button>A Unity Catalog schema</button></li></ol>
+      <p class="why" hidden>Storage is flat. Tools group keys that start with the same text and draw them as folders.</p></div>
+    <div class="q" data-answer="3"><p>2. You need to change one row in a 500 MB file in object storage. What actually happens?</p>
+      <ol class="opts"><li><button>Only that row's bytes are changed</button></li><li><button>The storage refuses any change</button></li><li><button>The row is appended to the end</button></li><li><button>The whole object is rewritten</button></li></ol>
+      <p class="why" hidden>Objects are replaced as a whole. That's why table formats write new files and record changes in a log.</p></div>
+    <div class="q" data-answer="0"><p>3. What is the recommended way to give Databricks users governed access to raw files?</p>
+      <ol class="opts"><li><button>A Unity Catalog volume</button></li><li><button>A DBFS mount</button></li><li><button>Access keys in a notebook</button></li><li><button>Copying the files to the driver</button></li></ol>
+      <p class="why" hidden>Volumes are governed by Unity Catalog. Mounts are deprecated and bypass governance; keys in code leak.</p></div>
+    <div class="q" data-answer="2"><p>4. Why do Spark clusters keep data in object storage rather than on their own disks?</p>
+      <ol class="opts"><li><button>Object storage allows editing files in place</button></li><li><button>Cluster disks can't hold Parquet</button></li><li><button>Many machines can read it at once, and it outlives any cluster</button></li><li><button>It has real folders</button></li></ol>
+      <p class="why" hidden>Storage is shared and durable. Clusters can be created and deleted while the data stays put.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>Object storage (S3, ADLS, GCS) holds objects in buckets, found by key.</li>
+    <li>Folders are just key prefixes; renaming means copying every object.</li>
+    <li>Objects are written whole, so table formats add new files instead of editing.</li>
+    <li>Reach storage through Unity Catalog volumes and external locations, not mounts or keys in code.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#bucket">bucket</a>
+    <a class="chip" href="../../glossary.html#cloud-object-storage">cloud object storage</a>
+    <a class="chip" href="../../glossary.html#credential">credential</a>
+    <a class="chip" href="../../glossary.html#dbfs-mount">DBFS mount</a>
+    <a class="chip" href="../../glossary.html#key">key</a>
+    <a class="chip" href="../../glossary.html#object">object</a>
+    <a class="chip" href="../../glossary.html#prefix">prefix</a>
+    <a class="chip" href="../../glossary.html#volume">volume</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/connect/unity-catalog/cloud-storage/">Connect to cloud object storage using Unity Catalog</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/volumes/">What are Unity Catalog volumes?</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/dbfs/">What is DBFS? (legacy)</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var prefix, req, edited;
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  var n = function () { return +$('d-n').value; };
+  var days = ['17', '18', '19'];
+
+  function keys() {
+    var out = [], show = Math.min(n(), 2);
+    days.forEach(function (d) { for (var i = 1; i <= show; i++) out.push(prefix + '2026/11/' + d + '/rides_' + String(i).padStart(4, '0') + '.json'); });
+    out.push('weather/2026/11/19/obs_0001.json');
+    return out;
+  }
+  function draw(hl) {
+    var box = $('d-keys'); box.textContent = '';
+    keys().forEach(function (k) {
+      var d = document.createElement('div');
+      d.className = 'item' + (hl && k.indexOf(hl) === 0 ? ' ok' : '');
+      d.textContent = (hl && k.indexOf(hl) === 0 ? '✓ ' : '') + k + (edited && k === prefix + '2026/11/19/rides_0001.json' ? '  (rewritten)' : '');
+      box.appendChild(d);
+    });
+    if (n() > 2) box.appendChild(Object.assign(document.createElement('p'), { className: 'cap', textContent: '… ' + (n() - 2) + ' more files per day not shown' }));
+    $('d-req').textContent = req.toLocaleString();
+  }
+  $('d-list').onclick = function () {
+    var p = prefix + '2026/11/19/', pages = Math.max(1, Math.ceil(n() / 1000));
+    req += pages;
+    log('ok', '> LIST prefix "' + p + '" · ' + pages + ' request(s), ' + n() + ' key(s) match');
+    $('d-note').textContent = 'A list is one request per page of up to 1,000 keys.';
+    draw(p); Course.flash($('d-req'));
+  };
+  $('d-rename').onclick = function () {
+    if (prefix === 'trips/') { log('skip', 'already renamed'); return; }
+    var objs = n() * days.length, cost = objs * 2 + Math.ceil(objs / 1000);
+    req += cost; prefix = 'trips/';
+    log('bad', '> rename rides/ → trips/: list, then COPY + DELETE each of ' + objs.toLocaleString() + ' objects');
+    log('bad', '  ' + cost.toLocaleString() + ' requests. Readers may see a half-renamed folder meanwhile');
+    $('d-note').textContent = 'There is no folder to rename: every object moves.';
+    draw(); Course.flash($('d-req'));
+  };
+  $('d-edit').onclick = function () {
+    req += 2; edited = true;
+    log('bad', '> fix 1 row: GET the whole object, change it in memory, PUT the whole object back');
+    log('skip', '  2 requests, but the full file is downloaded and uploaded again');
+    $('d-note').textContent = 'Objects are replaced whole, never edited in place.';
+    draw(); Course.flash($('d-req'));
+  };
+  function reset(m) { prefix = 'rides/'; req = 0; edited = false; if (m) log('skip', m); $('d-note').textContent = 'Pick an action.'; draw(); }
+  $('d-reset').onclick = function () { reset('reset'); };
+  $('d-n').onchange = function () { reset('now ' + n() + ' files per day'); };
+  reset();
+})();
+</script>
+</body>
+</html>
