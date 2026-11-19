@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Structuring a modular Python bundle project · DE Pro Study Course</title>
+<meta name="description" content="Lay out a bundle so shared Python code is a package, resources are split into files, tests run in CI, and a wheel is built and deployed automatically.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="01-02">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 01 · Lesson 02</p>
+  <h1>Structuring a modular Python bundle project</h1>
+  <p class="lede">A bundle with one giant notebook works, but it can't be tested, reused or reviewed well. This lesson shows a project layout that splits code into a package, resources into files, and lets CI build and deploy it.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>01 · Developing Code for Data Processing (23%)</dd></div>
+    <div><dt>Lesson</dt><dd>02 · Structuring a modular Python bundle project</dd></div>
+    <div><dt>Exam objective</dt><dd>S1.1 — Lay out a Python project as a bundle so pieces are modular and CI/CD can deploy it.</dd></div>
+    <div><dt>Time to read</dt><dd>~17 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq"><li><a class="chip acc" href="01-bundles-what-and-why.html">01-01 Bundles: what and why</a></li></ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p><span class="def">Modular</span> code is split into small parts that each do one job and can be reused. In Python, a file of functions is a <span class="def">module</span>, and a folder of modules you can install is a <span class="def">package</span>.</p>
+  <p>A well-structured bundle project keeps four kinds of things apart:</p>
+  <ul>
+    <li><b>Configuration</b>: <code>databricks.yml</code> for bundle-wide settings and targets, and one YAML file per job or pipeline under <code>resources/</code>, pulled in with <code>include</code>.</li>
+    <li><b>Library code</b>: transformation functions in a Python package under <code>src/</code>. No notebook magic, no hard-coded table names: plain functions that take a DataFrame and return a DataFrame.</li>
+    <li><b>Entry points</b>: thin notebooks, scripts or pipeline source files that read parameters, call the package, and write results.</li>
+    <li><b>Tests</b>: under <code>tests/</code>, run with a test framework like pytest (lesson 01-22).</li>
+  </ul>
+  <p>The package is described by <code>pyproject.toml</code> and built into a <span class="def">wheel</span>: a single installable <code>.whl</code> file. The bundle's <span class="def">artifacts</span> section builds the wheel during <code>bundle deploy</code>, uploads it, and job tasks install it. The current <code>default-python</code> template uses <code>uv</code> (a fast Python packaging tool) and <code>pyproject.toml</code> for this.</p>
+  <p><span class="def">CI/CD</span> (continuous integration and continuous delivery) means every change is tested automatically, and passing changes are deployed automatically. A modular layout is what makes that possible: tests can import the package without a cluster, and the CLI deploys the same project to each target.</p>
+  <div class="analogy">
+    <p>Think of a restaurant kitchen. Recipes (library code) live in one shared binder, not scribbled on each plate. Order tickets (entry points) just say "make recipe 12 for table 4". The menu and opening hours (configuration) are posted separately. A taster (tests) checks each recipe change before it reaches customers. Change the binder once, and every dish that uses that recipe improves.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 260" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">From a commit to a deployed wheel</title>
+      <desc id="dia-d">A pull request triggers CI. CI runs unit tests, validates the bundle, builds the wheel from pyproject.toml, and deploys to the target. The workspace receives the wheel, the entry-point files and the job definition; the job task installs the wheel and calls its functions.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <g fill="var(--surface)" stroke="var(--line)">
+          <rect x="10" y="30" width="110" height="44" rx="8"/><rect x="140" y="30" width="110" height="44" rx="8"/><rect x="270" y="30" width="110" height="44" rx="8"/><rect x="400" y="30" width="110" height="44" rx="8"/>
+        </g>
+        <rect x="530" y="30" width="120" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="65" y="57" text-anchor="middle" font-size="11">git push</text><text x="195" y="57" text-anchor="middle" font-size="11">pytest</text>
+        <text x="325" y="57" text-anchor="middle" font-size="11">bundle validate</text><text x="455" y="57" text-anchor="middle" font-size="11">uv build --wheel</text>
+        <text x="590" y="57" text-anchor="middle" font-size="11">bundle deploy</text>
+        <rect x="140" y="130" width="510" height="110" rx="10" fill="var(--surface)" stroke="var(--ok)"/>
+        <text x="395" y="152" text-anchor="middle" font-weight="600">target workspace</text>
+        <rect x="160" y="166" width="150" height="56" rx="6" fill="var(--code-bg)" stroke="var(--line)"/><text x="235" y="190" text-anchor="middle" font-size="11">bike_shop_etl</text><text x="235" y="208" text-anchor="middle" font-size="11">-0.3.0.whl</text>
+        <rect x="320" y="166" width="150" height="56" rx="6" fill="var(--code-bg)" stroke="var(--line)"/><text x="395" y="190" text-anchor="middle" font-size="11">entry points</text><text x="395" y="208" text-anchor="middle" font-size="11">(notebooks)</text>
+        <rect x="480" y="166" width="150" height="56" rx="6" fill="var(--code-bg)" stroke="var(--line)"/><text x="555" y="190" text-anchor="middle" font-size="11">job: nightly</text><text x="555" y="208" text-anchor="middle" font-size="11">installs the wheel</text>
+        <text x="10" y="196" font-size="11" fill="var(--warn)">tests fail?</text><text x="10" y="212" font-size="11" fill="var(--warn)">stop here ✗</text>
+        <g fill="none" stroke="var(--line)" stroke-dasharray="3 4"><path id="p" d="M120 52 H530"/><path id="d" d="M590 74 V130"/></g>
+      </g>
+      <circle r="5" fill="var(--accent)" data-rest="330,52"><animateMotion dur="4s" repeatCount="indefinite"><mpath href="#p"/></animateMotion></circle>
+      <circle r="5" fill="var(--ok)" data-rest="590,100"><animateMotion dur="2s" begin="2s" repeatCount="indefinite"><mpath href="#d"/></animateMotion></circle>
+    </svg>
+    <figcaption class="cap">Notice the order: <b>test first</b>, then validate, build and deploy. If tests fail, nothing reaches the workspace. The deploy carries <b>three things</b>: the wheel, the thin entry points, and the job definitions.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: what does a change touch?</h2>
+  <p>Pick a change. The demo highlights the files you edit and the CI steps that run. Then compare with a single-notebook project.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Change <select id="d-change">
+        <option value="fn">Fix a bug in the price-cleaning function</option>
+        <option value="job">Add a new weekly job</option>
+        <option value="dep">Add a new Python dependency</option>
+        <option value="cat">Point prod at a different catalog</option>
+      </select></label>
+      <label class="tog"><input type="checkbox" id="d-mono"> Single giant notebook instead</label>
+      <button type="button" class="primary" id="d-go">Show impact</button>
+    </div>
+    <div class="flow">
+      <div class="pane"><h4>Project files</h4><div id="d-tree"></div></div>
+      <div class="pane"><h4>CI pipeline</h4><div id="d-ci"></div></div>
+    </div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="Impact log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p>A typical layout (the <code>default-python</code> template is similar; check the current template with <code>databricks bundle init</code>):</p>
+<pre><code>bike_shop_etl/
+├── databricks.yml              <span class="c-c"># bundle name, include, artifacts, targets</span>
+├── pyproject.toml              <span class="c-c"># package metadata and dependencies</span>
+├── resources/
+│   ├── nightly_rides.job.yml   <span class="c-c"># one file per job or pipeline</span>
+│   └── rides.pipeline.yml
+├── src/
+│   ├── bike_shop_etl/          <span class="c-c"># the package: plain, testable functions</span>
+│   │   ├── __init__.py
+│   │   ├── transforms.py
+│   │   └── main.py             <span class="c-c"># entry point for a wheel task</span>
+│   └── notebooks/clean_rides.ipynb   <span class="c-c"># thin entry point</span>
+├── tests/
+│   └── test_transforms.py
+└── .github/workflows/deploy.yml     <span class="c-c"># CI/CD</span></code></pre>
+  <p><code>databricks.yml</code> pulls the resource files in and builds the wheel:</p>
+<pre><code><span class="c-k">bundle</span>:
+  <span class="c-k">name</span>: bike_shop_etl
+
+<span class="c-k">include</span>:
+  - resources/*.yml
+
+<span class="c-k">artifacts</span>:
+  <span class="c-k">bike_shop_wheel</span>:
+    <span class="c-k">type</span>: whl
+    <span class="c-k">build</span>: uv build --wheel     <span class="c-c"># runs during bundle deploy</span>
+    <span class="c-k">path</span>: .
+
+<span class="c-k">targets</span>:
+  <span class="c-k">dev</span>:  { <span class="c-k">mode</span>: development, <span class="c-k">default</span>: <span class="c-k">true</span> }
+  <span class="c-k">prod</span>: { <span class="c-k">mode</span>: production, <span class="c-k">variables</span>: { <span class="c-k">catalog</span>: prod } }</code></pre>
+  <p><code>resources/nightly_rides.job.yml</code> runs a function from the wheel on serverless:</p>
+<pre><code><span class="c-k">resources</span>:
+  <span class="c-k">jobs</span>:
+    <span class="c-k">nightly_rides</span>:
+      <span class="c-k">name</span>: nightly_rides
+      <span class="c-k">tasks</span>:
+        - <span class="c-k">task_key</span>: clean
+          <span class="c-k">python_wheel_task</span>:
+            <span class="c-k">package_name</span>: bike_shop_etl
+            <span class="c-k">entry_point</span>: main             <span class="c-c"># from [project.scripts] in pyproject.toml</span>
+            <span class="c-k">parameters</span>: [<span class="c-s">"--catalog"</span>, <span class="c-s">"${var.catalog}"</span>]
+          <span class="c-k">environment_key</span>: default        <span class="c-c"># required for wheel tasks on serverless</span>
+      <span class="c-k">environments</span>:
+        - <span class="c-k">environment_key</span>: default
+          <span class="c-k">spec</span>:
+            <span class="c-k">environment_version</span>: <span class="c-s">"4"</span>      <span class="c-c"># pick a current version; check the docs</span>
+            <span class="c-k">dependencies</span>:
+              - ../dist/*.whl           <span class="c-c"># the wheel built by artifacts</span></code></pre>
+  <p>The package function is plain PySpark, so tests can call it directly:</p>
+<pre><code><span class="c-c"># src/bike_shop_etl/transforms.py</span>
+<span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> DataFrame, functions <span class="c-k">as</span> F
+
+<span class="c-k">def</span> clean_prices(df: DataFrame) -&gt; DataFrame:
+    <span class="c-s">"""Keep rides with a positive price, typed as a decimal."""</span>
+    <span class="c-k">return</span> (df.withColumn(<span class="c-s">"price"</span>, F.col(<span class="c-s">"price"</span>).cast(<span class="c-s">"decimal(8,2)"</span>))
+              .where(F.col(<span class="c-s">"price"</span>) &gt; 0))</code></pre>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td><code>include: [resources/*.yml]</code></td><td>Each job or pipeline lives in its own file. Smaller diffs, fewer merge conflicts.</td></tr>
+    <tr><td><code>artifacts</code> with <code>type: whl</code></td><td>The wheel is built and uploaded on every deploy, so the job always runs the code from this commit.</td></tr>
+    <tr><td>No <code>build</code> command given</td><td>The default is a legacy <code>setup.py bdist_wheel</code> build; set <code>uv build --wheel</code> (or similar) for <code>pyproject.toml</code> projects.</td></tr>
+    <tr><td>Logic written inside notebooks instead of the package</td><td>Hard to unit-test and reuse; every notebook copies the same code.</td></tr>
+    <tr><td>Hard-coded table names</td><td>The same code can't run against dev and prod. Pass the catalog as a parameter from a bundle variable.</td></tr>
+    <tr><td>Bump the version in <code>pyproject.toml</code></td><td>The wheel file name changes, which makes it clear which build a job ran.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th></th><th>One big notebook</th><th>Modular bundle project</th></tr></thead><tbody>
+    <tr><td>Unit tests</td><td>Hard: logic tangled with I/O and widgets</td><td>Easy: import functions and test them</td></tr>
+    <tr><td>Reuse across jobs</td><td>Copy and paste</td><td>Import from the package</td></tr>
+    <tr><td>Code review</td><td>Large, noisy diffs</td><td>Small diffs per file</td></tr>
+    <tr><td>Deploy to dev / prod</td><td>Edit names by hand</td><td>Targets and variables</td></tr>
+    <tr><td>Quick exploration</td><td>Great</td><td>Use a scratch notebook alongside</td></tr>
+  </tbody></table></div>
+  <div class="grid3">
+    <div class="card"><p class="tag">Task type</p><h3>notebook_task</h3><p>Runs a notebook. Good thin entry point that imports the package.</p></div>
+    <div class="card"><p class="tag">Task type</p><h3>python_wheel_task</h3><p>Calls an entry point in an installed wheel. No notebook needed.</p></div>
+    <div class="card"><p class="tag">Task type</p><h3>spark_python_task</h3><p>Runs a plain <code>.py</code> file.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>A cleaning bug is fixed in one notebook but four others copied the same code</td><td>Four jobs keep the bug.</td><td>Move the function into the package; all jobs import it.</td></tr>
+    <tr><td>A job runs an old wheel after deploy</td><td>The wheel path was fixed to an old file name, or the version wasn't bumped and a cached copy was used.</td><td>Reference the artifact the bundle builds (<code>../dist/*.whl</code>) and bump versions.</td></tr>
+    <tr><td>Merge conflicts in a 600-line <code>databricks.yml</code></td><td>Every team edits one file.</td><td>Split resources into <code>resources/*.yml</code> with <code>include</code>.</td></tr>
+    <tr><td>Tests need a cluster to run</td><td>CI is slow and costly.</td><td>Keep transforms pure (DataFrame in, DataFrame out) and test them with a local Spark session (lesson 01-22).</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>Uploading a wheel by hand and pointing jobs at it defeats the bundle. Let <code>artifacts</code> build and upload it on deploy so code and jobs always match.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>On serverless, wheel and Python script tasks need an <code>environment_key</code> pointing to an environment with the dependencies. Classic-style <code>libraries</code> on the task isn't how serverless gets them.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><code>pyproject.toml</code> (describes the Python package) vs <code>databricks.yml</code> (describes the bundle and its resources).</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><code>include</code> (more YAML config files) vs <code>artifacts</code> (things to build, like a wheel) vs <code>sync</code> (which files are uploaded).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="2"><p>1. Your <code>databricks.yml</code> is huge and causes merge conflicts. What's the bundle-native fix?</p>
+      <ol class="opts"><li><button>Create one bundle per job</button></li><li><button>Move jobs into notebooks</button></li><li><button>Put each resource in <code>resources/*.yml</code> and list them under <code>include</code></button></li><li><button>Use the UI instead</button></li></ol>
+      <p class="why" hidden><code>include</code> merges extra YAML files into the bundle, so each job or pipeline can live in its own file.</p></div>
+    <div class="q" data-answer="0"><p>2. How should a bundle get a freshly built wheel of your package to a job?</p>
+      <ol class="opts"><li><button>An <code>artifacts</code> entry with <code>type: whl</code>, referenced by the task's dependencies</button></li><li><button>Upload the wheel manually each release</button></li><li><button><code>%pip install</code> from a laptop path</button></li><li><button>Copy the code into the job's notebook</button></li></ol>
+      <p class="why" hidden>The artifact is built during deploy and referenced from the job, so jobs always run the code from that commit.</p></div>
+    <div class="q" data-answer="3"><p>3. Why keep transformations as plain functions in a package?</p>
+      <ol class="opts"><li><button>Packages run faster than notebooks on Spark</button></li><li><button>Notebooks can't call Spark</button></li><li><button>Bundles can only deploy packages</button></li><li><button>They can be unit-tested and reused by many jobs</button></li></ol>
+      <p class="why" hidden>Spark speed is the same. The gain is testability and reuse; notebooks become thin entry points.</p></div>
+    <div class="q" data-answer="1"><p>4. A <code>python_wheel_task</code> runs on serverless. What must the task reference?</p>
+      <ol class="opts"><li><button>A cluster ID</button></li><li><button>An <code>environment_key</code> for an environment listing the wheel</button></li><li><button>An init script</button></li><li><button>A DBFS mount</button></li></ol>
+      <p class="why" hidden>Serverless tasks get dependencies from job environments; wheel and script tasks require <code>environment_key</code>.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>Split config (<code>databricks.yml</code> + <code>resources/*.yml</code>), library code (<code>src/</code> package), entry points and tests.</li>
+    <li>Build the package as a wheel with <code>artifacts</code> during deploy; reference it from tasks.</li>
+    <li>On serverless, tasks get dependencies through job <code>environments</code> and <code>environment_key</code>.</li>
+    <li>CI order: test → validate → build → deploy, per target.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#artifact">artifact</a>
+    <a class="chip" href="../../glossary.html#ci-cd">CI/CD</a>
+    <a class="chip" href="../../glossary.html#entry-point">entry point</a>
+    <a class="chip" href="../../glossary.html#modular">modular</a>
+    <a class="chip" href="../../glossary.html#python-module">module (Python)</a>
+    <a class="chip" href="../../glossary.html#package">package</a>
+    <a class="chip" href="../../glossary.html#pyproject">pyproject.toml</a>
+    <a class="chip" href="../../glossary.html#wheel">wheel</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/bundles/python-wheel">Build a Python wheel file using bundles</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/bundles/templates">Bundle project templates</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/bundles/library-dependencies">Bundle library dependencies</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/ci-cd/">CI/CD on Databricks</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  var TREE = ['databricks.yml', 'pyproject.toml', 'resources/nightly_rides.job.yml', 'resources/weekly_report.job.yml', 'src/bike_shop_etl/transforms.py', 'src/notebooks/clean_rides.ipynb', 'tests/test_transforms.py'];
+  var MONO = ['databricks.yml', 'notebooks/everything.ipynb'];
+  var CI = ['pytest (unit tests)', 'bundle validate', 'uv build --wheel', 'bundle deploy -t staging', 'bundle deploy -t prod'];
+  var IMPACT = {
+    fn: { files: ['src/bike_shop_etl/transforms.py', 'tests/test_transforms.py'], ci: [0, 1, 2, 3, 4], note: 'one function fixed; every job importing it gets the fix; a new test guards it' },
+    job: { files: ['resources/weekly_report.job.yml', 'src/notebooks/clean_rides.ipynb'], ci: [1, 3, 4], note: 'new resource file; no package change, so tests and build are quick' },
+    dep: { files: ['pyproject.toml'], ci: [0, 1, 2, 3, 4], note: 'dependency declared once; the wheel and job environments pick it up' },
+    cat: { files: ['databricks.yml'], ci: [1, 4], note: 'only the prod target variable changes; code is untouched' }
+  };
+  var MONO_NOTE = {
+    fn: 'edit cell 37 of the big notebook; no unit test possible; other notebooks that copied it keep the bug',
+    job: 'copy the whole notebook to make a weekly variant; now two copies drift apart',
+    dep: '%pip install in a cell; jobs on other compute may not get it',
+    cat: 'find and replace table names inside the notebook; easy to miss one'
+  };
+  function draw(files, ci, mono) {
+    var t = $('d-tree'); t.textContent = '';
+    (mono ? MONO : TREE).forEach(function (f) {
+      var hit = mono ? f.indexOf('everything') >= 0 && files.length : files.indexOf(f) >= 0;
+      t.appendChild(Object.assign(document.createElement('div'), { className: 'item' + (hit ? ' ok' : ''), textContent: (hit ? '✎ ' : '  ') + f }));
+    });
+    var c = $('d-ci'); c.textContent = '';
+    CI.forEach(function (s, i) {
+      var on = mono ? (i === 1 || i >= 3) && files.length : ci.indexOf(i) >= 0;
+      var skip = mono && i === 0 && files.length;
+      c.appendChild(Object.assign(document.createElement('div'), { className: 'item' + (on ? ' ok' : skip ? ' bad' : ''), textContent: (on ? '▶ ' : skip ? '✗ ' : '· ') + s + (skip ? ' (nothing to test)' : '') }));
+    });
+  }
+  $('d-go').onclick = function () {
+    var k = $('d-change').value, mono = $('d-mono').checked, imp = IMPACT[k];
+    draw(imp.files, imp.ci, mono);
+    log(mono ? 'bad' : 'ok', '> ' + $('d-change').selectedOptions[0].text + ': ' + (mono ? MONO_NOTE[k] : imp.note));
+  };
+  draw([], [], false);
+})();
+</script>
+</body>
+</html>

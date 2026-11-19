@@ -126,6 +126,7 @@ input[type=range]{width:min(320px,100%);accent-color:var(--accent)}
 .item.bad{color:var(--warn)} .item.ok{color:var(--ok)}
 .meter{height:10px;border-radius:5px;background:var(--code-bg);overflow:hidden}
 .meter i{display:block;height:100%;width:0;background:var(--accent);transition:width .4s}
+.meter i.bad{background:var(--warn)}
 .big{font-family:var(--f-display);font-size:2rem;font-weight:800;font-variant-numeric:tabular-nums}
 @keyframes pop{from{transform:translateY(-6px);opacity:0}to{transform:none;opacity:1}}
 .flash{animation:flash .6s ease-out}

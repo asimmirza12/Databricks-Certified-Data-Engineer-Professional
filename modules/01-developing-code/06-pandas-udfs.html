@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pandas UDFs · DE Pro Study Course</title>
+<meta name="description" content="Vectorized pandas UDFs: how Arrow batches make them fast, the four main types, the pandas function APIs, and how to pick one for model scoring, aggregation and per-group logic.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="01-06">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 01 · Lesson 06</p>
+  <h1>Pandas UDFs</h1>
+  <p class="lede">When your logic needs Python libraries, pandas UDFs are the fast way in. They hand your function whole batches of rows at once, and the right type can load a model once instead of a million times.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>01 · Developing Code for Data Processing (23%)</dd></div>
+    <div><dt>Lesson</dt><dd>06 · Pandas UDFs</dd></div>
+    <div><dt>Exam objective</dt><dd>S1.3 — Write UDFs in Python, pandas and SQL, including functions stored in Unity Catalog, and pick the right kind. This lesson: pandas UDFs and pandas function APIs.</dd></div>
+    <div><dt>Time to read</dt><dd>~18 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq"><li><a class="chip acc" href="05-python-and-sql-udfs.html">01-05 Python and SQL UDFs</a></li></ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p><span class="def">pandas</span> is Python's popular library for tables in memory on one machine. Its column type is a <span class="def">Series</span>; its table type is a pandas DataFrame.</p>
+  <p>A <span class="def">pandas UDF</span> (also called a vectorized UDF) is a Python function that receives a whole pandas Series of values at a time instead of one value. Spark cuts each partition into batches, sends each batch to Python using <span class="def">Apache Arrow</span> (a fast columnar in-memory format), and your function works on the batch with pandas or numpy. Fewer, bigger hand-offs, and pandas' fast column maths: Databricks quotes up to 100× faster than row-at-a-time Python UDFs.</p>
+  <p>You pick the type by your function's input and output, written as Python type hints:</p>
+  <ul>
+    <li><b>Series → Series</b>: one value out per value in, like a smarter <code>withColumn</code>.</li>
+    <li><b>Iterator of Series → Iterator of Series</b>: same result, but your function runs once per partition and loops over batches. Use it when there is expensive <span class="def">setup</span>, such as loading a machine learning model: load once, score every batch.</li>
+    <li><b>Series → scalar</b>: many values in, one value out. A custom aggregation for <code>groupBy().agg()</code> or window functions.</li>
+  </ul>
+  <p>Related <span class="def">pandas function APIs</span> work on whole DataFrames: <code>applyInPandas</code> runs your function once per group and can return any number of rows; <code>mapInPandas</code> transforms batches of a DataFrame into new batches.</p>
+  <div class="analogy">
+    <p>A plain Python UDF is a cashier scanning one item, then walking to the stockroom, then scanning the next. A pandas UDF scans a whole basket at once. The iterator type is a cashier who turns on the till once at the start of the shift (setup) instead of before every basket.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 260" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">Partitions cut into Arrow batches for a pandas UDF</title>
+      <desc id="dia-d">One partition of 25,000 rows is cut into Arrow batches of up to 10,000 rows. Each batch travels to the Python worker as a pandas Series. With the Series to Series type the function runs once per batch; with the iterator type it runs once for the partition, loads the model once, and loops over the batches.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <text x="20" y="22" font-weight="600">partition (25,000 rows)</text>
+        <g fill="var(--surface)" stroke="var(--accent)"><rect x="20" y="36" width="120" height="40" rx="6"/><rect x="150" y="36" width="120" height="40" rx="6"/><rect x="280" y="36" width="60" height="40" rx="6"/></g>
+        <text x="80" y="60" text-anchor="middle" font-size="11">batch 10k</text><text x="210" y="60" text-anchor="middle" font-size="11">batch 10k</text><text x="310" y="60" text-anchor="middle" font-size="11">5k</text>
+        <text x="20" y="100" font-size="11" fill="var(--muted)">batch size: spark.sql.execution.arrow.maxRecordsPerBatch</text>
+        <rect x="400" y="20" width="240" height="100" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="520" y="44" text-anchor="middle" font-weight="600">Python worker</text>
+        <text x="412" y="68" font-size="11">Series→Series: f() runs 3×</text><text x="412" y="88" font-size="11">Iterator: f() runs 1×,</text><text x="412" y="106" font-size="11">model loaded 1×, loops 3 batches</text>
+        <text x="20" y="160" font-weight="600">plain Python UDF, same partition</text>
+        <g fill="var(--surface)" stroke="var(--warn)">
+          <rect x="20" y="174" width="8" height="40"/><rect x="32" y="174" width="8" height="40"/><rect x="44" y="174" width="8" height="40"/><rect x="56" y="174" width="8" height="40"/><rect x="68" y="174" width="8" height="40"/><rect x="80" y="174" width="8" height="40"/><rect x="92" y="174" width="8" height="40"/><rect x="104" y="174" width="8" height="40"/>
+        </g>
+        <text x="124" y="200" font-size="11" fill="var(--warn)">… 25,000 separate calls (row by row)</text>
+        <path id="b1" d="M80 36 C80 10 380 10 400 50" fill="none" stroke="var(--line)" stroke-dasharray="3 4"/>
+        <path id="b2" d="M210 36 C210 16 380 16 400 60" fill="none" stroke="var(--line)" stroke-dasharray="3 4"/>
+      </g>
+      <rect x="-14" y="-8" width="28" height="16" rx="3" fill="var(--accent)" data-rest="250,14"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#b1"/></animateMotion></rect>
+      <rect x="-14" y="-8" width="28" height="16" rx="3" fill="var(--accent)" data-rest="320,22"><animateMotion dur="3s" begin="1.5s" repeatCount="indefinite"><mpath href="#b2"/></animateMotion></rect>
+    </svg>
+    <figcaption class="cap">Notice: pandas UDFs move <b>whole batches</b> (blue blocks) to Python, so the function runs a handful of times, not once per row. The <b>iterator</b> type goes further: one call per partition, so setup like loading a model happens <b>once</b>.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: calls, model loads and memory</h2>
+  <p>Score 75,000 rides (3 partitions of 25,000, in 3 towns) with a model that takes a while to load. Pick an approach and a batch size. Watch how many times your function runs, how often the model loads, and the biggest chunk held in memory.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Approach <select id="d-type">
+        <option value="py">Plain Python UDF (model loaded inside)</option>
+        <option value="s2s">pandas UDF: Series → Series (model loaded inside)</option>
+        <option value="it">pandas UDF: Iterator → Iterator (model loaded once)</option>
+        <option value="agg">pandas UDF: Series → scalar, groupBy town</option>
+        <option value="apply">applyInPandas, groupBy town</option>
+      </select></label>
+      <label>Arrow batch size <select id="d-batch"><option>5000</option><option selected>10000</option><option>25000</option></select></label>
+      <label class="tog"><input type="checkbox" id="d-skew"> One town has 90% of the rides</label>
+      <button type="button" class="primary" id="d-run">Run</button>
+    </div>
+    <div class="flow">
+      <div class="pane"><h4>Function calls</h4><div class="big" id="d-calls">–</div></div>
+      <div class="pane"><h4>Model loads</h4><div class="big" id="d-loads">–</div></div>
+      <div class="pane"><h4>Largest chunk in memory</h4><div class="big" id="d-mem">–</div></div>
+    </div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="pandas UDF log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p><b>Series → Series</b>: vectorized maths on a column.</p>
+<pre><code><span class="c-k">import</span> pandas <span class="c-k">as</span> pd
+<span class="c-k">from</span> pyspark.sql.functions <span class="c-k">import</span> pandas_udf
+
+<span class="c-k">@pandas_udf</span>(<span class="c-s">"double"</span>)
+<span class="c-k">def</span> km_from_miles(miles: pd.Series) -&gt; pd.Series:
+    <span class="c-k">return</span> miles * 1.60934          <span class="c-c"># one vector operation for the whole batch; NaN stays NaN</span>
+
+rides = spark.read.table(<span class="c-s">"bike_shop.silver.rides"</span>)
+rides = rides.withColumn(<span class="c-s">"distance_km"</span>, km_from_miles(<span class="c-s">"distance_miles"</span>))</code></pre>
+  <p><b>Iterator → Iterator</b>: load a model once per partition, then score every batch.</p>
+<pre><code><span class="c-k">from</span> typing <span class="c-k">import</span> Iterator
+
+<span class="c-k">@pandas_udf</span>(<span class="c-s">"double"</span>)
+<span class="c-k">def</span> predict_tip(batches: Iterator[pd.Series]) -&gt; Iterator[pd.Series]:
+    model = load_tip_model()             <span class="c-c"># expensive setup: runs once per partition (your own helper)</span>
+    <span class="c-k">for</span> minutes <span class="c-k">in</span> batches:              <span class="c-c"># each item is one Arrow batch as a Series</span>
+        <span class="c-k">yield</span> pd.Series(model.predict(minutes.to_frame()))
+
+rides = rides.withColumn(<span class="c-s">"predicted_tip"</span>, predict_tip(<span class="c-s">"minutes"</span>))</code></pre>
+  <p><b>Series → scalar</b>: a custom aggregate.</p>
+<pre><code><span class="c-k">@pandas_udf</span>(<span class="c-s">"double"</span>)
+<span class="c-k">def</span> trimmed_mean(prices: pd.Series) -&gt; float:
+    low, high = prices.quantile([0.05, 0.95])
+    <span class="c-k">return</span> float(prices[(prices &gt;= low) &amp; (prices &lt;= high)].mean())
+
+rides.groupBy(<span class="c-s">"town"</span>).agg(trimmed_mean(<span class="c-s">"price"</span>).alias(<span class="c-s">"typical_price"</span>))</code></pre>
+  <p><b>applyInPandas</b>: run pandas code per group, returning any number of rows.</p>
+<pre><code><span class="c-k">def</span> top_two_bikes(pdf: pd.DataFrame) -&gt; pd.DataFrame:
+    <span class="c-k">return</span> pdf.nlargest(2, <span class="c-s">"price"</span>)[[<span class="c-s">"town"</span>, <span class="c-s">"bike_id"</span>, <span class="c-s">"price"</span>]]
+
+top = rides.groupBy(<span class="c-s">"town"</span>).applyInPandas(
+    top_two_bikes, schema=<span class="c-s">"town string, bike_id string, price double"</span>)</code></pre>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td>Load the model inside a Series → Series function</td><td>The model loads once per batch. Switch to the iterator type to load once per partition.</td></tr>
+    <tr><td>Raise <code>spark.sql.execution.arrow.maxRecordsPerBatch</code></td><td>Fewer, bigger batches: less overhead, more memory per call. Lower it if Python workers run out of memory.</td></tr>
+    <tr><td>Series → scalar or <code>applyInPandas</code> on a skewed key</td><td>Each group is loaded fully into one Python worker's memory. One huge group can run out of memory.</td></tr>
+    <tr><td>Return a Series of a different length (Series → Series)</td><td>Error: output must be the same length as input.</td></tr>
+    <tr><td>Declared return type doesn't match the data</td><td>Arrow conversion errors or wrong values. Declare the real type.</td></tr>
+    <tr><td>Use a pandas UDF where a built-in exists</td><td>Still slower than the built-in. pandas UDFs are for logic Spark can't express.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th>Type</th><th>Signature</th><th>Called</th><th>Use for</th></tr></thead><tbody>
+    <tr><td>Series → Series</td><td><code>(pd.Series) -&gt; pd.Series</code></td><td>Once per batch</td><td>Column maths, string clean-up with pandas</td></tr>
+    <tr><td>Iterator of Series → Iterator of Series</td><td><code>(Iterator[pd.Series]) -&gt; Iterator[pd.Series]</code></td><td>Once per partition</td><td>Model scoring, anything with costly setup</td></tr>
+    <tr><td>Series → scalar</td><td><code>(pd.Series) -&gt; float</code></td><td>Once per group</td><td>Custom aggregates in <code>groupBy().agg()</code> or windows</td></tr>
+    <tr><td><code>applyInPandas</code></td><td><code>(pd.DataFrame) -&gt; pd.DataFrame</code></td><td>Once per group</td><td>Per-group logic returning many rows</td></tr>
+    <tr><td><code>mapInPandas</code></td><td><code>(Iterator[pd.DataFrame]) -&gt; Iterator[pd.DataFrame]</code></td><td>Once per partition</td><td>Reshaping whole batches; output row count can differ</td></tr>
+  </tbody></table></div>
+  <div class="grid2">
+    <div class="card"><h3>Plain Python UDF</h3><p>One row per call, simple Python logic, small data or when Arrow types don't fit.</p></div>
+    <div class="card"><h3>pandas UDF</h3><p>Batches per call, vectorized pandas/numpy, model scoring. The default choice when Python is needed.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>Scoring 50M rides takes hours; logs show the model loading constantly</td><td>The model loads inside a per-row or per-batch function.</td><td>Use an Iterator → Iterator pandas UDF and load the model before the loop.</td></tr>
+    <tr><td><code>applyInPandas</code> by town fails with out-of-memory</td><td>One big town is a skewed group held in one worker's memory.</td><td>Group by a finer key (town + day), or rethink the logic as built-in aggregations.</td></tr>
+    <tr><td>Python workers crash on very wide rows</td><td>Arrow batches of 10,000 wide rows are too large.</td><td>Lower <code>maxRecordsPerBatch</code>.</td></tr>
+    <tr><td>A pandas UDF doubles every value correctly but the team sees no speed-up</td><td>A simple built-in expression (<code>col * 2</code>) was available.</td><td>Use the built-in.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>"Load the model once" points to the <b>Iterator of Series</b> type (or <code>mapInPandas</code>), not Series → Series.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>Grouped pandas operations (Series → scalar, <code>applyInPandas</code>) load each <b>whole group</b> into memory; batch size doesn't split a group.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>pandas UDF</b> (returns a column, used in <code>select</code>/<code>withColumn</code>/<code>agg</code>) vs <b>pandas function API</b> (<code>applyInPandas</code>, <code>mapInPandas</code>: returns a whole DataFrame).</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Arrow-optimized Python UDF</b> (still one value per call, faster transfer) vs <b>pandas UDF</b> (a whole Series per call).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="2"><p>1. You must score rows with a model that takes 20 seconds to load. Which type avoids reloading it for every batch?</p>
+      <ol class="opts"><li><button>A plain Python UDF</button></li><li><button>Series → Series pandas UDF</button></li><li><button>Iterator of Series → Iterator of Series pandas UDF</button></li><li><button>Series → scalar pandas UDF</button></li></ol>
+      <p class="why" hidden>The iterator type runs your function once per partition, so setup before the loop happens once, then every batch is scored.</p></div>
+    <div class="q" data-answer="0"><p>2. Why are pandas UDFs faster than plain Python UDFs?</p>
+      <ol class="opts"><li><button>They move data in Arrow batches and run vectorized pandas operations</button></li><li><button>They run on the driver</button></li><li><button>They are compiled to SQL</button></li><li><button>They skip serialization entirely</button></li></ol>
+      <p class="why" hidden>Data still crosses to Python, but in big columnar batches, and pandas processes whole columns at once.</p></div>
+    <div class="q" data-answer="3"><p>3. You need a custom "trimmed mean" per town in <code>groupBy().agg()</code>. Which type fits?</p>
+      <ol class="opts"><li><button>Series → Series</button></li><li><button>Iterator → Iterator</button></li><li><button><code>mapInPandas</code></button></li><li><button>Series → scalar</button></li></ol>
+      <p class="why" hidden>Series → scalar pandas UDFs define aggregations that reduce a group's values to one result.</p></div>
+    <div class="q" data-answer="1"><p>4. An <code>applyInPandas</code> grouped by customer fails out-of-memory for one huge customer. Why doesn't lowering <code>maxRecordsPerBatch</code> help?</p>
+      <ol class="opts"><li><button>That setting only affects SQL UDFs</button></li><li><button>Grouped operations load each whole group at once, regardless of batch size</button></li><li><button>The setting is read-only</button></li><li><button>applyInPandas runs on the driver</button></li></ol>
+      <p class="why" hidden>Each group is passed to your function as one pandas DataFrame. Fix the skew or the grouping key instead.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>pandas UDFs get whole Arrow batches as pandas Series: far fewer calls than plain Python UDFs.</li>
+    <li>Series → Series for column logic; Iterator → Iterator for costly setup like models; Series → scalar for aggregates.</li>
+    <li><code>applyInPandas</code> (per group, many rows) and <code>mapInPandas</code> (per batch) return DataFrames.</li>
+    <li>Grouped operations hold a whole group in memory: watch for skew. Built-ins still beat all UDFs.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#apache-arrow">Apache Arrow</a>
+    <a class="chip" href="../../glossary.html#pandas">pandas</a>
+    <a class="chip" href="../../glossary.html#pandas-function-api">pandas function API</a>
+    <a class="chip" href="../../glossary.html#pandas-udf">pandas UDF</a>
+    <a class="chip" href="../../glossary.html#series">Series</a>
+    <a class="chip" href="../../glossary.html#skew">skew</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/udf/pandas">pandas user-defined functions</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/pandas/pandas-function-apis">pandas function APIs</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/pyspark/reference/functions/pandas_udf"><code>pandas_udf</code> reference</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  var PARTS = 3, PER = 25000, ROWS = PARTS * PER;
+  $('d-run').onclick = function () {
+    var t = $('d-type').value, b = +$('d-batch').value, skew = $('d-skew').checked;
+    var perPart = Math.ceil(PER / b), batches = perPart * PARTS, calls, loads, mem, note, cls = 'ok';
+    var biggestGroup = skew ? Math.round(ROWS * 0.9) : ROWS / 3;
+    if (t === 'py') { calls = ROWS; loads = ROWS; mem = 1; cls = 'bad'; note = 'one call and one model load per row'; }
+    else if (t === 's2s') { calls = batches; loads = batches; mem = Math.min(b, PER); cls = 'skip'; note = 'one call per Arrow batch, but the model reloads every batch'; }
+    else if (t === 'it') { calls = PARTS; loads = PARTS; mem = Math.min(b, PER); note = 'one call per partition; model loads once there, then loops over ' + perPart + ' batch(es)'; }
+    else if (t === 'agg') { calls = 3; loads = 0; mem = biggestGroup; cls = skew ? 'bad' : 'ok'; note = 'one call per town; each town\'s prices arrive as one Series'; }
+    else { calls = 3; loads = 0; mem = biggestGroup; cls = skew ? 'bad' : 'ok'; note = 'one call per town with that town\'s full pandas DataFrame'; }
+    $('d-calls').textContent = calls.toLocaleString();
+    $('d-loads').textContent = loads ? loads.toLocaleString() : 'n/a';
+    $('d-mem').textContent = mem.toLocaleString() + ' row' + (mem === 1 ? '' : 's');
+    log('skip', '> ' + $('d-type').selectedOptions[0].text + ' · batch ' + b.toLocaleString());
+    log(cls, '  ' + note);
+    if ((t === 'agg' || t === 'apply') && skew) log('bad', '  the busy town (' + biggestGroup.toLocaleString() + ' rows) must fit in one worker: batch size doesn\'t split groups');
+    if ((t === 'agg' || t === 'apply') && b !== 10000) log('skip', '  batch size has no effect on grouped operations');
+    Course.flash($('d-calls'));
+  };
+  $('d-run').onclick();
+})();
+</script>
+</body>
+</html>

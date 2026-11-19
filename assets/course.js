@@ -30,12 +30,12 @@
       ['12', 'medallion-architecture', 'Medallion architecture', true]
     ]},
     { id: '01', slug: '01-developing-code', title: 'Developing Code for Data Processing (Python and SQL)', weight: '23%', lessons: [
-      ['01', 'bundles-what-and-why', 'Declarative Automation Bundles: what and why'],
-      ['02', 'bundles-project-structure', 'Structuring a modular Python bundle project'],
-      ['03', 'libraries-pypi-wheels-archives', 'Installing libraries: PyPI, wheels, source archives'],
-      ['04', 'troubleshooting-dependencies', 'Troubleshooting dependency conflicts'],
-      ['05', 'python-and-sql-udfs', 'Python and SQL UDFs'],
-      ['06', 'pandas-udfs', 'Pandas UDFs'],
+      ['01', 'bundles-what-and-why', 'Declarative Automation Bundles: what and why', true],
+      ['02', 'bundles-project-structure', 'Structuring a modular Python bundle project', true],
+      ['03', 'libraries-pypi-wheels-archives', 'Installing libraries: PyPI, wheels, source archives', true],
+      ['04', 'troubleshooting-dependencies', 'Troubleshooting dependency conflicts', true],
+      ['05', 'python-and-sql-udfs', 'Python and SQL UDFs', true],
+      ['06', 'pandas-udfs', 'Pandas UDFs', true],
       ['07', 'unity-catalog-functions', 'Unity Catalog functions'],
       ['08', 'lakeflow-pipelines-intro', 'Lakeflow pipelines: the declarative way'],
       ['09', 'auto-loader-in-pipelines', 'Streaming ingestion with Auto Loader in pipelines'],

@@ -34,6 +34,10 @@
     <dd>Combining many rows into summary values, such as a sum or count per group. <em>Lesson 00-12.</em></dd>
     <dt id="all-purpose-compute">All-purpose compute</dt>
     <dd>A classic cluster for interactive work that many notebooks can attach to. Not meant for scheduled jobs. <em>Lesson 00-09.</em></dd>
+    <dt id="apache-arrow">Apache Arrow</dt>
+    <dd>A fast columnar in-memory data format used to move data between Spark and Python efficiently. <em>Lessons 01-05, 01-06.</em></dd>
+    <dt id="artifact">Artifact (bundle)</dt>
+    <dd>Something a bundle builds before deploying, such as a Python wheel, defined under <code>artifacts</code>. <em>Lesson 01-02.</em></dd>
     <dt id="auto-termination">Auto-termination</dt>
     <dd>Shutting down a classic cluster automatically after a set time with no activity, to stop billing. <em>Lesson 00-09.</em></dd>
     <dt id="autoscaling">Autoscaling</dt>
@@ -48,6 +52,10 @@
     <dd>The raw layer of the medallion architecture: data as it arrived, plus source details. <em>Lesson 00-12.</em></dd>
     <dt id="bucket">Bucket</dt>
     <dd>A top-level container in cloud object storage that holds objects. Azure calls it a container. <em>Lesson 00-07.</em></dd>
+    <dt id="built-in-function">Built-in function</dt>
+    <dd>A function that ships with Spark, such as <code>upper</code> or <code>round</code>. Runs in the engine and is the fastest option. <em>Lesson 01-05.</em></dd>
+    <dt id="bundle">Bundle (Declarative Automation Bundle)</dt>
+    <dd>A project folder whose <code>databricks.yml</code> describes Databricks resources (jobs, pipelines…) as code, deployed with the Databricks CLI. Formerly Databricks Asset Bundle. <em>Lesson 01-01.</em></dd>
     <dt id="catalog">Catalog</dt>
     <dd>The first level inside a Unity Catalog metastore. Holds schemas. <em>Lesson 00-11.</em></dd>
     <dt id="catalyst">Catalyst optimizer</dt>
@@ -56,6 +64,8 @@
     <dd>One block of code or text in a notebook, run on its own. <em>Lesson 00-08.</em></dd>
     <dt id="checkpoint">Checkpoint</dt>
     <dd>A folder where a streaming query records what it has already processed, so it can restart where it stopped. <em>Lesson 00-04.</em></dd>
+    <dt id="ci-cd">CI/CD</dt>
+    <dd>Continuous integration and continuous delivery: test every change automatically and deploy passing changes automatically. <em>Lesson 01-02.</em></dd>
     <dt id="classic-compute">Classic compute</dt>
     <dd>Compute you configure (machine types, workers, runtime) that runs in your own cloud account. <em>Lesson 00-09.</em></dd>
     <dt id="cloud-object-storage">Cloud object storage</dt>
@@ -92,6 +102,8 @@
     <dd>How far you can trust data: is it complete, correct, on time and free of duplicates? Pipelines add checks on purpose to protect it. <em>Lesson 00-01.</em></dd>
     <dt id="databricks">Databricks</dt>
     <dd>A cloud platform for data engineering, analytics and AI, built on Apache Spark and open table formats. <em>Lesson 00-08.</em></dd>
+    <dt id="databricks-cli">Databricks CLI</dt>
+    <dd>The command-line tool for Databricks. <code>databricks bundle …</code> validates, deploys, runs and destroys bundles. <em>Lesson 01-01.</em></dd>
     <dt id="databricks-runtime">Databricks Runtime</dt>
     <dd>The software image on classic compute: Spark plus libraries. LTS versions get long-term support. <em>Lesson 00-09.</em></dd>
     <dt id="dataframe">DataFrame</dt>
@@ -102,12 +114,24 @@
     <dd>An old way to attach cloud storage to a Databricks path like <code>/mnt/…</code>. Deprecated: it bypasses Unity Catalog and doesn't work on serverless. <em>Lesson 00-07.</em></dd>
     <dt id="dbu">DBU (Databricks Unit)</dt>
     <dd>The unit Databricks uses to measure and bill processing per hour. Rates differ by compute type. <em>Lesson 00-09.</em></dd>
+    <dt id="default-package-repository">Default package repository</dt>
+    <dd>A workspace admin setting that makes a private index the default for serverless notebooks, jobs and pipelines. <em>Lesson 01-04.</em></dd>
     <dt id="delta-lake">Delta Lake</dt>
     <dd>An open table format: Parquet data files plus a transaction log. The default table format on Databricks. <em>Lesson 00-03; more in 00-10.</em></dd>
+    <dt id="dependency">Dependency</dt>
+    <dd>A library your code needs in order to run. <em>Lesson 01-04.</em></dd>
+    <dt id="dependency-conflict">Dependency conflict</dt>
+    <dd>When no single set of versions satisfies every library's requirements, so pip can't install them together. <em>Lesson 01-04.</em></dd>
+    <dt id="deployment-mode">Deployment mode</dt>
+    <dd>A bundle target preset: <code>development</code> (prefixed names, paused schedules) or <code>production</code> (branch and pipeline checks). <em>Lesson 01-01.</em></dd>
     <dt id="driver">Driver</dt>
     <dd>The coordinating process in a Spark cluster. It plans work and hands tasks to executors. <em>Lesson 00-05.</em></dd>
     <dt id="elt">ELT (extract, load, transform)</dt>
     <dd>A pipeline order where raw data is saved first and cleaned later, inside the data platform. Keeps a raw copy for re-processing. <em>Lesson 00-01.</em></dd>
+    <dt id="entry-point">Entry point</dt>
+    <dd>The thin piece of code a job actually runs (a notebook, script or wheel function) that calls your library code. <em>Lesson 01-02.</em></dd>
+    <dt id="environment-version">Environment version (serverless)</dt>
+    <dd>The serverless base image: Python version plus preinstalled libraries. Your dependencies are added on top. <em>Lesson 01-03.</em></dd>
     <dt id="etl">ETL (extract, transform, load)</dt>
     <dd>A pipeline order where data is copied out of a source, cleaned and reshaped, then saved for use. <em>Lesson 00-01.</em></dd>
     <dt id="event">Event</dt>
@@ -134,10 +158,14 @@
     <dd>Safe to repeat: running it again on the same input gives the same result, with no duplicates. <em>Lesson 00-01.</em></dd>
     <dt id="incremental">Incremental processing</dt>
     <dd>Processing only data that is new since the last run, instead of everything again. <em>Lesson 00-04.</em></dd>
+    <dt id="infrastructure-as-code">Infrastructure as code</dt>
+    <dd>Describing platform resources in version-controlled files instead of creating them by hand. <em>Lesson 01-01.</em></dd>
     <dt id="jobs-compute">Jobs compute</dt>
     <dd>A classic cluster created for one job run and shut down when it finishes. <em>Lesson 00-09.</em></dd>
     <dt id="json">JSON</dt>
     <dd>A text, row-based format where each record lists field names and values, and can nest. Common for app events and APIs. <em>Lesson 00-03.</em></dd>
+    <dt id="jvm">JVM</dt>
+    <dd>The Java Virtual Machine: the runtime Spark's engine runs on. <em>Lesson 01-05.</em></dd>
     <dt id="key">Key (object storage)</dt>
     <dd>The full name of an object, such as <code>rides/2026/11/19/a.json</code>. Slashes are just characters. <em>Lesson 00-07.</em></dd>
     <dt id="lakehouse">Lakehouse</dt>
@@ -146,6 +174,10 @@
     <dd>The delay between something happening and its data being available to use. <em>Lesson 00-04.</em></dd>
     <dt id="lazy-evaluation">Lazy evaluation</dt>
     <dd>Spark records transformations in a plan and runs nothing until an action asks for a result. <em>Lesson 00-05.</em></dd>
+    <dt id="library">Library</dt>
+    <dd>Code written by others that you install and import, also called a package. <em>Lesson 01-03.</em></dd>
+    <dt id="library-scope">Library scope</dt>
+    <dd>Where an installed library is visible: notebook session, cluster, serverless environment or pipeline environment. <em>Lesson 01-03.</em></dd>
     <dt id="magic-command">Magic command</dt>
     <dd>A notebook cell prefix starting with <code>%</code>, such as <code>%sql</code>, <code>%md</code>, <code>%pip</code> or <code>%run</code>, that changes what the cell does. <em>Lesson 00-08.</em></dd>
     <dt id="managed-table">Managed table</dt>
@@ -158,6 +190,10 @@
     <dd>The top of Unity Catalog's tree, one per cloud region, holding catalogs. <em>Lesson 00-11.</em></dd>
     <dt id="micro-batch">Micro-batch</dt>
     <dd>A very small batch of new data. Spark streaming runs one micro-batch after another. <em>Lesson 00-04.</em></dd>
+    <dt id="modular">Modular code</dt>
+    <dd>Code split into small parts that each do one job and can be reused and tested. <em>Lesson 01-02.</em></dd>
+    <dt id="python-module">Module (Python)</dt>
+    <dd>A Python file of functions and classes that other code can import. <em>Lesson 01-02.</em></dd>
     <dt id="notebook">Notebook</dt>
     <dd>A web document of cells holding code (Python, SQL, Scala, R) or text, run interactively. <em>Lesson 00-08.</em></dd>
     <dt id="notebook-state">Notebook state</dt>
@@ -168,20 +204,44 @@
     <dd>A file stored in object storage, plus a little metadata. Written and replaced whole, never edited in place. <em>Lesson 00-07.</em></dd>
     <dt id="optimize">OPTIMIZE</dt>
     <dd>A Delta command that rewrites many small files into fewer, larger ones. <em>Lesson 00-10; more in module 05.</em></dd>
+    <dt id="package">Package (Python)</dt>
+    <dd>An installable folder of Python modules, described by <code>pyproject.toml</code>. <em>Lesson 01-02.</em></dd>
+    <dt id="pandas">pandas</dt>
+    <dd>A popular Python library for in-memory tables (DataFrames) and columns (Series) on one machine. <em>Lesson 01-06.</em></dd>
+    <dt id="pandas-function-api">pandas function API</dt>
+    <dd>DataFrame-level pandas operations such as <code>applyInPandas</code> (per group) and <code>mapInPandas</code> (per batch). <em>Lesson 01-06.</em></dd>
+    <dt id="pandas-udf">pandas UDF</dt>
+    <dd>A vectorized UDF that receives batches of values as pandas Series, moved with Apache Arrow. <em>Lesson 01-06.</em></dd>
     <dt id="parquet">Parquet</dt>
     <dd>A binary, columnar, compressed file format that stores its schema. The data files inside Delta and Iceberg tables. <em>Lesson 00-03.</em></dd>
     <dt id="partition">Partition (Spark)</dt>
     <dd>A chunk of a DataFrame's rows that one task processes. Not the same as a table partition (module 05). <em>Lesson 00-05.</em></dd>
     <dt id="photon">Photon</dt>
     <dd>Databricks' fast native query engine for SQL and DataFrame work. <em>Lesson 00-09.</em></dd>
+    <dt id="pinning">Pinning</dt>
+    <dd>Fixing a dependency to an exact version (<code>==</code>) so installs resolve the same way every time. <em>Lesson 01-04.</em></dd>
+    <dt id="pip">pip</dt>
+    <dd>Python's package installer. <em>Lesson 01-03.</em></dd>
     <dt id="prefix">Prefix</dt>
     <dd>The start of an object key. Tools show keys with a shared prefix as a "folder". <em>Lesson 00-07.</em></dd>
+    <dt id="private-index">Private index</dt>
+    <dd>A company-run package repository (or mirror of PyPI) that pip can install from. <em>Lesson 01-03.</em></dd>
     <dt id="privilege">Privilege</dt>
     <dd>A permission granted on a Unity Catalog object, such as <code>USE CATALOG</code>, <code>USE SCHEMA</code> or <code>SELECT</code>. <em>Lesson 00-11.</em></dd>
+    <dt id="pypi">PyPI</dt>
+    <dd>The Python Package Index: the public online repository of Python packages. <em>Lesson 01-03.</em></dd>
+    <dt id="pyproject">pyproject.toml</dt>
+    <dd>The file that describes a Python package: name, version, dependencies and build settings. <em>Lesson 01-02.</em></dd>
     <dt id="pyspark">PySpark</dt>
     <dd>The Python library for working with Apache Spark, the engine that processes data on Databricks. <em>Lessons 00-01, 00-06.</em></dd>
+    <dt id="python-udf">Python UDF</dt>
+    <dd>A user-defined function in Python called once per row; data is serialized to a Python worker and back. <em>Lesson 01-05.</em></dd>
     <dt id="query">Query</dt>
     <dd>A question you ask a table, usually written in SQL, such as "what was total revenue last week?". The answer comes back as rows. <em>Lesson 00-01.</em></dd>
+    <dt id="resolver">Resolver</dt>
+    <dd>The part of pip that picks a version of every package that satisfies all requirements. <em>Lesson 01-04.</em></dd>
+    <dt id="resource">Resource (bundle)</dt>
+    <dd>Something a bundle creates in a workspace, such as a Lakeflow job, pipeline, dashboard or serving endpoint. <em>Lesson 01-01.</em></dd>
     <dt id="restore">RESTORE</dt>
     <dd>A Delta command that makes an older version current again, by adding a new commit. <em>Lesson 00-10.</em></dd>
     <dt id="row">Row</dt>
@@ -200,8 +260,14 @@
     <dd>Working out data's structure when reading it, not when storing it. <em>Lesson 00-02.</em></dd>
     <dt id="schema-on-write">Schema-on-write</dt>
     <dd>Fixing the structure first and only accepting data that matches it. How tables work. <em>Lesson 00-02.</em></dd>
+    <dt id="serialization">Serialization</dt>
+    <dd>Converting data into bytes so it can be sent between processes, then converting it back. <em>Lesson 01-05.</em></dd>
+    <dt id="series">Series (pandas)</dt>
+    <dd>pandas' type for a single column of values. <em>Lesson 01-06.</em></dd>
     <dt id="serverless-compute">Serverless compute</dt>
     <dd>Compute that Databricks starts, sizes and manages for you in its own account. Starts in seconds. <em>Lesson 00-09.</em></dd>
+    <dt id="service-principal">Service principal</dt>
+    <dd>A non-human identity used by automated jobs and CI/CD, so production work doesn't depend on a person's account. <em>Lesson 01-01.</em></dd>
     <dt id="shuffle">Shuffle</dt>
     <dd>Moving rows between executors so rows with the same key end up together, for example for a group-by or join. Often the slowest step. <em>Lesson 00-05.</em></dd>
     <dt id="silver">Silver layer</dt>
@@ -210,6 +276,8 @@
     <dd>Uneven data: one key or partition has far more rows than the others, so one task runs much longer. <em>Lesson 00-05.</em></dd>
     <dt id="source">Source</dt>
     <dd>The system where data is first created or stored before a pipeline reads it, such as an app's database, log files or sensors. <em>Lesson 00-01.</em></dd>
+    <dt id="source-archive">Source archive (sdist)</dt>
+    <dd>A package's source code as a <code>.tar.gz</code>. pip must build it during install, which can need compilers. <em>Lesson 01-03.</em></dd>
     <dt id="apache-spark">Apache Spark</dt>
     <dd>Open-source engine that processes large data in parallel across a cluster of machines. Databricks is built on it. <em>Lesson 00-05.</em></dd>
     <dt id="spark-job">Spark job</dt>
@@ -220,6 +288,8 @@
     <dd>Spark's SQL engine: run SQL text over tables, views and DataFrames. <em>Lesson 00-06.</em></dd>
     <dt id="sql">SQL (Structured Query Language)</dt>
     <dd>The standard language for asking tables questions and changing them. Works in almost every data tool, including Databricks. <em>Lesson 00-01.</em></dd>
+    <dt id="sql-udf">SQL UDF</dt>
+    <dd>A user-defined function written as a SQL expression; Spark inlines it into the plan. <em>Lesson 01-05.</em></dd>
     <dt id="sql-warehouse">SQL warehouse</dt>
     <dd>Compute that runs only SQL, built for queries and dashboards. Types: serverless, pro, classic. <em>Lesson 00-09.</em></dd>
     <dt id="stage">Stage</dt>
@@ -230,6 +300,8 @@
     <dd>Data organised in rows and named columns, like a tidy spreadsheet, that you can query with SQL. Its rows live in files; the table adds a name, schema and rules. <em>Lessons 00-01, 00-02.</em></dd>
     <dt id="table-format">Table format</dt>
     <dd>A way of organising data files plus metadata so they behave as a table with safe changes, such as Delta Lake or Iceberg. <em>Lesson 00-03.</em></dd>
+    <dt id="target">Target (bundle)</dt>
+    <dd>A named deployment destination in a bundle, such as <code>dev</code> or <code>prod</code>, with its own workspace and overrides. <em>Lesson 01-01.</em></dd>
     <dt id="task">Task</dt>
     <dd>One unit of Spark work: one stage on one partition, run by one core. <em>Lesson 00-05.</em></dd>
     <dt id="temporary-view">Temporary view</dt>
@@ -242,8 +314,12 @@
     <dd>The <code>_delta_log</code> folder: an ordered record of every commit, listing which files make up each version. <em>Lesson 00-10.</em></dd>
     <dt id="transformation">Transformation</dt>
     <dd>A Spark step that defines new data from old, like <code>filter</code> or <code>join</code>. Lazy: it only adds to the plan. <em>Lesson 00-05.</em></dd>
+    <dt id="transitive-dependency">Transitive dependency</dt>
+    <dd>A dependency of one of your dependencies. <em>Lesson 01-04.</em></dd>
     <dt id="trigger">Trigger</dt>
     <dd>The setting that decides when a streaming query runs its next micro-batch. <em>Lesson 00-04.</em></dd>
+    <dt id="udf">UDF (user-defined function)</dt>
+    <dd>Your own function, called from DataFrame code or SQL like a built-in. <em>Lesson 01-05.</em></dd>
     <dt id="unity-catalog">Unity Catalog</dt>
     <dd>Databricks' system for naming, organising and governing data and AI assets. <em>Lesson 00-11.</em></dd>
     <dt id="vacuum">VACUUM</dt>
@@ -254,8 +330,12 @@
     <dd>A saved query that behaves like a table but stores no data of its own. <em>Lesson 00-11.</em></dd>
     <dt id="volume">Volume</dt>
     <dd>A Unity Catalog object for governed files, with paths like <code>/Volumes/catalog/schema/volume/</code>. Managed or external. <em>Lessons 00-07, 00-11.</em></dd>
+    <dt id="wheel">Wheel (.whl)</dt>
+    <dd>A pre-built Python package file. Installing it just unpacks files, so no build step is needed. <em>Lessons 01-02 to 01-04.</em></dd>
     <dt id="workspace">Workspace</dt>
     <dd>A team's environment in the Databricks web app: notebooks, jobs, pipelines, dashboards and more. <em>Lesson 00-08.</em></dd>
+    <dt id="yaml">YAML</dt>
+    <dd>A plain-text format of indented <code>key: value</code> lines, used for bundle configuration. <em>Lesson 01-01.</em></dd>
   </dl>
 </section>
 </main>

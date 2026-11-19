@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Troubleshooting dependency conflicts · DE Pro Study Course</title>
+<meta name="description" content="Read pip and import errors on Databricks, find the cause (version conflicts, wrong wheels, failed builds, unreachable indexes, permissions, wrong scope) and fix it on serverless, pipelines and bundles.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="01-04">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 01 · Lesson 04</p>
+  <h1>Troubleshooting dependency conflicts</h1>
+  <p class="lede">Library problems produce long, scary error messages, but there are only a handful of real causes. Learn to spot which one you are looking at, and the fix usually follows.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>01 · Developing Code for Data Processing (23%)</dd></div>
+    <div><dt>Lesson</dt><dd>04 · Troubleshooting dependency conflicts</dd></div>
+    <div><dt>Exam objective</dt><dd>S1.2 — Find and fix library install problems (PyPI, wheel files, source archives) on serverless, pipelines and bundle deploys.</dd></div>
+    <div><dt>Time to read</dt><dd>~18 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq">
+    <li><a class="chip acc" href="02-bundles-project-structure.html">01-02 Modular bundle project</a></li>
+    <li><a class="chip acc" href="03-libraries-pypi-wheels-archives.html">01-03 Installing libraries</a></li>
+  </ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p>A <span class="def">dependency</span> is a library your code needs. Libraries have dependencies of their own, called <span class="def">transitive dependencies</span>. pip's <span class="def">resolver</span> tries to find one version of every library that satisfies everyone's requirements. When no such set exists, you have a <span class="def">dependency conflict</span>.</p>
+  <p>On Databricks, almost every install failure is one of seven causes:</p>
+  <ol>
+    <li><b>Version conflict</b>: your library wants a version of something (say <code>numpy</code>) that clashes with another library or with what the runtime or environment already has.</li>
+    <li><b>Wrong wheel</b>: the wheel was built for a different Python version or operating system (for example, on a Mac laptop). Databricks compute runs Linux.</li>
+    <li><b>Failed build</b>: a source archive needs a compiler or system library that isn't there.</li>
+    <li><b>Can't reach the index</b>: the package is on a private index, or network rules block the download.</li>
+    <li><b>No permission</b>: the wheel sits in a volume or workspace path the job's identity can't read.</li>
+    <li><b>Wrong scope</b>: the library was installed somewhere the failing code can't see (lesson 01-03).</li>
+    <li><b>Unsupported method</b>: for example, an init script on serverless, or restarting Python inside a pipeline.</li>
+  </ol>
+  <p>The habit that solves most of them: read the <em>last</em> meaningful line of the error, name the cause, then fix it at the right place (the environment, the wheel build, the index settings, or a grant). And <b>pin versions</b> so the problem can't come back silently.</p>
+  <div class="analogy">
+    <p>Planning a dinner party. One guest only eats if there's spicy food, another can't be in a room with spicy food. No menu satisfies both: that's a conflict. Other failures are simpler: the caterer's van can't get through the gate (network), the recipe is in a language the cook can't read (wrong wheel), or the ingredients need an oven you don't have (failed build). Identify which problem you have before changing the menu.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 260" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">A version conflict in the dependency tree</title>
+      <desc id="dia-d">Your code needs geo_fast and report_kit. geo_fast requires numpy below 2. report_kit requires numpy 2 or above. The resolver cannot pick one numpy version that satisfies both, so the install fails. Pinning report_kit to an older release that accepts numpy below 2 resolves it.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <rect x="250" y="14" width="160" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="330" y="38" text-anchor="middle">your job</text>
+        <rect x="90" y="96" width="170" height="40" rx="8" fill="var(--surface)" stroke="var(--line)"/><text x="175" y="120" text-anchor="middle">geo_fast 3.1</text>
+        <rect x="400" y="96" width="170" height="40" rx="8" fill="var(--surface)" stroke="var(--line)"/><text x="485" y="120" text-anchor="middle">report_kit 5.0</text>
+        <rect x="250" y="190" width="160" height="44" rx="8" fill="var(--surface)" stroke="var(--warn)" stroke-width="2"/><text x="330" y="210" text-anchor="middle">numpy = ?</text><text x="330" y="226" text-anchor="middle" font-size="11" fill="var(--warn)">no version fits both</text>
+        <path d="M290 54 L175 96 M370 54 L485 96" fill="none" stroke="var(--line)"/>
+        <path id="l" d="M175 136 L300 190" fill="none" stroke="var(--line)" stroke-dasharray="3 4"/><path id="r" d="M485 136 L360 190" fill="none" stroke="var(--line)" stroke-dasharray="3 4"/>
+        <text x="130" y="170" font-size="11" fill="var(--bronze)">needs numpy &lt; 2</text><text x="440" y="170" font-size="11" fill="var(--bronze)">needs numpy &gt;= 2</text>
+        <text x="20" y="252" font-size="11" fill="var(--ok)">fix: pin report_kit==4.6 (accepts numpy &lt; 2) → resolver succeeds</text>
+      </g>
+      <circle r="5" fill="var(--bronze)" data-rest="240,163"><animateMotion dur="2.5s" repeatCount="indefinite"><mpath href="#l"/></animateMotion></circle>
+      <circle r="5" fill="var(--bronze)" data-rest="420,163"><animateMotion dur="2.5s" repeatCount="indefinite"><mpath href="#r"/></animateMotion></circle>
+    </svg>
+    <figcaption class="cap">Notice: the two requirements (brown) <b>pull numpy in opposite directions</b>. Nothing is broken in either library alone; the <b>combination</b> has no answer. The fix changes one requirement so a common version exists.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: debugging lab</h2>
+  <p>Pick a failure. Read the error, then choose the fix you'd apply. Wrong answers explain why they don't help.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Failure <select id="d-case"></select></label>
+    </div>
+    <pre><code id="d-err"></code></pre>
+    <div class="ctrls" id="d-fixes" role="group" aria-label="Possible fixes"></div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="Debugging log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p>First, find out what is actually installed and what conflicts:</p>
+<pre><code><span class="c-c"># What versions does this compute have right now?</span>
+%pip list | grep -i -E "numpy|pandas|pyarrow"
+
+<span class="c-c"># Ask pip whether installed packages have broken requirements</span>
+%pip check
+
+<span class="c-c"># Why is a package here, and what does it need?</span>
+%pip show report_kit</code></pre>
+  <p>Then fix it at the right place. A pinned requirements file used by every scope:</p>
+<pre><code><span class="c-c"># /Workspace/Shared/bike_shop/requirements.txt</span>
+geo_fast==3.1.0
+report_kit==4.6.2        <span class="c-c"># 5.x needs numpy&gt;=2, which clashes with geo_fast</span>
+<span class="c-c"># don't list pyspark: Databricks provides it, and installing your own breaks the runtime</span></code></pre>
+  <p>Build your own wheel for Linux in CI instead of on a laptop, and check its file name tags:</p>
+<pre><code><span class="c-c"># In CI (Linux), building a pure-Python package gives a wheel any Python 3 platform accepts</span>
+uv build --wheel
+ls dist/
+<span class="c-c"># bike_shop_etl-0.3.0-py3-none-any.whl   ← py3 = any Python 3, none = no C code, any = any OS</span>
+<span class="c-c"># geo_fast-3.1.0-cp312-cp312-macosx_14_0_arm64.whl ← Python 3.12 on a Mac only: fails on Linux</span></code></pre>
+  <p>A package from a private index, for one dependency (admins can also set a workspace-wide default index):</p>
+<pre><code><span class="c-k">environments</span>:
+  - <span class="c-k">environment_key</span>: default
+    <span class="c-k">spec</span>:
+      <span class="c-k">environment_version</span>: <span class="c-s">"4"</span>
+      <span class="c-k">dependencies</span>:
+        - --index-url https://pypi.internal.example.com/simple
+        - bike_internal_utils==1.4.0</code></pre>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td>Leave versions unpinned</td><td>Today's install works; next month a new release (or a new environment version) resolves differently and breaks the job.</td></tr>
+    <tr><td>Upgrade a library the runtime depends on (e.g. <code>pyspark</code>, <code>pandas</code>, <code>pyarrow</code>)</td><td>Can break Databricks' own features. Prefer versions compatible with the preinstalled ones.</td></tr>
+    <tr><td>Change the serverless <code>environment_version</code></td><td>New Python version and preinstalled set. Fixes some conflicts, causes others; re-test.</td></tr>
+    <tr><td>Swap a source archive for a pre-built wheel</td><td>No build step at install, so no compiler errors and faster starts.</td></tr>
+    <tr><td>Set a default package repository (admin)</td><td>Serverless notebooks, jobs and pipelines use the private index without per-job settings. Index settings in code still override it.</td></tr>
+    <tr><td>Grant <code>READ VOLUME</code> on the wheel's volume</td><td>Fixes permission errors for jobs and users installing wheels from that volume.</td></tr>
+    <tr><td>A wheel that depends on another wheel in a volume</td><td>pip can't fetch a dependency from a volume path automatically; dependencies must come from an index, or be listed explicitly too.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th>Error looks like…</th><th>Likely cause</th><th>Fix</th></tr></thead><tbody>
+    <tr><td><code>ResolutionImpossible</code> / "… requires X&lt;2, but you have X 2.1"</td><td>Version conflict</td><td>Pin compatible versions; don't fight preinstalled core libraries</td></tr>
+    <tr><td>"… is not a supported wheel on this platform"</td><td>Wheel built for another Python or OS</td><td>Rebuild on Linux / for the right Python, or use a <code>py3-none-any</code> wheel</td></tr>
+    <tr><td>"Failed building wheel" / "command 'gcc' failed"</td><td>Source archive can't compile</td><td>Install a pre-built wheel instead</td></tr>
+    <tr><td>"No matching distribution found" / timeouts</td><td>Index unreachable or package not on it</td><td>Point to the right (private) index; check network rules</td></tr>
+    <tr><td><code>PERMISSION_DENIED</code> on a <code>/Volumes/…</code> path</td><td>Identity can't read the file</td><td>Grant <code>READ VOLUME</code> (plus USE on parents)</td></tr>
+    <tr><td><code>ModuleNotFoundError</code> only in the job</td><td>Installed in the wrong scope</td><td>Declare it in the job's environment or task libraries</td></tr>
+  </tbody></table></div>
+  <div class="grid3">
+    <div class="card"><p class="tag">Where</p><h3>Serverless</h3><p>Fix in the environment spec: version, dependencies, environment version. No init scripts.</p></div>
+    <div class="card"><p class="tag">Where</p><h3>Pipelines</h3><p>Fix in the pipeline environment dependencies. No Python restarts inside pipelines.</p></div>
+    <div class="card"><p class="tag">Where</p><h3>Bundles</h3><p>Fix in <code>pyproject.toml</code>, the artifact build, or the job's <code>environments</code>; redeploy.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>A job that ran for months fails on Monday with a conflict</td><td>An unpinned dependency released a new major version over the weekend.</td><td>Pin it (and its key transitive dependencies) in requirements.</td></tr>
+    <tr><td><code>bundle deploy</code> fails in CI with "uv: command not found"</td><td>The artifact build command needs uv, which the CI machine lacks.</td><td>Install uv in the CI job before deploying.</td></tr>
+    <tr><td>A pipeline fails after adding <code>dbutils.library.restartPython()</code></td><td>Pipelines don't support restarting Python.</td><td>Declare the package in the pipeline environment instead of <code>%pip</code> + restart.</td></tr>
+    <tr><td>Install works for you, fails in the prod job</td><td>The prod job runs as a service principal without READ VOLUME on the wheel's volume.</td><td>Grant the service principal access to the volume.</td></tr>
+    <tr><td>A colleague's laptop-built wheel fails on the cluster</td><td>It's tagged for macOS.</td><td>Build wheels in Linux CI, or make the package pure Python.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>"Install the latest version of everything" is rarely the fix. Pinning to <em>compatible</em> versions is.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>On serverless, answers using init scripts, cluster environment variables for proxies, or DBFS library paths are wrong. Use environments and default package repositories.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><code>ModuleNotFoundError</code> (not installed where the code runs: scope problem) vs <code>ResolutionImpossible</code> (pip couldn't install at all: conflict).</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p>A <b>platform</b> mismatch (wrong OS/Python tags in the wheel name) vs a <b>version</b> mismatch (wrong library version). Read the wheel's file name.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="2"><p>1. Install fails: "<code>geo_fast-3.1.0-cp312-cp312-macosx_14_0_arm64.whl</code> is not a supported wheel on this platform". Best fix?</p>
+      <ol class="opts"><li><button>Upgrade numpy</button></li><li><button>Grant READ VOLUME</button></li><li><button>Use a wheel built for Linux and the compute's Python version (or a pure-Python wheel)</button></li><li><button>Restart Python</button></li></ol>
+      <p class="why" hidden>The file name says macOS on ARM, Python 3.12. Databricks compute runs Linux, so it needs a matching wheel.</p></div>
+    <div class="q" data-answer="0"><p>2. A serverless job must install from the company's private package index for every job, without editing each job. What fits?</p>
+      <ol class="opts"><li><button>An admin sets a default package repository for the workspace</button></li><li><button>An init script that edits pip.conf</button></li><li><button>A cluster environment variable</button></li><li><button>Copy packages into DBFS</button></li></ol>
+      <p class="why" hidden>Default package repositories apply to serverless notebooks, jobs and pipelines. Init scripts and compute environment variables don't apply on serverless.</p></div>
+    <div class="q" data-answer="3"><p>3. "Failed building wheel for fastgeo… command 'gcc' failed". What's going on?</p>
+      <ol class="opts"><li><button>A version conflict with pandas</button></li><li><button>The index is unreachable</button></li><li><button>The volume is missing</button></li><li><button>pip is building a source archive that needs a compiler; use a pre-built wheel</button></li></ol>
+      <p class="why" hidden>"Failed building wheel" means a source archive was being compiled. Installing a pre-built wheel avoids the build step.</p></div>
+    <div class="q" data-answer="1"><p>4. Code imports <code>geo_helpers</code> fine in your notebook, but the scheduled job raises <code>ModuleNotFoundError</code>. Most likely cause?</p>
+      <ol class="opts"><li><button>A dependency conflict</button></li><li><button>The library was only notebook-scoped; the job's environment doesn't include it</button></li><li><button>The wheel is for the wrong OS</button></li><li><button>The job is too large</button></li></ol>
+      <p class="why" hidden>A <code>%pip</code> install lives in your session only. Add the library to the job's environment or task libraries.</p></div>
+    <div class="q" data-answer="2"><p>5. Which change most reliably stops "it worked last week" dependency breakages?</p>
+      <ol class="opts"><li><button>Always installing the newest versions</button></li><li><button>Using source archives</button></li><li><button>Pinning exact versions with <code>==</code> in one shared requirements file</button></li><li><button>Restarting compute daily</button></li></ol>
+      <p class="why" hidden>Pinned versions resolve the same way every time, on every scope, until you deliberately change them.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>Name the cause first: conflict, wrong wheel, failed build, unreachable index, permission, scope or unsupported method.</li>
+    <li>Pin versions; stay compatible with preinstalled core libraries; never install your own pyspark.</li>
+    <li>Prefer Linux-built or pure-Python wheels over source archives.</li>
+    <li>Fix at the right place: serverless/pipeline environments, default package repositories, volume grants, bundle artifacts.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#default-package-repository">default package repository</a>
+    <a class="chip" href="../../glossary.html#dependency">dependency</a>
+    <a class="chip" href="../../glossary.html#dependency-conflict">dependency conflict</a>
+    <a class="chip" href="../../glossary.html#pinning">pinning</a>
+    <a class="chip" href="../../glossary.html#resolver">resolver</a>
+    <a class="chip" href="../../glossary.html#transitive-dependency">transitive dependency</a>
+    <a class="chip" href="../../glossary.html#wheel">wheel</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/compute/serverless/dependencies">Configure the serverless environment</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/admin/workspace-settings/default-python-packages">Configure default package repositories</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/developer/external-dependencies">Manage Python dependencies for pipelines</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/bundles/library-dependencies">Bundle library dependencies</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  // Each case: error text, then fixes [label, correct?, explanation]. Errors are illustrative, shortened.
+  var CASES = [
+    { name: 'Serverless job: pip conflict', err: 'ERROR: Cannot install geo_fast==3.1.0 and report_kit==5.0.0\n  geo_fast 3.1.0 depends on numpy<2\n  report_kit 5.0.0 depends on numpy>=2\nERROR: ResolutionImpossible',
+      fixes: [['Pin report_kit to a release that accepts numpy<2', 1, 'Now one numpy version satisfies both. Pin it in requirements so it stays fixed.'],
+              ['Add an init script that force-installs numpy 2', 0, 'Serverless has no init scripts, and forcing numpy 2 would break geo_fast.'],
+              ['Grant READ VOLUME', 0, 'Nothing here is about permissions; pip found both packages.']] },
+    { name: 'Classic job: wheel rejected', err: 'ERROR: geo_fast-3.1.0-cp312-cp312-macosx_14_0_arm64.whl\n  is not a supported wheel on this platform.',
+      fixes: [['Restart Python and retry', 0, 'The file itself is for macOS; retrying installs the same wrong file.'],
+              ['Build the wheel on Linux for the compute\'s Python version (or make it pure Python)', 1, 'The tags in the file name must match the compute: Linux, right Python version.'],
+              ['Pin numpy', 0, 'Not a version problem: the wheel\'s platform tags are wrong.']] },
+    { name: 'Pipeline: source build fails', err: 'Building wheel for fastgeo (pyproject.toml) ... error\n  error: command \'gcc\' failed: No such file or directory\nERROR: Failed building wheel for fastgeo',
+      fixes: [['Install a pre-built wheel of fastgeo instead of the .tar.gz', 1, 'No build step means no compiler needed. Build it once in CI if no public wheel exists.'],
+              ['Add %pip install gcc to the pipeline', 0, 'gcc is a system tool, not a Python package, and pipelines should use environment settings, not %pip.'],
+              ['Use dbutils.library.restartPython()', 0, 'Restarting Python isn\'t supported in pipelines and wouldn\'t add a compiler.']] },
+    { name: 'Serverless notebook: private package', err: 'ERROR: Could not find a version that satisfies the requirement\n  bike_internal_utils==1.4.0 (from versions: none)\nERROR: No matching distribution found',
+      fixes: [['Ask an admin to set a default package repository, or add --index-url for it', 1, 'The package lives on the private index, which pip wasn\'t told about.'],
+              ['Set a proxy environment variable on the compute', 0, 'Serverless doesn\'t support compute-scoped environment variables for installs.'],
+              ['Pin a lower version', 0, '"from versions: none" means pip sees no versions at all: wrong index, not wrong version.']] },
+    { name: 'Prod job: wheel in a volume', err: 'ERROR: Could not install /Volumes/bike_shop/libs/wheels/geo_helpers-1.2.0-py3-none-any.whl\n  PERMISSION_DENIED: User does not have READ VOLUME on Volume \'bike_shop.libs.wheels\'',
+      fixes: [['Move the wheel to DBFS', 0, 'DBFS root storage for libraries is deprecated and ungoverned.'],
+              ['Grant READ VOLUME on the volume to the job\'s run-as identity', 1, 'The prod job runs as a service principal that needs read access (plus USE CATALOG/SCHEMA).'],
+              ['Rebuild the wheel', 0, 'The wheel is fine; the identity just can\'t read it.']] },
+    { name: 'Job: works in my notebook', err: 'Traceback (most recent call last):\n  File "clean_rides.py", line 3, in <module>\n    import geo_helpers\nModuleNotFoundError: No module named \'geo_helpers\'',
+      fixes: [['Declare geo_helpers in the job task\'s environment dependencies', 1, 'Your %pip install lived only in your notebook session. Jobs need their own declared environment.'],
+              ['Run %pip install once more in your notebook', 0, 'Still only your session; the job never sees it.'],
+              ['Pin numpy', 0, 'Nothing failed to resolve; the library simply isn\'t installed where the job runs.']] }
+  ];
+  var sel = $('d-case');
+  CASES.forEach(function (c, i) { sel.appendChild(new Option(c.name, i)); });
+  function show() {
+    var c = CASES[+sel.value];
+    $('d-err').textContent = c.err;
+    var box = $('d-fixes'); box.textContent = '';
+    c.fixes.forEach(function (f) {
+      var b = document.createElement('button'); b.type = 'button'; b.textContent = f[0];
+      b.onclick = function () { log(f[1] ? 'ok' : 'bad', (f[1] ? '✓ ' : '✗ ') + f[0] + ' → ' + f[2]); };
+      box.appendChild(b);
+    });
+  }
+  sel.onchange = function () { log('skip', '> case: ' + CASES[+sel.value].name); show(); };
+  show();
+})();
+</script>
+</body>
+</html>

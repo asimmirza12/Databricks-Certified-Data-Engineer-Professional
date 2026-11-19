@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Python and SQL UDFs · DE Pro Study Course</title>
+<meta name="description" content="User-defined functions in Python and SQL: how they run, why Python UDFs are slow, when SQL UDFs and built-in functions are better, and how to register and share them.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="01-05">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 01 · Lesson 05</p>
+  <h1>Python and SQL UDFs</h1>
+  <p class="lede">When Spark has no built-in function for your logic, you write your own. How you write it decides whether the job takes seconds or an hour.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>01 · Developing Code for Data Processing (23%)</dd></div>
+    <div><dt>Lesson</dt><dd>05 · Python and SQL UDFs</dd></div>
+    <div><dt>Exam objective</dt><dd>S1.3 — Write UDFs in Python, pandas and SQL, including functions stored in Unity Catalog, and pick the right kind. This lesson: Python and SQL UDFs. Next: pandas UDFs, then Unity Catalog functions.</dd></div>
+    <div><dt>Time to read</dt><dd>~16 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq"><li><a class="chip acc" href="../00-foundations/06-dataframes-and-spark-sql.html">00-06 DataFrames and Spark SQL</a></li></ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p>A <span class="def">UDF</span> (user-defined function) is your own function that Spark calls on each row (or group of rows), used like a built-in function in a query.</p>
+  <p>First rule: <b>use a built-in function if one exists</b>. Spark has hundreds (<code>upper</code>, <code>round</code>, <code>regexp_extract</code>, <code>date_trunc</code>…). They run inside Spark's engine, the optimizer understands them, and Photon can speed them up.</p>
+  <p>When you do need your own, there are two simple kinds:</p>
+  <ul>
+    <li>A <span class="def">SQL UDF</span>, written as a SQL expression with <code>CREATE FUNCTION … RETURN …</code>. Spark can fold the expression straight into the query plan, so it runs about as fast as built-in functions.</li>
+    <li>A <span class="def">Python UDF</span>, a Python function wrapped with <code>@udf</code>. Spark's engine runs on the JVM (the Java runtime), not Python. So each row must be <span class="def">serialized</span> (converted into bytes), sent to a separate Python process, run, and sent back. That round trip, row by row, makes Python UDFs the slowest option. Using Apache Arrow for the transfer (<code>useArrow=True</code>) cuts that cost a lot.</li>
+  </ul>
+  <p>A UDF can be <b>temporary</b> (lives in your session only) or <b>permanent</b>, stored in Unity Catalog as <code>catalog.schema.function</code> so others can use it with a grant. Lesson 01-07 covers permanent Unity Catalog functions in depth.</p>
+  <div class="analogy">
+    <p>Built-in functions are staff who speak the office language and work at their desks. A SQL UDF is a new written procedure the same staff can follow: just as fast. A Python UDF is a specialist in another building who speaks a different language: every single form must be translated, walked over, processed and walked back. Arrow is sending the forms in one big box instead of one at a time.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 250" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">Where each kind of function runs</title>
+      <desc id="dia-d">Built-in functions and SQL UDFs run inside the Spark engine on the executor. A Python UDF sends each row across a boundary to a Python worker process and back, with serialization both ways.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <rect x="20" y="20" width="330" height="210" rx="12" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="185" y="44" text-anchor="middle" font-weight="600">Spark engine (JVM) on an executor</text>
+        <rect x="40" y="62" width="290" height="40" rx="6" fill="var(--surface)" stroke="var(--ok)"/><text x="185" y="86" text-anchor="middle" font-size="11">built-in: upper(), round() … in-engine</text>
+        <rect x="40" y="114" width="290" height="40" rx="6" fill="var(--surface)" stroke="var(--ok)"/><text x="185" y="138" text-anchor="middle" font-size="11">SQL UDF: expression inlined in the plan</text>
+        <rect x="40" y="166" width="290" height="40" rx="6" fill="var(--surface)" stroke="var(--warn)"/><text x="185" y="190" text-anchor="middle" font-size="11">Python UDF: rows leave the engine →</text>
+        <rect x="460" y="140" width="180" height="76" rx="10" fill="var(--surface)" stroke="var(--warn)"/>
+        <text x="550" y="166" text-anchor="middle" font-weight="600">Python worker</text><text x="550" y="186" text-anchor="middle" font-size="11">your function,</text><text x="550" y="202" text-anchor="middle" font-size="11">one row at a time</text>
+        <text x="405" y="150" text-anchor="middle" font-size="11" fill="var(--muted)">serialize</text><text x="405" y="226" text-anchor="middle" font-size="11" fill="var(--muted)">deserialize</text>
+        <path id="out" d="M330 180 C390 160 420 165 460 168" fill="none" stroke="var(--line)" stroke-dasharray="3 4"/>
+        <path id="back" d="M460 196 C420 210 390 210 330 196" fill="none" stroke="var(--line)" stroke-dasharray="3 4"/>
+      </g>
+      <circle r="4" fill="var(--warn)" data-rest="395,165"><animateMotion dur="1.2s" repeatCount="indefinite"><mpath href="#out"/></animateMotion></circle>
+      <circle r="4" fill="var(--warn)" data-rest="395,205"><animateMotion dur="1.2s" begin="0.6s" repeatCount="indefinite"><mpath href="#back"/></animateMotion></circle>
+    </svg>
+    <figcaption class="cap">Notice: built-ins and SQL UDFs <b>stay inside the engine</b> (green). A Python UDF sends rows <b>out and back</b> across a process boundary (red dots), paying a serialization cost each way.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: same logic, five ways</h2>
+  <p>Goal: turn a ride's minutes into a price band ("short", "medium", "long"). Choose the data size and see how each approach compares. Times are <b>illustrative ratios</b>, not benchmarks. Then turn on NULL minutes to see a classic Python UDF bug.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Rows <select id="d-rows"><option value="1e5">100 thousand</option><option value="1e7" selected>10 million</option><option value="1e9">1 billion</option></select></label>
+      <label class="tog"><input type="checkbox" id="d-null"> Some rides have NULL minutes</label>
+      <button type="button" class="primary" id="d-run">Run all five</button>
+    </div>
+    <div id="d-bars" class="quiz" aria-live="polite" aria-label="Relative run times"></div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="UDF log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p>Built-in first. Often you don't need a UDF at all:</p>
+<pre><code><span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> functions <span class="c-k">as</span> F
+
+rides = spark.read.table(<span class="c-s">"bike_shop.silver.rides"</span>)
+banded = rides.withColumn(<span class="c-s">"band"</span>,
+    F.when(F.col(<span class="c-s">"minutes"</span>) &lt; 15, <span class="c-s">"short"</span>)
+     .when(F.col(<span class="c-s">"minutes"</span>) &lt; 45, <span class="c-s">"medium"</span>)
+     .otherwise(<span class="c-s">"long"</span>))            <span class="c-c"># NULL minutes fall through to "long": decide if that's right</span></code></pre>
+  <p>A SQL UDF, permanent in Unity Catalog:</p>
+<pre><code><span class="c-k">CREATE OR REPLACE FUNCTION</span> bike_shop.silver.price_band(minutes <span class="c-k">INT</span>)
+  <span class="c-k">RETURNS STRING</span>
+  <span class="c-k">COMMENT</span> <span class="c-s">'Short, medium or long ride'</span>
+  <span class="c-k">RETURN CASE</span>
+    <span class="c-k">WHEN</span> minutes <span class="c-k">IS NULL THEN NULL</span>
+    <span class="c-k">WHEN</span> minutes &lt; 15 <span class="c-k">THEN</span> <span class="c-s">'short'</span>
+    <span class="c-k">WHEN</span> minutes &lt; 45 <span class="c-k">THEN</span> <span class="c-s">'medium'</span>
+    <span class="c-k">ELSE</span> <span class="c-s">'long'</span> <span class="c-k">END</span>;
+
+<span class="c-k">SELECT</span> ride_id, bike_shop.silver.price_band(minutes) <span class="c-k">AS</span> band <span class="c-k">FROM</span> bike_shop.silver.rides;
+
+<span class="c-c">-- A temporary version, for this session only</span>
+<span class="c-k">CREATE TEMPORARY FUNCTION</span> price_band_tmp(minutes <span class="c-k">INT</span>) <span class="c-k">RETURNS STRING</span>
+  <span class="c-k">RETURN CASE WHEN</span> minutes &lt; 15 <span class="c-k">THEN</span> <span class="c-s">'short'</span> <span class="c-k">ELSE</span> <span class="c-s">'long'</span> <span class="c-k">END</span>;</code></pre>
+  <p>A Python UDF, when the logic truly needs Python (here, a library call):</p>
+<pre><code><span class="c-k">from</span> pyspark.sql.functions <span class="c-k">import</span> udf
+<span class="c-k">from</span> pyspark.sql.types <span class="c-k">import</span> StringType
+
+<span class="c-k">@udf</span>(returnType=StringType(), useArrow=<span class="c-k">True</span>)   <span class="c-c"># Arrow speeds up the transfer</span>
+<span class="c-k">def</span> station_slug(name):
+    <span class="c-k">if</span> name <span class="c-k">is None</span>:                             <span class="c-c"># always handle NULL: it arrives as None</span>
+        <span class="c-k">return None</span>
+    <span class="c-k">import</span> unicodedata
+    ascii_name = unicodedata.normalize(<span class="c-s">"NFKD"</span>, name).encode(<span class="c-s">"ascii"</span>, <span class="c-s">"ignore"</span>).decode()
+    <span class="c-k">return</span> ascii_name.lower().replace(<span class="c-s">" "</span>, <span class="c-s">"-"</span>)
+
+stations = spark.read.table(<span class="c-s">"bike_shop.silver.stations"</span>)
+stations.withColumn(<span class="c-s">"slug"</span>, station_slug(<span class="c-s">"station_name"</span>))
+
+<span class="c-c"># Make it callable from SQL in this session</span>
+spark.udf.register(<span class="c-s">"station_slug"</span>, station_slug)
+spark.sql(<span class="c-s">"SELECT station_slug(station_name) FROM bike_shop.silver.stations"</span>)</code></pre>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td>Replace a Python UDF with a built-in expression</td><td>Usually much faster; the optimizer and Photon can work on it.</td></tr>
+    <tr><td>Python UDF → SQL UDF</td><td>Logic is inlined into the plan, no Python process involved. Only possible if the logic is expressible in SQL.</td></tr>
+    <tr><td><code>useArrow=True</code> on a Python UDF</td><td>Data moves in Arrow batches instead of pickled rows: less serialization overhead. Newer Spark versions enable this by default.</td></tr>
+    <tr><td>Forget to handle <code>None</code> in a Python UDF</td><td>NULL inputs raise a Python error that fails the whole task, or produce wrong output.</td></tr>
+    <tr><td>Wrong <code>returnType</code></td><td>Values that don&#39;t match the declared type can silently become NULL (or error, depending on settings). Declare the type you really return.</td></tr>
+    <tr><td><code>CREATE TEMPORARY FUNCTION</code> vs <code>CREATE FUNCTION catalog.schema.name</code></td><td>Temporary: this session only, no grants. Permanent: stored in Unity Catalog, shareable with <code>EXECUTE</code>.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th></th><th>Built-in</th><th>SQL UDF</th><th>Python UDF</th><th>pandas UDF (next lesson)</th></tr></thead><tbody>
+    <tr><td>Runs in</td><td>Engine</td><td>Engine (inlined)</td><td>Python worker, row by row</td><td>Python worker, in Arrow batches</td></tr>
+    <tr><td>Speed</td><td>Fastest</td><td>About built-in speed</td><td>Slowest (better with Arrow)</td><td>Much faster than Python UDF</td></tr>
+    <tr><td>Can use Python libraries</td><td>No</td><td>No</td><td>Yes</td><td>Yes (pandas, numpy, models)</td></tr>
+    <tr><td>Optimizer sees inside</td><td>Yes</td><td>Yes</td><td>No (black box)</td><td>No (black box)</td></tr>
+    <tr><td>Shareable in Unity Catalog</td><td>n/a</td><td>Yes</td><td>Yes, as a UC Python function (01-07)</td><td>Yes, as a batch UC function (01-07)</td></tr>
+  </tbody></table></div>
+  <div class="grid3">
+    <div class="card"><p class="tag">Decision 1</p><h3>Built-in exists?</h3><p>Use it. Stop here.</p></div>
+    <div class="card"><p class="tag">Decision 2</p><h3>Expressible in SQL?</h3><p>SQL UDF. Fast and shareable.</p></div>
+    <div class="card"><p class="tag">Decision 3</p><h3>Needs Python?</h3><p>Prefer a pandas UDF; plain Python UDF (with Arrow) for simple per-row logic.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>A job that uppercases names with a Python UDF takes 40 minutes</td><td>Every row crosses into Python and back.</td><td>Use the built-in <code>upper()</code>.</td></tr>
+    <tr><td>A UDF job fails with <code>TypeError: '&lt;' not supported between 'NoneType' and 'int'</code></td><td>A NULL reached the Python function.</td><td>Check for <code>None</code> first, or filter NULLs before the UDF.</td></tr>
+    <tr><td>Three teams each define their own <code>price_band</code> logic</td><td>Reports disagree.</td><td>One permanent SQL UDF in Unity Catalog, granted to all.</td></tr>
+    <tr><td>A new column is all NULL after a UDF</td><td><code>returnType</code> said integer but the function returned strings.</td><td>Match the declared return type to the real values.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>A question asks for the most performant option, and a built-in function can do the job: the built-in wins over any UDF.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>Python UDFs are opaque to the optimizer: it can't push filters through them or reason about their output.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><code>spark.udf.register</code> (makes a Python UDF callable in SQL, this session only) vs <code>CREATE FUNCTION catalog.schema.f</code> (permanent, governed, shareable).</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>SQL UDF</b> (logic in SQL, inlined) vs a <b>Python UDF called from SQL</b> (still runs in Python, still slow).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="1"><p>1. Why is a plain Python UDF usually slower than a SQL UDF doing the same logic?</p>
+      <ol class="opts"><li><button>Python is not allowed on executors</button></li><li><button>Rows are serialized to a Python worker and back, one at a time</button></li><li><button>SQL UDFs run on the driver</button></li><li><button>Python UDFs disable partitions</button></li></ol>
+      <p class="why" hidden>The engine runs on the JVM. Each row is converted and shipped to Python and back. SQL UDFs stay in the engine and are inlined.</p></div>
+    <div class="q" data-answer="3"><p>2. Several teams need the same price-band logic, written in SQL, with access control. Best choice?</p>
+      <ol class="opts"><li><button>A Python UDF in each notebook</button></li><li><button><code>spark.udf.register</code> in a shared notebook</button></li><li><button>A temporary function</button></li><li><button>A permanent SQL UDF in Unity Catalog, granted with EXECUTE</button></li></ol>
+      <p class="why" hidden>Permanent Unity Catalog functions are shared by name and governed. Registered and temporary functions live in one session.</p></div>
+    <div class="q" data-answer="0"><p>3. A Python UDF fails when the input column contains NULL. What's the right fix?</p>
+      <ol class="opts"><li><button>Check for <code>None</code> at the start of the function</button></li><li><button>Set <code>useArrow=True</code></button></li><li><button>Change the return type to string</button></li><li><button>Use more executors</button></li></ol>
+      <p class="why" hidden>NULL arrives as <code>None</code> in Python. Handle it explicitly (or filter NULLs first). Arrow changes transfer speed, not logic.</p></div>
+    <div class="q" data-answer="2"><p>4. What does <code>useArrow=True</code> change for a Python UDF?</p>
+      <ol class="opts"><li><button>It turns it into a SQL UDF</button></li><li><button>It lets the optimizer see inside it</button></li><li><button>It uses Apache Arrow to transfer data, reducing serialization cost</button></li><li><button>It makes the UDF permanent</button></li></ol>
+      <p class="why" hidden>Arrow-optimized Python UDFs exchange data in columnar batches. The function still runs in Python and stays opaque to the optimizer.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>Order of preference: built-in → SQL UDF → pandas UDF → plain Python UDF.</li>
+    <li>Python UDFs ship rows to a Python worker and back; Arrow (<code>useArrow</code>) reduces the cost.</li>
+    <li>SQL UDFs are inlined into the plan and can be permanent, governed Unity Catalog functions.</li>
+    <li>Handle NULLs and declare the correct return type.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#apache-arrow">Apache Arrow</a>
+    <a class="chip" href="../../glossary.html#built-in-function">built-in function</a>
+    <a class="chip" href="../../glossary.html#jvm">JVM</a>
+    <a class="chip" href="../../glossary.html#python-udf">Python UDF</a>
+    <a class="chip" href="../../glossary.html#serialization">serialization</a>
+    <a class="chip" href="../../glossary.html#sql-udf">SQL UDF</a>
+    <a class="chip" href="../../glossary.html#udf">UDF</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/udf/">What are user-defined functions (UDFs)?</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/udf/python">Python scalar UDFs</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-create-sql-function">CREATE FUNCTION (SQL and Python)</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  // shortcut: cost per million rows in arbitrary "seconds", chosen to show the usual ordering, not measured.
+  var WAYS = [
+    { name: 'Built-in when/otherwise', perM: 0.4, nullSafe: 'falls into "long": a logic choice to review' },
+    { name: 'SQL UDF (inlined)', perM: 0.45, nullSafe: 'returns NULL (handled in CASE)' },
+    { name: 'pandas UDF', perM: 1.2, nullSafe: 'NaN/None in the Series: handle in pandas' },
+    { name: 'Python UDF + Arrow', perM: 3, nullSafe: 'None: crashes unless checked' },
+    { name: 'Python UDF (pickled rows)', perM: 9, nullSafe: 'None: crashes unless checked' }
+  ];
+  $('d-run').onclick = function () {
+    var rows = +$('d-rows').value, nul = $('d-null').checked, box = $('d-bars'), max = WAYS[WAYS.length - 1].perM;
+    box.textContent = '';
+    log('skip', '> ' + rows.toLocaleString() + ' rows' + (nul ? ', with NULL minutes' : ''));
+    WAYS.forEach(function (w) {
+      var secs = w.perM * rows / 1e6, crash = nul && w.name.indexOf('Python UDF') === 0;
+      var row = document.createElement('div'); row.className = 'q';
+      var label = document.createElement('p');
+      label.textContent = w.name + ': ' + (crash ? 'FAILED (TypeError on None)' : fmt(secs));
+      var m = document.createElement('div'); m.className = 'meter'; m.setAttribute('aria-hidden', 'true');
+      var i = document.createElement('i'); i.style.width = (crash ? 100 : 100 * w.perM / max) + '%';
+      if (crash) i.className = 'bad';
+      m.appendChild(i); row.append(label, m); box.appendChild(row);
+      log(crash ? 'bad' : 'ok', '  ' + w.name + ' · ' + (crash ? 'task failed: ' + w.nullSafe : fmt(secs) + (nul ? ' · NULL → ' + w.nullSafe : '')));
+    });
+  };
+  function fmt(s) { return s < 60 ? s.toFixed(1) + ' s' : s < 3600 ? (s / 60).toFixed(1) + ' min' : (s / 3600).toFixed(1) + ' h'; }
+  $('d-run').onclick();
+})();
+</script>
+</body>
+</html>

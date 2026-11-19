@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Declarative Automation Bundles: what and why · DE Pro Study Course</title>
+<meta name="description" content="What Declarative Automation Bundles are, how databricks.yml describes jobs and pipelines as code, and how targets and deployment modes keep dev and prod apart.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="01-01">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 01 · Lesson 01</p>
+  <h1>Declarative Automation Bundles: what and why</h1>
+  <p class="lede">Clicking jobs together in the UI works once. For a team shipping changes every week, you want jobs, pipelines and code described in files, reviewed in Git and deployed the same way every time. That is what bundles do.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>01 · Developing Code for Data Processing (23%)</dd></div>
+    <div><dt>Lesson</dt><dd>01 · Declarative Automation Bundles: what and why</dd></div>
+    <div><dt>Exam objective</dt><dd>S1.1 — Lay out a Python project as a bundle so pieces are modular and CI/CD can deploy it. (Deploying is covered again in S8.3.)</dd></div>
+    <div><dt>Time to read</dt><dd>~16 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq"><li><a class="chip acc" href="../00-foundations/08-what-is-databricks.html">00-08 What is Databricks?</a></li></ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p><span class="def">Declarative Automation Bundles</span> (formerly Databricks Asset Bundles, or DABs) let you describe Databricks resources in text files that live next to your code. A <span class="def">resource</span> is something the platform runs or hosts: a Lakeflow job, a Lakeflow pipeline, a dashboard, a model serving endpoint, and more.</p>
+  <p>"Declarative" means you write <em>what</em> should exist ("a job called nightly_rides that runs this notebook at 02:00"), not the clicks to create it. The tool works out what to create, change or delete. This idea is called <span class="def">infrastructure as code</span>.</p>
+  <p>The main file is <code>databricks.yml</code>, written in <span class="def">YAML</span> (a plain-text format of indented <code>key: value</code> lines). A bundle has three main parts:</p>
+  <ul>
+    <li><code>bundle</code>: its name.</li>
+    <li><code>resources</code>: the jobs, pipelines and other things to create.</li>
+    <li><code>targets</code>: the places you deploy to, such as <code>dev</code> and <code>prod</code>, each with its own workspace and settings.</li>
+  </ul>
+  <p>You drive bundles with the <span class="def">Databricks CLI</span> (command-line tool): <code>databricks bundle validate</code> checks the files, <code>deploy</code> uploads code and creates or updates resources, <code>run</code> starts a job or pipeline, and <code>destroy</code> removes what the bundle deployed. The command is still <code>databricks bundle</code> after the rename.</p>
+  <div class="analogy">
+    <p>A bundle is a recipe card versus cooking from memory. From memory, each cook makes the dish a bit differently and nobody can say what changed. With a written recipe, anyone can make the same dish in any kitchen (dev, test, prod), and every edit to the recipe is visible and can be discussed before it reaches the restaurant.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 250" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">One bundle, deployed to two targets</title>
+      <desc id="dia-d">A Git repository holds databricks.yml, the job definitions and source code. The CLI reads them and deploys to the dev target in development mode, where names get a dev prefix and schedules are paused, and to the prod target in production mode, where schedules run and a service principal runs the job.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <rect x="10" y="60" width="170" height="120" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="95" y="82" text-anchor="middle" font-weight="600">Git repo</text>
+        <text x="24" y="106" font-size="11">databricks.yml</text><text x="24" y="126" font-size="11">resources/*.yml</text><text x="24" y="146" font-size="11">src/ (code)</text><text x="24" y="166" font-size="11">tests/</text>
+        <rect x="230" y="96" width="130" height="50" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="295" y="118" text-anchor="middle">databricks</text><text x="295" y="136" text-anchor="middle">bundle deploy</text>
+        <rect x="420" y="20" width="230" height="90" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="535" y="42" text-anchor="middle" font-weight="600">target: dev</text>
+        <text x="432" y="64" font-size="11">[dev ana] nightly_rides</text><text x="432" y="82" font-size="11" fill="var(--muted)">schedule: PAUSED</text><text x="432" y="100" font-size="11" fill="var(--muted)">runs as: you</text>
+        <rect x="420" y="140" width="230" height="90" rx="10" fill="var(--surface)" stroke="var(--ok)"/>
+        <text x="535" y="162" text-anchor="middle" font-weight="600">target: prod</text>
+        <text x="432" y="184" font-size="11">nightly_rides</text><text x="432" y="202" font-size="11" fill="var(--ok)">schedule: 02:00 daily</text><text x="432" y="220" font-size="11" fill="var(--muted)">runs as: service principal</text>
+        <g fill="none" stroke="var(--line)" stroke-dasharray="3 4"><path id="a" d="M180 120 H230"/><path id="b" d="M360 112 C390 112 390 65 420 65"/><path id="c" d="M360 130 C390 130 390 185 420 185"/></g>
+      </g>
+      <circle r="5" fill="var(--accent)" data-rest="205,120"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#a"/></animateMotion></circle>
+      <circle r="5" fill="var(--bronze)" data-rest="390,90"><animateMotion dur="3s" begin="1s" repeatCount="indefinite"><mpath href="#b"/></animateMotion></circle>
+      <circle r="5" fill="var(--ok)" data-rest="390,160"><animateMotion dur="3s" begin="1.5s" repeatCount="indefinite"><mpath href="#c"/></animateMotion></circle>
+    </svg>
+    <figcaption class="cap">Notice: the <b>same files</b> produce two deployments. In <b>dev</b> (development mode) names get a personal prefix and schedules are paused, so you can't clash with teammates or run production work by accident. In <b>prod</b> the job runs on its schedule.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: deploy a bundle</h2>
+  <p>Pick a target and run CLI commands. Then "edit" the code and redeploy, and try deploying prod from the wrong Git branch. (Simulated; no real workspace.)</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Target <select id="d-target"><option value="dev">dev (mode: development)</option><option value="prod">prod (mode: production)</option></select></label>
+      <label>Git branch <select id="d-branch"><option>main</option><option>feature/new-columns</option></select></label>
+    </div>
+    <div class="ctrls">
+      <button type="button" id="d-validate">bundle validate</button>
+      <button type="button" class="primary" id="d-deploy">bundle deploy</button>
+      <button type="button" id="d-run">bundle run nightly_rides</button>
+      <button type="button" id="d-edit">Edit clean_rides.py</button>
+      <button type="button" id="d-destroy">bundle destroy</button>
+    </div>
+    <div class="flow">
+      <div class="pane"><h4>Workspace: dev</h4><div id="d-ws-dev"></div></div>
+      <div class="pane"><h4>Workspace: prod</h4><div id="d-ws-prod"></div></div>
+    </div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="CLI log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p>A small but complete <code>databricks.yml</code>:</p>
+<pre><code><span class="c-k">bundle</span>:
+  <span class="c-k">name</span>: bike_shop_etl
+
+<span class="c-k">variables</span>:
+  <span class="c-k">catalog</span>:
+    <span class="c-k">description</span>: Catalog the job writes to
+    <span class="c-k">default</span>: dev
+
+<span class="c-k">resources</span>:
+  <span class="c-k">jobs</span>:
+    <span class="c-k">nightly_rides</span>:
+      <span class="c-k">name</span>: nightly_rides
+      <span class="c-k">schedule</span>:
+        <span class="c-k">quartz_cron_expression</span>: <span class="c-s">"0 0 2 * * ?"</span>   <span class="c-c"># 02:00 every day</span>
+        <span class="c-k">timezone_id</span>: UTC
+      <span class="c-k">tasks</span>:
+        - <span class="c-k">task_key</span>: clean_rides
+          <span class="c-k">notebook_task</span>:
+            <span class="c-k">notebook_path</span>: ./src/clean_rides.py
+            <span class="c-k">base_parameters</span>:
+              <span class="c-k">catalog</span>: ${var.catalog}           <span class="c-c"># filled in per target</span>
+
+<span class="c-k">targets</span>:
+  <span class="c-k">dev</span>:
+    <span class="c-k">mode</span>: development                      <span class="c-c"># prefix names, pause schedules</span>
+    <span class="c-k">default</span>: <span class="c-k">true</span>
+    <span class="c-k">workspace</span>:
+      <span class="c-k">host</span>: https://dev-workspace.example.cloud.databricks.com
+
+  <span class="c-k">prod</span>:
+    <span class="c-k">mode</span>: production                       <span class="c-c"># extra safety checks</span>
+    <span class="c-k">git</span>:
+      <span class="c-k">branch</span>: main                          <span class="c-c"># deploy only from main</span>
+    <span class="c-k">workspace</span>:
+      <span class="c-k">host</span>: https://prod-workspace.example.cloud.databricks.com
+    <span class="c-k">variables</span>:
+      <span class="c-k">catalog</span>: prod
+    <span class="c-k">run_as</span>:
+      <span class="c-k">service_principal_name</span>: <span class="c-s">"&lt;application-id-of-a-service-principal&gt;"</span></code></pre>
+  <p>The everyday commands:</p>
+<pre><code>databricks bundle init                <span class="c-c"># start a new bundle from a template</span>
+databricks bundle validate            <span class="c-c"># check the YAML before deploying</span>
+databricks bundle deploy -t dev       <span class="c-c"># upload code, create/update resources in dev</span>
+databricks bundle run -t dev nightly_rides   <span class="c-c"># start the job now</span>
+databricks bundle summary -t dev      <span class="c-c"># list what this bundle deployed</span>
+databricks bundle destroy -t dev      <span class="c-c"># remove what this bundle deployed</span></code></pre>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td><code>mode: development</code> on a target</td><td>Resource names get a <code>[dev &lt;user&gt;]</code> prefix and a dev tag; schedules and triggers are paused; pipelines are flagged as development; concurrent runs allowed; deployment lock off.</td></tr>
+    <tr><td><code>mode: production</code> on a target</td><td>Deploy checks that pipelines aren't in development mode and that you're on the target's Git branch (override with <code>--force</code>). Use a service principal via <code>run_as</code>.</td></tr>
+    <tr><td>No <code>mode</code> at all</td><td>Allowed. No presets are applied; you get exactly what the YAML says.</td></tr>
+    <tr><td><code>presets</code> on a target</td><td>Fine-tune individual behaviours, such as <code>name_prefix</code>, <code>trigger_pause_status</code>, <code>tags</code> or <code>jobs_max_concurrent_runs</code>.</td></tr>
+    <tr><td>Change <code>${var.catalog}</code> per target</td><td>Same code writes to <code>dev</code> or <code>prod</code> catalogs with no edits.</td></tr>
+    <tr><td>Edit a job in the UI after deploying</td><td>The next <code>bundle deploy</code> overwrites your UI change with what the files say. Make changes in the files.</td></tr>
+    <tr><td>Remove a job from the YAML and deploy</td><td>The bundle deletes that job from the target, because it no longer appears in the description.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th></th><th>Click in the UI</th><th>Bundles</th></tr></thead><tbody>
+    <tr><td>Repeatable across dev / test / prod</td><td>By hand, error-prone</td><td>Same files, different target</td></tr>
+    <tr><td>Code review of job changes</td><td>No</td><td>Yes, in pull requests</td></tr>
+    <tr><td>History and rollback</td><td>Hard</td><td>Git history; redeploy an older commit</td></tr>
+    <tr><td>CI/CD automation</td><td>No</td><td>CLI commands in a pipeline (module 08)</td></tr>
+    <tr><td>Fast for a one-off experiment</td><td>Yes</td><td>Slightly more setup</td></tr>
+  </tbody></table></div>
+  <div class="grid3">
+    <div class="card"><p class="tag">Top-level key</p><h3>bundle</h3><p>Name (and optional settings) of the bundle.</p></div>
+    <div class="card"><p class="tag">Top-level key</p><h3>resources</h3><p>Jobs, pipelines, dashboards, serving endpoints, experiments and more.</p></div>
+    <div class="card"><p class="tag">Top-level key</p><h3>targets</h3><p>Where to deploy: workspace, mode, overrides per environment.</p></div>
+    <div class="card"><p class="tag">Top-level key</p><h3>variables</h3><p>Values that change per target, used as <code>${var.name}</code>.</p></div>
+    <div class="card"><p class="tag">Top-level key</p><h3>include</h3><p>Pull in more YAML files, e.g. <code>resources/*.yml</code> (lesson 01-02).</p></div>
+    <div class="card"><p class="tag">Top-level key</p><h3>artifacts</h3><p>Things to build before deploying, such as a Python wheel (lesson 01-02).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>Two developers deploy the same job to dev and overwrite each other</td><td>No mode, so both deploy to the same names.</td><td>Use <code>mode: development</code>: each person gets their own prefixed copy.</td></tr>
+    <tr><td>A dev deploy starts writing to production tables every night</td><td>The schedule ran and the catalog was hard-coded.</td><td>Development mode pauses schedules; use a <code>catalog</code> variable per target.</td></tr>
+    <tr><td>Someone fixes a job in the prod UI; next release undoes it</td><td>Deploy restores what the files describe.</td><td>Make the fix in the repo and deploy it.</td></tr>
+    <tr><td>Prod job fails when its author leaves the company</td><td>It ran as that person, whose access was removed.</td><td>Set <code>run_as</code> to a service principal in prod.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>"Development mode runs the schedule so you can test it." No: development mode <b>pauses</b> schedules and triggers. Run the job explicitly with <code>bundle run</code>.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>The rename didn't change the CLI: it is still <code>databricks bundle …</code>, and existing <code>databricks.yml</code> files keep working.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Target</b> (a deployment destination in the bundle) vs <b>deployment mode</b> (<code>development</code>/<code>production</code> presets applied to a target).</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><code>bundle deploy</code> (create or update resources) vs <code>bundle run</code> (start one now). Deploying doesn't run anything by itself.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="1"><p>1. You deploy a bundle to a target with <code>mode: development</code>. The job has a daily schedule. What happens at the scheduled time?</p>
+      <ol class="opts"><li><button>The job runs as usual</button></li><li><button>Nothing: development mode pauses schedules</button></li><li><button>The deploy fails</button></li><li><button>The job runs in prod instead</button></li></ol>
+      <p class="why" hidden>Development mode pauses schedules and triggers so personal copies don't run production work. Use <code>bundle run</code> to test.</p></div>
+    <div class="q" data-answer="3"><p>2. Which file is the main configuration file of a bundle?</p>
+      <ol class="opts"><li><button><code>pyproject.toml</code></button></li><li><button><code>requirements.txt</code></button></li><li><button><code>bundle.json</code></button></li><li><button><code>databricks.yml</code></button></li></ol>
+      <p class="why" hidden><code>databricks.yml</code> holds the bundle name, resources, targets and so on. <code>pyproject.toml</code> describes a Python package.</p></div>
+    <div class="q" data-answer="0"><p>3. A prod target has <code>mode: production</code> and <code>git.branch: main</code>. You deploy from a feature branch. What happens?</p>
+      <ol class="opts"><li><button>The deploy is rejected unless you use <code>--force</code></button></li><li><button>It deploys and switches to main</button></li><li><button>It deploys to dev instead</button></li><li><button>It deploys with a dev prefix</button></li></ol>
+      <p class="why" hidden>Production mode checks that the current branch matches the target's configured branch.</p></div>
+    <div class="q" data-answer="2"><p>4. A teammate edits a bundle-deployed job in the UI. What happens at the next <code>bundle deploy</code>?</p>
+      <ol class="opts"><li><button>The UI change is merged into the YAML</button></li><li><button>The deploy fails with a conflict</button></li><li><button>The job is set back to what the bundle files describe</button></li><li><button>The job is duplicated</button></li></ol>
+      <p class="why" hidden>The files are the source of truth. Deploying makes the workspace match them, overwriting manual edits.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>Bundles describe jobs, pipelines and other resources as YAML next to code: infrastructure as code.</li>
+    <li><code>databricks.yml</code> has <code>bundle</code>, <code>resources</code>, <code>targets</code> (plus variables, include, artifacts).</li>
+    <li>Development mode: prefixed names, paused schedules. Production mode: branch and pipeline checks, service principal.</li>
+    <li>CLI: <code>validate</code>, <code>deploy</code>, <code>run</code>, <code>destroy</code>. The files win over UI edits.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#bundle">bundle</a>
+    <a class="chip" href="../../glossary.html#databricks-cli">Databricks CLI</a>
+    <a class="chip" href="../../glossary.html#deployment-mode">deployment mode</a>
+    <a class="chip" href="../../glossary.html#infrastructure-as-code">infrastructure as code</a>
+    <a class="chip" href="../../glossary.html#resource">resource</a>
+    <a class="chip" href="../../glossary.html#service-principal">service principal</a>
+    <a class="chip" href="../../glossary.html#target">target</a>
+    <a class="chip" href="../../glossary.html#yaml">YAML</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/bundles/">What are Declarative Automation Bundles?</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/bundles/settings">Bundle configuration</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/bundles/deployment-modes">Deployment modes</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/cli/bundle-commands">bundle command group (CLI)</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var ws = { dev: null, prod: null }, code = 1, deployedCode = { dev: 0, prod: 0 };
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  function t() { return $('d-target').value; }
+  function draw() {
+    ['dev', 'prod'].forEach(function (k) {
+      var box = $('d-ws-' + k), r = ws[k]; box.textContent = '';
+      var add = function (s, c) { box.appendChild(Object.assign(document.createElement('div'), { className: 'item' + (c ? ' ' + c : ''), textContent: s })); };
+      if (!r) { add('(nothing deployed)'); return; }
+      add('job: ' + r.name);
+      add('schedule: ' + r.sched, r.sched === 'PAUSED' ? '' : 'ok');
+      add('runs as: ' + r.runAs);
+      add('catalog param: ' + r.catalog);
+      add('code: clean_rides.py v' + deployedCode[k] + (deployedCode[k] < code ? '  (out of date)' : ''), deployedCode[k] < code ? 'bad' : 'ok');
+    });
+  }
+  $('d-validate').onclick = function () { log('ok', '> databricks bundle validate -t ' + t()); log('ok', '  Validation OK! (bundle bike_shop_etl, target ' + t() + ')'); };
+  $('d-deploy').onclick = function () {
+    var k = t();
+    log('skip', '> databricks bundle deploy -t ' + k);
+    if (k === 'prod' && $('d-branch').value !== 'main') {
+      log('bad', '  Error: not on the target branch "main" (current: ' + $('d-branch').value + '). Use --force to override.');
+      return;
+    }
+    var existed = !!ws[k];
+    ws[k] = k === 'dev'
+      ? { name: '[dev ana] nightly_rides', sched: 'PAUSED', runAs: 'ana (you)', catalog: 'dev' }
+      : { name: 'nightly_rides', sched: '02:00 UTC daily', runAs: 'service principal', catalog: 'prod' };
+    deployedCode[k] = code;
+    log('ok', '  Uploading bundle files to /Workspace/Users/…/.bundle/bike_shop_etl/' + k + '/files');
+    log('ok', '  ' + (existed ? 'Updated' : 'Created') + ' job "' + ws[k].name + '"' + (k === 'dev' ? ' · schedule paused by development mode' : ''));
+    draw();
+  };
+  $('d-run').onclick = function () {
+    var k = t();
+    log('skip', '> databricks bundle run -t ' + k + ' nightly_rides');
+    if (!ws[k]) { log('bad', '  Error: job not found in ' + k + '. Deploy first.'); return; }
+    log(deployedCode[k] < code ? 'bad' : 'ok', '  Run started for "' + ws[k].name + '" using code v' + deployedCode[k] + (deployedCode[k] < code ? ' (your latest edit is NOT deployed)' : ''));
+  };
+  $('d-edit').onclick = function () { code++; log('skip', '~ you edit src/clean_rides.py locally (now v' + code + '). Nothing changes in any workspace until you deploy.'); draw(); };
+  $('d-destroy').onclick = function () {
+    var k = t(); log('skip', '> databricks bundle destroy -t ' + k);
+    if (!ws[k]) { log('skip', '  nothing to destroy'); return; }
+    log('bad', '  Deleted job "' + ws[k].name + '" and the bundle files in ' + k); ws[k] = null; deployedCode[k] = 0; draw();
+  };
+  draw();
+})();
+</script>
+</body>
+</html>

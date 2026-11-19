@@ -87,12 +87,12 @@ IDs are ours. Weights are per section of the exam guide. Wording is our own summ
 
 | # | Lesson | Covers | Before this | Status |
 |---|---|---|---|---|
-| 01-01 | Declarative Automation Bundles: what and why | S1.1 | 00-08 | [ ] |
-| 01-02 | Structuring a modular Python bundle project | S1.1 | 01-01 | [ ] |
-| 01-03 | Installing libraries: PyPI, wheels, source archives | S1.2 | 00-09 | [ ] |
-| 01-04 | Troubleshooting dependency conflicts | S1.2 | 01-03, 01-02 | [ ] |
-| 01-05 | Python and SQL UDFs | S1.3 | 00-06 | [ ] |
-| 01-06 | Pandas UDFs | S1.3 | 01-05 | [ ] |
+| 01-01 | Declarative Automation Bundles: what and why | S1.1 | 00-08 | [x] |
+| 01-02 | Structuring a modular Python bundle project | S1.1 | 01-01 | [x] |
+| 01-03 | Installing libraries: PyPI, wheels, source archives | S1.2 | 00-09 | [x] |
+| 01-04 | Troubleshooting dependency conflicts | S1.2 | 01-03, 01-02 | [x] |
+| 01-05 | Python and SQL UDFs | S1.3 | 00-06 | [x] |
+| 01-06 | Pandas UDFs | S1.3 | 01-05 | [x] |
 | 01-07 | Unity Catalog functions | S1.3 | 01-05, 00-11 | [ ] |
 | 01-08 | Lakeflow pipelines: the declarative way | S1.4 | 00-04, 00-12 | [ ] |
 | 01-09 | Streaming ingestion with Auto Loader in pipelines | S1.4 | 01-08 | [ ] |
