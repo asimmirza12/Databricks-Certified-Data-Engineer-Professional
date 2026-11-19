@@ -99,12 +99,12 @@ IDs are ours. Weights are per section of the exam guide. Wording is our own summ
 | 01-10 | Streaming tables vs materialized views | S1.6 | 01-08 | [x] |
 | 01-11 | AUTO CDC and SCD Type 1 | S1.7 | 01-10 | [x] |
 | 01-12 | AUTO CDC and SCD Type 2 | S1.7 | 01-11 | [x] |
-| 01-13 | Checkpoints and exactly-once recovery | S1.12 | 00-04 | [ ] |
-| 01-14 | Output modes and watermarks | S1.12 | 01-13 | [ ] |
-| 01-15 | Stateful streaming and foreachBatch | S1.12 | 01-14 | [ ] |
-| 01-16 | Structured Streaming vs Spark Declarative Pipelines | S1.8 | 01-08, 01-13 | [ ] |
-| 01-17 | Lakeflow Jobs in the UI | S1.5 | 00-09 | [ ] |
-| 01-18 | Automating jobs with the API and CLI | S1.5 | 01-17 | [ ] |
+| 01-13 | Checkpoints and exactly-once recovery | S1.12 | 00-04 | [x] |
+| 01-14 | Output modes and watermarks | S1.12 | 01-13 | [x] |
+| 01-15 | Stateful streaming and foreachBatch | S1.12 | 01-14 | [x] |
+| 01-16 | Structured Streaming vs Spark Declarative Pipelines | S1.8 | 01-08, 01-13 | [x] |
+| 01-17 | Lakeflow Jobs in the UI | S1.5 | 00-09 | [x] |
+| 01-18 | Automating jobs with the API and CLI | S1.5 | 01-17 | [x] |
 | 01-19 | Job control flow: If/else and For each | S1.9 | 01-17 | [ ] |
 | 01-20 | Serverless compute: environments and performance mode | S1.10 | 00-09, 01-03 | [ ] |
 | 01-21 | Choosing compute: high memory, retries and auto-optimization | S1.10 | 01-20, 01-17 | [ ] |

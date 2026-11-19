@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Output modes and watermarks · DE Pro Study Course</title>
+<meta name="description" content="Event time, windows, watermarks and the append, update and complete output modes: when results are emitted, how late data is handled, and how state is kept small.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="01-14">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 01 · Lesson 14</p>
+  <h1>Output modes and watermarks</h1>
+  <p class="lede">Counting rides per 10 minutes sounds easy until a phone in a tunnel uploads its events half an hour late. Watermarks decide how long to wait for stragglers; output modes decide what gets written and when.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>01 · Developing Code for Data Processing (23%)</dd></div>
+    <div><dt>Lesson</dt><dd>14 · Output modes and watermarks</dd></div>
+    <div><dt>Exam objective</dt><dd>S1.12 — Use watermarks, output modes, <code>foreachBatch</code> and checkpoints so stateful streams recover exactly once.</dd></div>
+    <div><dt>Time to read</dt><dd>~18 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq"><li><a class="chip acc" href="13-checkpoints-exactly-once.html">01-13 Checkpoints and exactly-once</a></li></ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p>Every event has an <span class="def">event time</span>: when it happened (a field in the data). It also has a processing time: when Spark sees it. They differ when data is delayed. Grouping by event time into fixed blocks, like 10:00–10:10, 10:10–10:20, is a <span class="def">tumbling window</span>.</p>
+  <p>A window's count can change whenever a late event for it arrives, so Spark must keep each open window in <span class="def">state</span>. Without a limit, state grows forever. A <span class="def">watermark</span> sets the limit: "assume events are at most 15 minutes late". Spark tracks the newest event time it has seen and subtracts the delay. Windows that end before that point are <b>final</b>: their state can be dropped, and events older than it are ignored as too late.</p>
+  <p>The <span class="def">output mode</span> says what each micro-batch writes to the sink:</p>
+  <ul>
+    <li><b>Append</b> (the default): write each result row once, when it's final. With aggregations this needs a watermark, and results appear only after the watermark passes the window's end.</li>
+    <li><b>Update</b>: write only rows that changed in this batch. A window may be written several times as it grows. The Delta sink doesn't support update mode directly; use <code>foreachBatch</code> with MERGE (next lesson).</li>
+    <li><b>Complete</b>: rewrite the entire result every batch. Only for aggregations; state is kept forever, so it gets slow as data grows.</li>
+  </ul>
+  <div class="analogy">
+    <p>A teacher collecting homework. The watermark is the rule "I accept work up to two days late". Until two days have passed, the grade for that assignment can still change (state). After that, the grades are final and late work is refused. Append mode posts each grade once, when final. Update mode re-posts any grade that changed today. Complete mode re-posts the whole grade book every day.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 250" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">A watermark trailing the newest event time</title>
+      <desc id="dia-d">A time line with 10-minute windows. The newest event seen is at 10:33. With a 15-minute delay, the watermark is at 10:18. Windows ending before 10:18 are final and their state is dropped. An event at 10:08 arriving now is older than the watermark and is dropped as too late.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <line x1="30" y1="150" x2="640" y2="150" stroke="var(--line)"/>
+        <g font-size="11" fill="var(--muted)"><text x="30" y="170">10:00</text><text x="170" y="170">10:10</text><text x="310" y="170">10:20</text><text x="450" y="170">10:30</text><text x="590" y="170">10:40</text></g>
+        <rect x="30" y="100" width="140" height="40" rx="6" fill="var(--code-bg)" stroke="var(--line)"/><text x="100" y="124" text-anchor="middle" font-size="11">final · emitted</text>
+        <rect x="170" y="100" width="140" height="40" rx="6" fill="var(--surface)" stroke="var(--accent)"/><text x="240" y="124" text-anchor="middle" font-size="11">open (in state)</text>
+        <rect x="310" y="100" width="140" height="40" rx="6" fill="var(--surface)" stroke="var(--accent)"/><text x="380" y="124" text-anchor="middle" font-size="11">open</text>
+        <rect x="450" y="100" width="140" height="40" rx="6" fill="var(--surface)" stroke="var(--accent)"/><text x="520" y="124" text-anchor="middle" font-size="11">open</text>
+        <line x1="282" y1="40" x2="282" y2="150" stroke="var(--warn)" stroke-width="2" stroke-dasharray="5 3"/>
+        <text x="288" y="52" font-size="11" fill="var(--warn)">watermark 10:18</text>
+        <line x1="492" y1="60" x2="492" y2="150" stroke="var(--ok)" stroke-width="2"/>
+        <text x="498" y="72" font-size="11" fill="var(--ok)">newest event 10:33</text>
+        <text x="300" y="92" text-anchor="middle" font-size="11" fill="var(--muted)">← 15 min delay →</text>
+        <text x="40" y="215" font-size="11" fill="var(--warn)">late event at 10:08 → older than watermark → dropped</text>
+        <path id="late" d="M140 40 C130 60 120 80 142 100" fill="none"/>
+      </g>
+      <circle r="6" fill="var(--warn)" data-rest="135,70"><animateMotion dur="2.5s" repeatCount="indefinite"><mpath href="#late"/></animateMotion></circle>
+    </svg>
+    <figcaption class="cap">Notice: the watermark (red dashes) <b>trails the newest event</b> by the delay. Windows entirely left of it are <b>final</b>: emitted in append mode, removed from state. A straggler older than the watermark (red dot) is <b>dropped</b>.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: count rides per 10 minutes</h2>
+  <p>Four micro-batches arrive; some events are late. Pick a watermark delay and an output mode, then step through the batches. Watch what's written, what's dropped, and how many windows stay in state.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Watermark <select id="d-wm"><option value="none">none</option><option value="5">5 minutes</option><option value="15" selected>15 minutes</option><option value="30">30 minutes</option></select></label>
+      <label>Output mode <select id="d-mode"><option value="append">append</option><option value="update">update</option><option value="complete">complete</option></select></label>
+      <button type="button" class="primary" id="d-next">Next micro-batch</button>
+      <button type="button" id="d-reset">Reset</button>
+    </div>
+    <div class="flow">
+      <div class="pane"><h4>Watermark / state</h4><div class="big" id="d-wmv">–</div><p class="cap" id="d-state"></p></div>
+      <div class="pane"><h4>Written to sink this batch</h4><div id="d-out"></div></div>
+      <div class="pane"><h4>Dropped as too late</h4><div class="big" id="d-drop">0</div></div>
+    </div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="Streaming log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+<pre><code><span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> functions <span class="c-k">as</span> F
+
+rides_per_10min = (spark.readStream.table(<span class="c-s">"bike_shop.bronze.ride_events"</span>)
+    .withWatermark(<span class="c-s">"event_time"</span>, <span class="c-s">"15 minutes"</span>)                <span class="c-c"># wait up to 15 min for stragglers</span>
+    .groupBy(F.window(<span class="c-s">"event_time"</span>, <span class="c-s">"10 minutes"</span>), <span class="c-s">"town"</span>)    <span class="c-c"># tumbling 10-minute windows</span>
+    .count())
+
+(rides_per_10min.writeStream
+    .outputMode(<span class="c-s">"append"</span>)                                       <span class="c-c"># each window written once, when final</span>
+    .option(<span class="c-s">"checkpointLocation"</span>, <span class="c-s">"/Volumes/bike_shop/gold/_checkpoints/rides_10min"</span>)
+    .toTable(<span class="c-s">"bike_shop.gold.rides_per_10min"</span>))</code></pre>
+  <p>Other window shapes and stateful operators that use watermarks:</p>
+<pre><code><span class="c-c"># Sliding windows: 10-minute windows starting every 5 minutes (overlapping)</span>
+F.window(<span class="c-s">"event_time"</span>, <span class="c-s">"10 minutes"</span>, <span class="c-s">"5 minutes"</span>)
+
+<span class="c-c"># Session windows: a ride session ends after 20 minutes without events</span>
+F.session_window(<span class="c-s">"event_time"</span>, <span class="c-s">"20 minutes"</span>)
+
+<span class="c-c"># Deduplicate re-sent events, keeping state only within the watermark</span>
+events.withWatermark(<span class="c-s">"event_time"</span>, <span class="c-s">"1 hour"</span>).dropDuplicatesWithinWatermark([<span class="c-s">"event_id"</span>])</code></pre>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td>Longer watermark delay</td><td>Accepts later events (more complete results) but keeps more state and, in append mode, emits results later.</td></tr>
+    <tr><td>Shorter watermark delay</td><td>Faster final results, smaller state, but more late events dropped.</td></tr>
+    <tr><td>No watermark on a streaming aggregation</td><td>State grows without limit; append mode isn't allowed for the aggregation.</td></tr>
+    <tr><td>Append mode</td><td>Each row written once, after it's final. Works with the Delta sink. Adds latency equal to the watermark delay.</td></tr>
+    <tr><td>Update mode</td><td>Lower latency: changed rows written every batch. Sink must handle overwrites; Delta needs <code>foreachBatch</code> + MERGE.</td></tr>
+    <tr><td>Complete mode</td><td>Whole result rewritten each batch; state kept forever. Only for aggregations; slows as data grows.</td></tr>
+    <tr><td>Stream-stream join</td><td>Use watermarks on both sides (plus a time condition) so join state can be cleaned up. Joins support append mode only.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th></th><th>Append</th><th>Update</th><th>Complete</th></tr></thead><tbody>
+    <tr><td>Writes</td><td>New final rows, once</td><td>Rows changed this batch</td><td>Entire result</td></tr>
+    <tr><td>Aggregations</td><td>Need a watermark</td><td>Yes</td><td>Yes (required)</td></tr>
+    <tr><td>Latency for windowed results</td><td>Window end + watermark delay</td><td>Every batch</td><td>Every batch</td></tr>
+    <tr><td>State</td><td>Cleaned by watermark</td><td>Cleaned by watermark (if set)</td><td>Kept forever</td></tr>
+    <tr><td>Delta sink</td><td>Supported</td><td>Not directly; use foreachBatch + MERGE</td><td>Supported (rewrites table)</td></tr>
+  </tbody></table></div>
+  <div class="grid3">
+    <div class="card"><p class="tag">Window</p><h3>Tumbling</h3><p>Fixed, non-overlapping blocks: <code>window(t, "10 minutes")</code>.</p></div>
+    <div class="card"><p class="tag">Window</p><h3>Sliding</h3><p>Fixed length, overlapping: <code>window(t, "10 minutes", "5 minutes")</code>.</p></div>
+    <div class="card"><p class="tag">Window</p><h3>Session</h3><p>Grows while events keep coming; closes after a gap: <code>session_window</code>.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>A streaming aggregation's memory use climbs for weeks</td><td>No watermark, so every window stays in state.</td><td>Add <code>withWatermark</code> on the event-time column.</td></tr>
+    <tr><td>Phones upload events up to 40 minutes late; counts look low</td><td>A 15-minute watermark drops those events.</td><td>Raise the delay to cover real lateness, accepting more state and later output.</td></tr>
+    <tr><td>A dashboard wants per-minute counts that update live, written to Delta</td><td>Update mode isn't supported by the Delta sink directly.</td><td>Use <code>foreachBatch</code> with MERGE, or append mode with a short watermark.</td></tr>
+    <tr><td>A "top bikes of all time" stream in complete mode gets slower daily</td><td>It rewrites the full result and keeps all state.</td><td>Use a materialized view over the table instead.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>"Append mode shows results immediately." Not with windowed aggregations: rows appear only after the watermark passes the window's end.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>The watermark is based on <b>event time</b> in the data, not the clock on the cluster.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Watermark</b> (how late data may be, controls state and drops) vs <b>trigger</b> (how often a micro-batch runs).</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Update mode</b> (changed rows only) vs <b>complete mode</b> (all rows every time).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="2"><p>1. A streaming count per 10-minute window, written to Delta in append mode, never outputs anything. What's missing?</p>
+      <ol class="opts"><li><button>A trigger interval</button></li><li><button>Complete mode</button></li><li><button>A watermark, so windows can be finalised</button></li><li><button>A bigger cluster</button></li></ol>
+      <p class="why" hidden>Append mode writes aggregated rows only once they're final, which needs a watermark on the event-time column.</p></div>
+    <div class="q" data-answer="0"><p>2. The newest event time seen is 10:33 and the watermark delay is 15 minutes. An event with time 10:08 arrives. What happens?</p>
+      <ol class="opts"><li><button>It's dropped: it's older than the 10:18 watermark</button></li><li><button>It updates the 10:00–10:10 window</button></li><li><button>The stream fails</button></li><li><button>It's held until tomorrow</button></li></ol>
+      <p class="why" hidden>Watermark = 10:33 − 15 min = 10:18. Events older than that are considered too late.</p></div>
+    <div class="q" data-answer="3"><p>3. Which output mode does the Delta sink NOT support directly?</p>
+      <ol class="opts"><li><button>Append</button></li><li><button>Complete</button></li><li><button>Both append and complete</button></li><li><button>Update</button></li></ol>
+      <p class="why" hidden>Delta supports append and complete. For update semantics, use foreachBatch with MERGE.</p></div>
+    <div class="q" data-answer="1"><p>4. What does raising the watermark delay from 5 to 30 minutes do?</p>
+      <ol class="opts"><li><button>Drops more late events and emits sooner</button></li><li><button>Accepts later events, keeps more state, and emits final results later</button></li><li><button>Changes how often micro-batches run</button></li><li><button>Switches to complete mode</button></li></ol>
+      <p class="why" hidden>A longer delay waits longer for stragglers: more complete, but more state and more latency in append mode.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>Watermark = newest event time − delay. Older windows are final; older events are dropped; state is cleaned.</li>
+    <li>Append writes final rows once (aggregations need a watermark); update writes changed rows; complete rewrites everything.</li>
+    <li>Delta supports append and complete; use <code>foreachBatch</code> + MERGE for update semantics.</li>
+    <li>Delay is a trade-off: completeness vs state size and latency.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#event-time">event time</a>
+    <a class="chip" href="../../glossary.html#output-mode">output mode</a>
+    <a class="chip" href="../../glossary.html#session-window">session window</a>
+    <a class="chip" href="../../glossary.html#state">state (streaming)</a>
+    <a class="chip" href="../../glossary.html#tumbling-window">tumbling window</a>
+    <a class="chip" href="../../glossary.html#watermark">watermark</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/structured-streaming/output-mode">Select an output mode</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/structured-streaming/watermarks">Apply watermarks</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/structured-streaming/delta-lake">Delta table streaming reads and writes</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  // event times as minutes after 10:00, per micro-batch (late ones included on purpose)
+  var BATCHES = [[2, 5, 11], [14, 4, 21], [25, 8, 33], [41, 44]];
+  var b, maxT, wm, counts, emitted, dropped, totalSeen;
+  var hm = function (m) { return '10:' + String(m).padStart(2, '0'); };
+  var win = function (t) { return Math.floor(t / 10) * 10; };
+  var wlabel = function (w) { return hm(w) + '–' + hm(w + 10); };
+  function draw(outRows) {
+    var delay = $('d-wm').value;
+    $('d-wmv').textContent = delay === 'none' ? 'none' : (wm === null ? '–' : hm(Math.max(0, wm)));
+    var open = Object.keys(counts).filter(function (w) { return !emitted[w] || delay === 'none' || $('d-mode').value === 'complete'; });
+    $('d-state').textContent = open.length + ' window(s) held in state';
+    var o = $('d-out'); o.textContent = '';
+    if (!outRows || !outRows.length) o.appendChild(Object.assign(document.createElement('p'), { className: 'cap', textContent: outRows ? 'nothing this batch' : '–' }));
+    (outRows || []).forEach(function (r) { o.appendChild(Object.assign(document.createElement('div'), { className: 'item', textContent: r })); });
+    $('d-drop').textContent = dropped;
+  }
+  $('d-next').onclick = function () {
+    var delay = $('d-wm').value, mode = $('d-mode').value;
+    if (b >= BATCHES.length) { log('skip', 'no more batches'); return; }
+    if (mode === 'append' && delay === 'none') { log('bad', '> error: append mode on a streaming aggregation needs a watermark'); return; }
+    var events = BATCHES[b++], changed = {};
+    log('skip', '> batch ' + b + ': events at ' + events.map(hm).join(', '));
+    events.forEach(function (t) {
+      if (delay !== 'none' && wm !== null && t < wm) { dropped++; log('bad', '  ' + hm(t) + ' is older than watermark ' + hm(wm) + ' → dropped'); return; }
+      var w = win(t); counts[w] = (counts[w] || 0) + 1; changed[w] = true; maxT = Math.max(maxT, t);
+    });
+    if (delay !== 'none') wm = maxT - (+delay);
+    var out = [];
+    var ws = Object.keys(counts).map(Number).sort(function (a, c) { return a - c; });
+    if (mode === 'complete') ws.forEach(function (w) { out.push(wlabel(w) + ': ' + counts[w]); });
+    else if (mode === 'update') ws.forEach(function (w) { if (changed[w]) out.push(wlabel(w) + ': ' + counts[w] + ' (may change again)'); });
+    else ws.forEach(function (w) { if (!emitted[w] && w + 10 <= wm) { out.push(wlabel(w) + ': ' + counts[w] + ' (final)'); emitted[w] = true; } });
+    if (delay !== 'none' && mode !== 'complete') ws.forEach(function (w) { if (w + 10 <= wm) emitted[w] = true; });
+    if (delay !== 'none') log('ok', '  newest event ' + hm(maxT) + ' − ' + delay + ' min → watermark ' + hm(Math.max(0, wm)));
+    log('ok', '  ' + mode + ' mode wrote ' + out.length + ' row(s)' + (mode === 'complete' ? ' (entire result again)' : ''));
+    if (delay === 'none') log('skip', '  no watermark: every window stays in state forever');
+    draw(out);
+  };
+  function reset() { b = 0; maxT = 0; wm = null; counts = {}; emitted = {}; dropped = 0; $('d-log').textContent = ''; log('skip', 'reset · watermark ' + $('d-wm').selectedOptions[0].text + ' · ' + $('d-mode').value + ' mode'); draw(null); }
+  $('d-reset').onclick = reset; $('d-wm').onchange = reset; $('d-mode').onchange = reset;
+  reset();
+})();
+</script>
+</body>
+</html>

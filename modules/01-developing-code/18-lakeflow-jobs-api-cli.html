@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Automating jobs with the API and CLI · DE Pro Study Course</title>
+<meta name="description" content="Create, run and check Lakeflow Jobs from code: the Jobs REST API, the Databricks CLI and the Python SDK, with authentication and the run life cycle.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="01-18">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 01 · Lesson 18</p>
+  <h1>Automating jobs with the API and CLI</h1>
+  <p class="lede">Anything you click in the Jobs UI can be done from code. That's how CI pipelines, other orchestrators and scripts create, start and check jobs without a human in the loop.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>01 · Developing Code for Data Processing (23%)</dd></div>
+    <div><dt>Lesson</dt><dd>18 · Automating jobs with the API and CLI</dd></div>
+    <div><dt>Exam objective</dt><dd>S1.5 — Create and schedule ETL jobs with Lakeflow Jobs from the UI, the REST API and the CLI. (Monitoring through the API returns in S4.2 and S4.5.)</dd></div>
+    <div><dt>Time to read</dt><dd>~16 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq"><li><a class="chip acc" href="17-lakeflow-jobs-ui.html">01-17 Lakeflow Jobs in the UI</a></li></ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p>An <span class="def">API</span> (application programming interface) is a way for programs to talk to a service. Databricks has a <span class="def">REST API</span>: you send HTTPS requests to URLs like <code>https://&lt;workspace&gt;/api/2.2/jobs/run-now</code> with a JSON body, and get JSON back. The Jobs API is currently version 2.2.</p>
+  <p>Three tools wrap the same API:</p>
+  <ul>
+    <li><b>REST calls</b> directly (e.g. with <code>curl</code>, or any language's HTTP library).</li>
+    <li>The <b>Databricks CLI</b>: commands like <code>databricks jobs run-now 123</code>. Most CLI commands map one-to-one to an API call.</li>
+    <li>The <b>Databricks SDK for Python</b>: <code>WorkspaceClient().jobs.run_now(...)</code>, with typed objects and helpers that wait for runs to finish.</li>
+  </ul>
+  <p>Every call needs <span class="def">authentication</span>: proof of who's calling. People usually log in with OAuth (<code>databricks auth login</code>). Automation should use a <b>service principal</b> with OAuth machine-to-machine credentials rather than a person's token, so pipelines don't break when someone leaves.</p>
+  <p>Key Jobs API operations: <code>create</code> (returns a <code>job_id</code>), <code>run-now</code> (returns a <code>run_id</code>), <code>runs/get</code> (status of a run), <code>runs/list</code>, <code>runs/cancel</code>, <code>update</code> (change some settings) and <code>reset</code> (replace all settings).</p>
+  <div class="analogy">
+    <p>The Jobs UI is talking to a bank teller. The REST API is the bank's phone line with a strict script. The CLI is a speed-dial button that reads the script for you, and the SDK is a banking app. All four reach the same accounts; each asks you to prove who you are first.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 250" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">Three clients, one API, one run life cycle</title>
+      <desc id="dia-d">The CLI, the Python SDK and a curl command all send authenticated requests to the Jobs REST API. run-now returns a run ID. The run then moves through life cycle states: pending, running, terminating, terminated, ending with a result state such as success or failed.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <g fill="var(--surface)" stroke="var(--line)"><rect x="10" y="30" width="140" height="40" rx="8"/><rect x="10" y="100" width="140" height="40" rx="8"/><rect x="10" y="170" width="140" height="40" rx="8"/></g>
+        <text x="80" y="54" text-anchor="middle" font-size="11">databricks CLI</text><text x="80" y="124" text-anchor="middle" font-size="11">Python SDK</text><text x="80" y="194" text-anchor="middle" font-size="11">curl / HTTP</text>
+        <rect x="210" y="80" width="150" height="80" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="285" y="106" text-anchor="middle" font-weight="600">Jobs API 2.2</text><text x="285" y="126" text-anchor="middle" font-size="11">auth: OAuth /</text><text x="285" y="142" text-anchor="middle" font-size="11">service principal</text>
+        <g fill="var(--surface)" stroke="var(--line)"><rect x="400" y="30" width="110" height="30" rx="6"/><rect x="400" y="75" width="110" height="30" rx="6"/><rect x="400" y="120" width="110" height="30" rx="6"/></g>
+        <rect x="400" y="165" width="110" height="30" rx="6" fill="var(--surface)" stroke="var(--ok)"/>
+        <text x="455" y="50" text-anchor="middle" font-size="11">PENDING</text><text x="455" y="95" text-anchor="middle" font-size="11">RUNNING</text><text x="455" y="140" text-anchor="middle" font-size="11">TERMINATING</text><text x="455" y="185" text-anchor="middle" font-size="11">TERMINATED</text>
+        <text x="530" y="178" font-size="11" fill="var(--ok)">result: SUCCESS</text><text x="530" y="194" font-size="11" fill="var(--warn)">or FAILED …</text>
+        <text x="430" y="226" font-size="11" fill="var(--muted)">life_cycle_state → result_state</text>
+        <g fill="none" stroke="var(--line)" stroke-dasharray="3 4"><path id="a" d="M150 50 C180 50 180 100 210 100"/><path id="b" d="M150 120 H210"/><path id="c" d="M150 190 C180 190 180 140 210 140"/><path id="r" d="M360 120 C380 120 380 45 400 45"/><path id="lc" d="M520 45 C540 45 540 180 520 180"/></g>
+        <path id="life" d="M395 45 V180" fill="none"/>
+      </g>
+      <circle r="5" fill="var(--accent)" data-rest="180,75"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#a"/></animateMotion></circle>
+      <circle r="5" fill="var(--accent)" data-rest="180,120"><animateMotion dur="3s" begin="1s" repeatCount="indefinite"><mpath href="#b"/></animateMotion></circle>
+      <circle r="5" fill="var(--accent)" data-rest="180,165"><animateMotion dur="3s" begin="2s" repeatCount="indefinite"><mpath href="#c"/></animateMotion></circle>
+      <circle r="6" fill="var(--ok)" data-rest="395,135"><animateMotion dur="4s" repeatCount="indefinite"><mpath href="#life"/></animateMotion></circle>
+    </svg>
+    <figcaption class="cap">Notice: three different <b>clients</b> reach <b>one API</b>. After <code>run-now</code>, a run moves <b>down</b> through life cycle states; only at <code>TERMINATED</code> does it have a final <b>result</b> (success, failed, timed out, cancelled).</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: one action, three ways</h2>
+  <p>Pick an action to see it as a CLI command, a REST call and Python SDK code. Then run the job and poll its status like a script would.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Action <select id="d-act">
+        <option value="create">Create a job</option><option value="run">Run it now</option><option value="get">Check a run's status</option>
+        <option value="list">List recent runs</option><option value="cancel">Cancel a run</option><option value="update">Change the schedule</option>
+      </select></label>
+    </div>
+    <div class="grid3">
+      <div><p class="eyebrow">CLI</p><pre><code id="d-cli"></code></pre></div>
+      <div><p class="eyebrow">REST</p><pre><code id="d-rest"></code></pre></div>
+      <div><p class="eyebrow">Python SDK</p><pre><code id="d-sdk"></code></pre></div>
+    </div>
+    <div class="ctrls">
+      <label class="tog"><input type="checkbox" id="d-fail"> Make this run fail</label>
+      <button type="button" class="primary" id="d-start">run-now</button>
+      <button type="button" id="d-poll">Poll runs/get</button>
+    </div>
+    <pre><code id="d-resp" aria-live="polite">{ }</code></pre>
+    <div class="log" id="d-log" aria-live="polite" aria-label="API log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p>Authenticate once. The CLI and SDK read the same profiles:</p>
+<pre><code><span class="c-c"># A person, interactively (OAuth in the browser; saved as a profile in ~/.databrickscfg)</span>
+databricks auth login --host https://dbc-1234.cloud.databricks.com --profile dev
+
+<span class="c-c"># Automation (e.g. in CI): a service principal's OAuth credentials as environment variables</span>
+export DATABRICKS_HOST=https://dbc-1234.cloud.databricks.com
+export DATABRICKS_CLIENT_ID=&lt;service-principal-application-id&gt;
+export DATABRICKS_CLIENT_SECRET=&lt;from-your-secret-store&gt;</code></pre>
+  <p>CLI:</p>
+<pre><code>databricks jobs create --json @nightly_job.json          <span class="c-c"># prints {"job_id": 123}</span>
+databricks jobs run-now 123                              <span class="c-c"># waits for the run by default (see --no-wait)</span>
+databricks jobs list-runs --job-id 123 --limit 5
+databricks jobs get-run 4567                             <span class="c-c"># state, tasks, timings</span>
+databricks jobs cancel-run 4567</code></pre>
+  <p>Python SDK, e.g. from another system's script:</p>
+<pre><code><span class="c-k">from</span> databricks.sdk <span class="c-k">import</span> WorkspaceClient
+<span class="c-k">from</span> databricks.sdk.service <span class="c-k">import</span> jobs
+
+w = WorkspaceClient()                                  <span class="c-c"># picks up env vars or a profile</span>
+
+created = w.jobs.create(
+    name=<span class="c-s">"nightly_bike_shop"</span>,
+    tasks=[jobs.Task(
+        task_key=<span class="c-s">"ingest"</span>,
+        notebook_task=jobs.NotebookTask(notebook_path=<span class="c-s">"/Workspace/bike_shop/ingest"</span>),
+    )],
+    schedule=jobs.CronSchedule(quartz_cron_expression=<span class="c-s">"0 0 2 * * ?"</span>, timezone_id=<span class="c-s">"UTC"</span>),
+)
+
+run = w.jobs.run_now(job_id=created.job_id, job_parameters={<span class="c-s">"run_date"</span>: <span class="c-s">"2026-11-19"</span>}).result()  <span class="c-c"># waits</span>
+print(run.state.life_cycle_state, run.state.result_state)</code></pre>
+  <p>Raw REST, when no SDK is available:</p>
+<pre><code>curl -s -X POST "$DATABRICKS_HOST/api/2.2/jobs/run-now" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"job_id": 123, "job_parameters": {"run_date": "2026-11-19"}}'
+<span class="c-c"># → {"run_id": 4567, "number_in_job": 4567}</span></code></pre>
+  <p class="note">For jobs that live in a repo, prefer a bundle (<code>databricks bundle deploy</code> / <code>run</code>) over hand-written <code>jobs create</code> calls: the bundle keeps the definition in Git and updates it in place.</p>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td><code>jobs update</code> with a few fields</td><td>Changes only those settings; the rest stay.</td></tr>
+    <tr><td><code>jobs reset</code> with new settings</td><td>Replaces the whole job definition; anything you didn't include is gone.</td></tr>
+    <tr><td><code>run-now</code> with <code>job_parameters</code></td><td>Overrides parameter defaults for this run only.</td></tr>
+    <tr><td><code>jobs submit</code> (one-time run)</td><td>Runs a workload without saving a job. Handy for tests; nothing appears in the jobs list to re-run.</td></tr>
+    <tr><td>Use a personal access token in CI</td><td>Works, but tied to a person and long-lived. Prefer a service principal with OAuth.</td></tr>
+    <tr><td>Poll <code>runs/get</code> in a tight loop</td><td>Wasteful and may hit rate limits. Poll every few seconds, or let the SDK's <code>.result()</code> wait.</td></tr>
+    <tr><td>Hard-code <code>job_id</code> across workspaces</td><td>IDs differ per workspace. Look jobs up by name, or deploy with bundles.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th></th><th>REST</th><th>CLI</th><th>Python SDK</th><th>Bundle</th></tr></thead><tbody>
+    <tr><td>Best for</td><td>Any language, other tools</td><td>Shell scripts, CI steps</td><td>Python apps and orchestrators</td><td>Jobs defined in Git</td></tr>
+    <tr><td>Auth handling</td><td>You add headers</td><td>Profiles / env vars</td><td>Profiles / env vars</td><td>Profiles / env vars</td></tr>
+    <tr><td>Waiting for a run</td><td>You poll</td><td>Built in (by default)</td><td><code>.result()</code></td><td><code>bundle run</code> waits</td></tr>
+    <tr><td>Job definition kept in Git</td><td>Only if you do it</td><td>Only if you do it</td><td>Only if you do it</td><td>Yes</td></tr>
+  </tbody></table></div>
+  <div class="grid2">
+    <div class="card"><p class="tag">Run state</p><h3>life_cycle_state</h3><p>Where the run is: PENDING, RUNNING, TERMINATING, TERMINATED (also SKIPPED, INTERNAL_ERROR).</p></div>
+    <div class="card"><p class="tag">Run state</p><h3>result_state</h3><p>The outcome once finished: SUCCESS, FAILED, TIMEDOUT, CANCELED.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>An external scheduler must start the Databricks job after its own steps</td><td>It needs a programmatic trigger.</td><td>Call <code>run-now</code> and poll <code>runs/get</code> until TERMINATED, then check <code>result_state</code>.</td></tr>
+    <tr><td>CI deploys break when an engineer leaves</td><td>CI used that person's token.</td><td>Use a service principal with OAuth credentials.</td></tr>
+    <tr><td>A script "updated" a job and wiped its schedule</td><td>It called <code>reset</code> with partial settings.</td><td>Use <code>update</code> for partial changes, or manage jobs with bundles.</td></tr>
+    <tr><td>A script checks status and reports success while the run is still going</td><td>It read <code>life_cycle_state</code> = RUNNING as "no error".</td><td>Wait for TERMINATED, then read <code>result_state</code>.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p><code>run-now</code> returns a <code>run_id</code>, not a result. Success is only known when the run reaches TERMINATED with <code>result_state</code> SUCCESS.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p><code>reset</code> replaces everything; <code>update</code> merges. Picking the wrong one is a classic wrong answer.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><code>job_id</code> (the saved job) vs <code>run_id</code> (one execution of it).</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><code>jobs run-now</code> (run a saved job) vs <code>jobs submit</code> (one-off run without saving a job).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="2"><p>1. A script calls <code>run-now</code>. How does it know whether the run succeeded?</p>
+      <ol class="opts"><li><button>The run-now response says SUCCESS</button></li><li><button>It checks that <code>life_cycle_state</code> is RUNNING</button></li><li><button>It polls <code>runs/get</code> until TERMINATED, then reads <code>result_state</code></button></li><li><button>It reads the job's schedule</button></li></ol>
+      <p class="why" hidden>run-now only returns a run ID; the outcome appears in result_state once the run terminates.</p></div>
+    <div class="q" data-answer="0"><p>2. You want to change only a job's schedule via the API. Which operation?</p>
+      <ol class="opts"><li><button><code>jobs/update</code></button></li><li><button><code>jobs/reset</code> with just the schedule</button></li><li><button><code>jobs/create</code></button></li><li><button><code>runs/submit</code></button></li></ol>
+      <p class="why" hidden>update changes the given fields; reset would replace the whole definition and drop everything else.</p></div>
+    <div class="q" data-answer="3"><p>3. What's the recommended identity for a CI system calling the Jobs API?</p>
+      <ol class="opts"><li><button>An admin's personal access token</button></li><li><button>A shared user password</button></li><li><button>No authentication inside the company network</button></li><li><button>A service principal with OAuth machine-to-machine credentials</button></li></ol>
+      <p class="why" hidden>Service principals aren't tied to a person, and OAuth credentials are short-lived and managed.</p></div>
+    <div class="q" data-answer="1"><p>4. Which CLI command starts a saved job with ID 123?</p>
+      <ol class="opts"><li><button><code>databricks jobs create 123</code></button></li><li><button><code>databricks jobs run-now 123</code></button></li><li><button><code>databricks bundle init 123</code></button></li><li><button><code>databricks jobs reset 123</code></button></li></ol>
+      <p class="why" hidden><code>jobs run-now</code> triggers a run of an existing job.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>REST (Jobs API 2.2), CLI and Python SDK all drive the same operations: create, run-now, get/list/cancel runs, update, reset.</li>
+    <li>Authenticate people with OAuth login; automation with a service principal.</li>
+    <li><code>run-now</code> gives a <code>run_id</code>; wait for TERMINATED and read <code>result_state</code>.</li>
+    <li><code>update</code> merges, <code>reset</code> replaces. For jobs in Git, use bundles.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#api">API</a>
+    <a class="chip" href="../../glossary.html#authentication">authentication</a>
+    <a class="chip" href="../../glossary.html#databricks-cli">Databricks CLI</a>
+    <a class="chip" href="../../glossary.html#databricks-sdk">Databricks SDK</a>
+    <a class="chip" href="../../glossary.html#life-cycle-state">life_cycle_state / result_state</a>
+    <a class="chip" href="../../glossary.html#oauth">OAuth</a>
+    <a class="chip" href="../../glossary.html#rest-api">REST API</a>
+    <a class="chip" href="../../glossary.html#service-principal">service principal</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/automate">Automate job creation and management</a></li>
+    <li><a href="https://docs.databricks.com/api/workspace/jobs/create">Jobs API: create</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/cli/reference/jobs-commands">jobs command group (CLI)</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/sdk-python">Databricks SDK for Python</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  var V = {
+    create: ['databricks jobs create --json @nightly_job.json', 'POST /api/2.2/jobs/create\n{ "name": "nightly_bike_shop", "tasks": [...] }', 'w.jobs.create(name="nightly_bike_shop",\n              tasks=[...])'],
+    run: ['databricks jobs run-now 123', 'POST /api/2.2/jobs/run-now\n{ "job_id": 123 }', 'w.jobs.run_now(job_id=123).result()'],
+    get: ['databricks jobs get-run 4567', 'GET /api/2.2/jobs/runs/get?run_id=4567', 'w.jobs.get_run(run_id=4567)'],
+    list: ['databricks jobs list-runs --job-id 123 --limit 5', 'GET /api/2.2/jobs/runs/list?job_id=123&limit=5', 'for r in w.jobs.list_runs(job_id=123, limit=5):\n    print(r.run_id, r.state)'],
+    cancel: ['databricks jobs cancel-run 4567', 'POST /api/2.2/jobs/runs/cancel\n{ "run_id": 4567 }', 'w.jobs.cancel_run(run_id=4567)'],
+    update: ['databricks jobs update --json @schedule_only.json', 'POST /api/2.2/jobs/update\n{ "job_id": 123,\n  "new_settings": { "schedule": {...} } }', 'w.jobs.update(job_id=123,\n  new_settings=jobs.JobSettings(schedule=...))']
+  };
+  $('d-act').onchange = function () { var v = V[$('d-act').value]; $('d-cli').textContent = v[0]; $('d-rest').textContent = v[1]; $('d-sdk').textContent = v[2]; };
+  $('d-act').onchange();
+  var STATES = ['PENDING', 'RUNNING', 'RUNNING', 'TERMINATING', 'TERMINATED'];
+  var run = null, runNo = 4566;
+  function show(o) { $('d-resp').textContent = JSON.stringify(o, null, 2); }
+  $('d-start').onclick = function () {
+    runNo++; run = { id: runNo, step: 0, fail: $('d-fail').checked };
+    show({ run_id: run.id, number_in_job: run.id });
+    log('ok', '> run-now job 123 → run_id ' + run.id + ' (that is NOT a result yet)');
+  };
+  $('d-poll').onclick = function () {
+    if (!run) { log('skip', 'start a run first'); return; }
+    var s = STATES[Math.min(run.step, STATES.length - 1)], done = s === 'TERMINATED';
+    var state = { life_cycle_state: s };
+    if (done) { state.result_state = run.fail ? 'FAILED' : 'SUCCESS'; state.state_message = run.fail ? 'Task ingest failed with message: ...' : ''; }
+    show({ run_id: run.id, job_id: 123, state: state });
+    log(done ? (run.fail ? 'bad' : 'ok') : 'skip', '> runs/get ' + run.id + ' → ' + s + (done ? ' · result ' + state.result_state : ' · keep polling'));
+    run.step++;
+  };
+})();
+</script>
+</body>
+</html>

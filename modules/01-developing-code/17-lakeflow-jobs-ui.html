@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lakeflow Jobs in the UI · DE Pro Study Course</title>
+<meta name="description" content="Build and schedule ETL with Lakeflow Jobs (formerly Databricks Workflows): tasks, dependencies and Run if conditions, triggers, parameters, retries, timeouts and notifications.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="01-17">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 01 · Lesson 17</p>
+  <h1>Lakeflow Jobs in the UI</h1>
+  <p class="lede">A pipeline refreshes tables; a job runs the whole night's work: ingest, run the pipeline, build reports, send alerts, in the right order, on the right schedule, retrying what breaks.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>01 · Developing Code for Data Processing (23%)</dd></div>
+    <div><dt>Lesson</dt><dd>17 · Lakeflow Jobs in the UI</dd></div>
+    <div><dt>Exam objective</dt><dd>S1.5 — Create and schedule ETL jobs with Lakeflow Jobs from the UI, the REST API and the CLI. This lesson: the UI and the concepts. Next: API and CLI.</dd></div>
+    <div><dt>Time to read</dt><dd>~17 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq"><li><a class="chip acc" href="../00-foundations/09-compute-clusters-serverless.html">00-09 Compute</a></li></ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p><span class="def">Lakeflow Jobs</span> (formerly Databricks Workflows, or simply Jobs) is Databricks' <span class="def">orchestrator</span>: it runs pieces of work in order, on a schedule or trigger, and tracks every run.</p>
+  <ul>
+    <li>A <span class="def">job</span> is the whole workflow. Each time it runs is a <span class="def">job run</span>.</li>
+    <li>A job holds <span class="def">tasks</span>. Each task does one thing: run a notebook, a Python script or wheel, a SQL query, a Lakeflow pipeline, a dbt project, another job, or control flow like If/else and For each (lesson 01-19).</li>
+    <li>Tasks have <span class="def">dependencies</span>: "clean runs after ingest". Together they form a graph. A task's <span class="def">Run if</span> condition decides whether it runs based on how its upstream tasks ended (default: all succeeded).</li>
+    <li>A <span class="def">trigger</span> starts the job: a schedule, a file arriving in a Unity Catalog location, an upstream table being updated, or continuous (restart as soon as a run ends). You can also run it manually or from the API.</li>
+    <li><span class="def">Job parameters</span> are key-value settings passed to tasks. <span class="def">Dynamic value references</span> like <code>{{job.run_id}}</code> or <code>{{job.start_time.iso_date}}</code> fill in values at run time.</li>
+  </ul>
+  <p>Each task can have <b>retries</b> (by default most tasks don't retry), a <b>timeout</b> and <b>notifications</b>. Tasks on serverless compute need no cluster settings; on classic compute, tasks can share one job cluster for the run.</p>
+  <div class="analogy">
+    <p>A job is a theatre stage manager's cue sheet. Each cue (task) waits for the one before it ("lights after curtain"). The show starts at 8 p.m. (schedule) or when the audience is seated (trigger). If a spotlight fails, the stage manager tries it again (retry), and if the whole show runs long, someone gets a message (notification). Every performance (run) is logged.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 250" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">A job's task graph</title>
+      <desc id="dia-d">A schedule trigger starts the job. Task ingest runs first, then the pipeline task, then two tasks in parallel: a SQL report and a notebook that trains a model. A notify task with Run if set to at least one failed only runs when something upstream fails.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <rect x="10" y="100" width="90" height="44" rx="22" fill="var(--code-bg)" stroke="var(--line)"/><text x="55" y="120" text-anchor="middle" font-size="11">schedule</text><text x="55" y="135" text-anchor="middle" font-size="11" fill="var(--muted)">02:00</text>
+        <g fill="var(--surface)" stroke="var(--accent)">
+          <rect x="130" y="100" width="100" height="44" rx="8"/><rect x="260" y="100" width="110" height="44" rx="8"/><rect x="410" y="40" width="110" height="44" rx="8"/><rect x="410" y="160" width="110" height="44" rx="8"/>
+        </g>
+        <rect x="550" y="100" width="100" height="44" rx="8" fill="var(--surface)" stroke="var(--warn)" stroke-dasharray="4 3"/>
+        <text x="180" y="120" text-anchor="middle" font-size="11">ingest</text><text x="180" y="135" text-anchor="middle" font-size="11" fill="var(--muted)">notebook</text>
+        <text x="315" y="120" text-anchor="middle" font-size="11">refresh</text><text x="315" y="135" text-anchor="middle" font-size="11" fill="var(--muted)">pipeline</text>
+        <text x="465" y="60" text-anchor="middle" font-size="11">report</text><text x="465" y="75" text-anchor="middle" font-size="11" fill="var(--muted)">SQL</text>
+        <text x="465" y="180" text-anchor="middle" font-size="11">train</text><text x="465" y="195" text-anchor="middle" font-size="11" fill="var(--muted)">notebook</text>
+        <text x="600" y="120" text-anchor="middle" font-size="11">notify</text><text x="600" y="135" text-anchor="middle" font-size="11" fill="var(--warn)">if any failed</text>
+        <g fill="none" stroke="var(--line)" stroke-dasharray="3 4"><path id="a" d="M100 122 H130"/><path id="b" d="M230 122 H260"/><path id="c" d="M370 115 C390 115 390 62 410 62"/><path id="d" d="M370 130 C390 130 390 182 410 182"/><path d="M520 62 C535 62 535 115 550 115 M520 182 C535 182 535 130 550 130"/></g>
+      </g>
+      <circle r="5" fill="var(--accent)" data-rest="115,122"><animateMotion dur="4s" repeatCount="indefinite"><mpath href="#a"/></animateMotion></circle>
+      <circle r="5" fill="var(--accent)" data-rest="245,122"><animateMotion dur="4s" begin="0.8s" repeatCount="indefinite"><mpath href="#b"/></animateMotion></circle>
+      <circle r="5" fill="var(--ok)" data-rest="390,85"><animateMotion dur="4s" begin="1.6s" repeatCount="indefinite"><mpath href="#c"/></animateMotion></circle>
+      <circle r="5" fill="var(--ok)" data-rest="390,160"><animateMotion dur="4s" begin="1.6s" repeatCount="indefinite"><mpath href="#d"/></animateMotion></circle>
+    </svg>
+    <figcaption class="cap">Notice: <b>report</b> and <b>train</b> both depend on <b>refresh</b>, so they run <b>in parallel</b> once it finishes. <b>notify</b> has a different Run if condition, so it only runs when something upstream fails.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: run the nightly job</h2>
+  <p>Make a task fail, set retries, choose the notify task's Run if condition, and run the job. Watch each task's final status.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Fail task <select id="d-fail"><option value="">nothing fails</option><option value="ingest">ingest</option><option value="refresh">refresh (once, transient)</option><option value="report">report</option></select></label>
+      <label>Retries on each task <select id="d-retry"><option value="0">0 (default)</option><option value="2">2</option></select></label>
+      <label>notify Run if <select id="d-runif"><option value="AT_LEAST_ONE_FAILED">At least one failed</option><option value="ALL_DONE">All done</option><option value="ALL_SUCCESS">All succeeded</option></select></label>
+      <button type="button" class="primary" id="d-run">Run now</button>
+    </div>
+    <div class="flow" id="d-tasks" aria-live="polite" aria-label="Task statuses"></div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="Run log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p>You build jobs in the UI (Jobs &amp; Pipelines → Create → Job), but every job is also a JSON definition. This is what the graph above looks like (shortened):</p>
+<pre><code>{
+  <span class="c-s">"name"</span>: <span class="c-s">"nightly_bike_shop"</span>,
+  <span class="c-s">"schedule"</span>: { <span class="c-s">"quartz_cron_expression"</span>: <span class="c-s">"0 0 2 * * ?"</span>, <span class="c-s">"timezone_id"</span>: <span class="c-s">"UTC"</span> },
+  <span class="c-s">"parameters"</span>: [ { <span class="c-s">"name"</span>: <span class="c-s">"run_date"</span>, <span class="c-s">"default"</span>: <span class="c-s">"{{job.start_time.iso_date}}"</span> } ],
+  <span class="c-s">"max_concurrent_runs"</span>: 1,
+  <span class="c-s">"tasks"</span>: [
+    { <span class="c-s">"task_key"</span>: <span class="c-s">"ingest"</span>,
+      <span class="c-s">"notebook_task"</span>: { <span class="c-s">"notebook_path"</span>: <span class="c-s">"/Workspace/bike_shop/ingest"</span> },
+      <span class="c-s">"max_retries"</span>: 2, <span class="c-s">"min_retry_interval_millis"</span>: 60000, <span class="c-s">"timeout_seconds"</span>: 1800 },
+    { <span class="c-s">"task_key"</span>: <span class="c-s">"refresh"</span>, <span class="c-s">"depends_on"</span>: [ { <span class="c-s">"task_key"</span>: <span class="c-s">"ingest"</span> } ],
+      <span class="c-s">"pipeline_task"</span>: { <span class="c-s">"pipeline_id"</span>: <span class="c-s">"&lt;pipeline-id&gt;"</span> } },
+    { <span class="c-s">"task_key"</span>: <span class="c-s">"report"</span>, <span class="c-s">"depends_on"</span>: [ { <span class="c-s">"task_key"</span>: <span class="c-s">"refresh"</span> } ],
+      <span class="c-s">"sql_task"</span>: { <span class="c-s">"file"</span>: { <span class="c-s">"path"</span>: <span class="c-s">"/Workspace/bike_shop/report.sql"</span> }, <span class="c-s">"warehouse_id"</span>: <span class="c-s">"&lt;warehouse-id&gt;"</span> } },
+    { <span class="c-s">"task_key"</span>: <span class="c-s">"notify"</span>, <span class="c-s">"depends_on"</span>: [ { <span class="c-s">"task_key"</span>: <span class="c-s">"report"</span> } ],
+      <span class="c-s">"run_if"</span>: <span class="c-s">"AT_LEAST_ONE_FAILED"</span>,
+      <span class="c-s">"notebook_task"</span>: { <span class="c-s">"notebook_path"</span>: <span class="c-s">"/Workspace/bike_shop/page_on_call"</span> } }
+  ],
+  <span class="c-s">"email_notifications"</span>: { <span class="c-s">"on_failure"</span>: [ <span class="c-s">"data-team@example.com"</span> ] }
+}</code></pre>
+  <p>Reading a job parameter inside a notebook task, and passing a value to later tasks:</p>
+<pre><code>run_date = dbutils.widgets.get(<span class="c-s">"run_date"</span>)                     <span class="c-c"># job parameters arrive as widgets</span>
+rows = spark.read.table(<span class="c-s">"bike_shop.silver.rides"</span>).where(f<span class="c-s">"DATE(started_at) = '{run_date}'"</span>).count()
+dbutils.jobs.taskValues.set(key=<span class="c-s">"row_count"</span>, value=rows)       <span class="c-c"># later tasks: {{tasks.ingest.values.row_count}}</span></code></pre>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td>Retries on a task (default: none for most setups)</td><td>Transient failures recover automatically. If a timeout is also set, it applies to each attempt.</td></tr>
+    <tr><td>Run if = All succeeded (default)</td><td>The task runs only if every upstream task succeeded; otherwise it's marked "Upstream failed".</td></tr>
+    <tr><td>Run if = At least one failed / All failed</td><td>For clean-up or alerting paths; when the condition isn't met the task is "Excluded".</td></tr>
+    <tr><td>Run if = All done</td><td>Runs after upstream tasks finish, whatever happened: good for always-run clean-up.</td></tr>
+    <tr><td>File arrival trigger</td><td>The job starts when new files land in a Unity Catalog volume or external location, instead of on a clock.</td></tr>
+    <tr><td>Table update trigger</td><td>Starts when source tables change: no empty runs when nothing new arrived.</td></tr>
+    <tr><td>Continuous trigger</td><td>A new run starts as soon as the previous one ends; failures back off exponentially.</td></tr>
+    <tr><td><code>max_concurrent_runs</code> (default 1) and queueing</td><td>Limits overlapping runs; with queueing on, extra runs wait instead of being skipped.</td></tr>
+    <tr><td>Job-level vs task-level failure notifications</td><td>Job-level alerts don't fire on each retried task failure; use task notifications to hear about every failed attempt.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th>Trigger</th><th>Starts when</th><th>Good for</th></tr></thead><tbody>
+    <tr><td>Scheduled</td><td>A cron-style time (e.g. 02:00 daily)</td><td>Regular reports, nightly ETL</td></tr>
+    <tr><td>File arrival</td><td>New files land in a UC storage location</td><td>Irregular uploads from partners</td></tr>
+    <tr><td>Table update</td><td>Upstream tables change</td><td>Chaining work across teams' tables</td></tr>
+    <tr><td>Continuous</td><td>The previous run ends</td><td>Always-on streaming jobs</td></tr>
+    <tr><td>Manual / API</td><td>Someone or something calls "run now"</td><td>Ad-hoc runs, external orchestrators</td></tr>
+  </tbody></table></div>
+  <div class="grid3">
+    <div class="card"><p class="tag">Task type</p><h3>Notebook / Python</h3><p>Notebooks, scripts, wheels.</p></div>
+    <div class="card"><p class="tag">Task type</p><h3>SQL</h3><p>Query, file or alert on a SQL warehouse.</p></div>
+    <div class="card"><p class="tag">Task type</p><h3>Pipeline</h3><p>Trigger a Lakeflow pipeline update.</p></div>
+    <div class="card"><p class="tag">Task type</p><h3>Run job</h3><p>Call another job as a step.</p></div>
+    <div class="card"><p class="tag">Task type</p><h3>dbt</h3><p>Run a dbt project.</p></div>
+    <div class="card"><p class="tag">Task type</p><h3>If/else, For each</h3><p>Control flow (lesson 01-19).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>A storage hiccup fails the nightly job once a month</td><td>No retries are configured, so one blip fails the run.</td><td>Add task retries with a short interval.</td></tr>
+    <tr><td>A clean-up task never runs after failures</td><td>Its Run if is the default "All succeeded".</td><td>Set Run if to "All done".</td></tr>
+    <tr><td>The 02:00 job runs even when the partner sent no file</td><td>A schedule fires regardless.</td><td>Use a file arrival or table update trigger.</td></tr>
+    <tr><td>A slow run overlaps the next scheduled run and both fight over tables</td><td>Concurrent runs allowed.</td><td>Keep <code>max_concurrent_runs</code> at 1, with queueing if runs must not be skipped.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>"Tasks retry by default." For most configurations they don't; set retries explicitly (serverless jobs have their own auto-optimised retry behaviour, lesson 01-21).</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>Old names: Databricks Workflows / Jobs = Lakeflow Jobs. A "Spark job" in the Spark UI is something else entirely.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Job parameters</b> (set per run, pushed to tasks) vs <b>task values</b> (set by one task at run time, read by later ones).</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Upstream failed</b> (a task skipped because its parents failed) vs <b>Excluded</b> (a failure-path task skipped because nothing failed).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="1"><p>1. A clean-up task must run after its upstream tasks finish, whether they succeeded or failed. Which Run if?</p>
+      <ol class="opts"><li><button>All succeeded</button></li><li><button>All done</button></li><li><button>At least one succeeded</button></li><li><button>None failed</button></li></ol>
+      <p class="why" hidden>"All done" runs once upstream tasks complete, regardless of outcome.</p></div>
+    <div class="q" data-answer="3"><p>2. A partner uploads files at random times. The job should run only when a file arrives. Which trigger?</p>
+      <ol class="opts"><li><button>Scheduled every 5 minutes</button></li><li><button>Continuous</button></li><li><button>Manual</button></li><li><button>File arrival</button></li></ol>
+      <p class="why" hidden>File arrival triggers watch a Unity Catalog storage location and start the job when new files land.</p></div>
+    <div class="q" data-answer="0"><p>3. A task fails once a week on a transient cloud error. Retries aren't configured. What happens?</p>
+      <ol class="opts"><li><button>The task fails and dependent tasks are marked Upstream failed</button></li><li><button>It retries three times automatically</button></li><li><button>The job restarts from the beginning</button></li><li><button>The failure is ignored</button></li></ol>
+      <p class="why" hidden>Without retries the task fails; downstream tasks with the default Run if don't run.</p></div>
+    <div class="q" data-answer="2"><p>4. How should a task pass a computed row count to a later task?</p>
+      <ol class="opts"><li><button>Write it to a global variable</button></li><li><button>Change the job parameter during the run</button></li><li><button>Set a task value and reference it with <code>{{tasks.&lt;task&gt;.values.&lt;key&gt;}}</code></button></li><li><button>Email it</button></li></ol>
+      <p class="why" hidden>Task values are designed for passing small results between tasks in a run.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>A job is a graph of tasks with dependencies and Run if conditions (default: all succeeded).</li>
+    <li>Triggers: schedule, file arrival, table update, continuous, manual/API.</li>
+    <li>Set retries, timeouts and notifications deliberately; most tasks don't retry by default.</li>
+    <li>Job parameters and dynamic value references configure runs; task values pass results between tasks.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#dynamic-value-reference">dynamic value reference</a>
+    <a class="chip" href="../../glossary.html#job-parameter">job parameter</a>
+    <a class="chip" href="../../glossary.html#job-run">job run</a>
+    <a class="chip" href="../../glossary.html#lakeflow-jobs">Lakeflow Jobs</a>
+    <a class="chip" href="../../glossary.html#orchestrator">orchestrator</a>
+    <a class="chip" href="../../glossary.html#run-if">Run if</a>
+    <a class="chip" href="../../glossary.html#job-task">task (job)</a>
+    <a class="chip" href="../../glossary.html#task-value">task value</a>
+    <a class="chip" href="../../glossary.html#job-trigger">trigger (job)</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/">Lakeflow Jobs</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/configure-task">Configure tasks</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/run-if">Configure task dependencies (Run if)</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/triggers">Schedules and triggers</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/dynamic-value-references">Dynamic value references</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  var TASKS = [
+    { key: 'ingest', deps: [] }, { key: 'refresh', deps: ['ingest'] },
+    { key: 'report', deps: ['refresh'] }, { key: 'train', deps: ['refresh'] },
+    { key: 'notify', deps: ['report', 'train'], runIf: true }
+  ];
+  function draw(st) {
+    var box = $('d-tasks'); box.textContent = '';
+    TASKS.forEach(function (t) {
+      var s = st ? st[t.key] : 'not run';
+      var p = document.createElement('div'); p.className = 'pane';
+      var h = document.createElement('h4'); h.textContent = t.key + (t.deps.length ? ' ← ' + t.deps.join(', ') : '');
+      var v = document.createElement('div'); v.className = 'item' + (/Succeeded/.test(s) ? ' ok' : /Failed|Upstream/.test(s) ? ' bad' : ''); v.textContent = s;
+      p.append(h, v); box.appendChild(p);
+    });
+  }
+  $('d-run').onclick = function () {
+    var fail = $('d-fail').value, retries = +$('d-retry').value, runIf = $('d-runif').value, st = {};
+    log('skip', '> run started (manual) · run_date = {{job.start_time.iso_date}} → 2026-11-19');
+    TASKS.forEach(function (t) {
+      var ups = t.deps.map(function (d) { return st[d]; });
+      var ok = function (s) { return /Succeeded/.test(s); };
+      var failed = function (s) { return /Failed$|Failed \(/.test(s) || /^Failed/.test(s); };
+      var cond = t.runIf ? runIf : 'ALL_SUCCESS';
+      var run = cond === 'ALL_SUCCESS' ? ups.every(ok) : cond === 'ALL_DONE' ? true : ups.some(function (s) { return failed(s) || /Upstream/.test(s); });
+      if (!run) {
+        st[t.key] = cond === 'AT_LEAST_ONE_FAILED' ? 'Excluded (nothing failed)' : 'Upstream failed';
+        log('skip', '  ' + t.key + ': ' + st[t.key]); return;
+      }
+      if (t.key === fail) {
+        if (fail === 'refresh' && retries > 0) { st[t.key] = 'Succeeded (after 1 retry)'; log('ok', '  refresh: transient error → retry 1 succeeded'); return; }
+        st[t.key] = 'Failed' + (retries ? ' (after ' + retries + ' retries)' : ''); log('bad', '  ' + t.key + ': ' + st[t.key]); return;
+      }
+      st[t.key] = 'Succeeded'; log('ok', '  ' + t.key + ': Succeeded' + (t.runIf ? ' (Run if: ' + cond + ')' : ''));
+    });
+    var overall = TASKS.slice(0, 4).every(function (t) { return /Succeeded/.test(st[t.key]); });
+    log(overall ? 'ok' : 'bad', '= job run ' + (overall ? 'SUCCEEDED' : 'FAILED') + (overall ? '' : ' · on_failure email sent to data-team'));
+    draw(st);
+  };
+  draw(null);
+})();
+</script>
+</body>
+</html>

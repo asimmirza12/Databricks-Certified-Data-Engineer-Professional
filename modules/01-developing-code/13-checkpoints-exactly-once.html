@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Checkpoints and exactly-once recovery · DE Pro Study Course</title>
+<meta name="description" content="How a Structured Streaming checkpoint records offsets, commits and state, how that gives exactly-once results after a crash, and which query changes break a restart.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="01-13">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 01 · Lesson 13</p>
+  <h1>Checkpoints and exactly-once recovery</h1>
+  <p class="lede">Streams crash: machines die, networks blip, code gets redeployed. The checkpoint is what lets a stream pick up exactly where it left off, without losing or doubling a single row.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>01 · Developing Code for Data Processing (23%)</dd></div>
+    <div><dt>Lesson</dt><dd>13 · Checkpoints and exactly-once recovery</dd></div>
+    <div><dt>Exam objective</dt><dd>S1.12 — Use watermarks, output modes, <code>foreachBatch</code> and checkpoints so stateful streams recover exactly once. This lesson: checkpoints. Next two: output modes and watermarks, then state and <code>foreachBatch</code>.</dd></div>
+    <div><dt>Time to read</dt><dd>~17 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq"><li><a class="chip acc" href="../00-foundations/04-batch-vs-streaming.html">00-04 Batch vs streaming</a></li></ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p><span class="def">Structured Streaming</span> is Spark's streaming engine: you write a query as if over a table, and Spark runs it as a series of micro-batches over new data.</p>
+  <p>Its <span class="def">checkpoint</span> is a folder that records three things:</p>
+  <ul>
+    <li><span class="def">Offsets</span>: before a micro-batch runs, the exact range of source data it will read (e.g. "Kafka partition 0, positions 1,000–1,999" or "these 12 files").</li>
+    <li><span class="def">Commits</span>: after the batch reaches the sink, a note saying "batch 42 is done".</li>
+    <li><span class="def">State</span>: for stateful queries (running counts, deduplication, joins), the remembered values between batches.</li>
+  </ul>
+  <p>On restart, Spark reads the checkpoint. If the last batch has offsets but no commit, it crashed midway, so Spark re-runs <em>that same batch</em> with <em>the same offsets</em>. Nothing is skipped.</p>
+  <p>Re-running could still write twice. That's where the sink matters. <span class="def">Exactly-once</span> results need three parts together: a <b>replayable source</b> (can give back the same data again, like files or Kafka), the <b>checkpoint</b>, and an <span class="def">idempotent</span> sink (writing the same batch twice has the effect of writing it once). The Delta sink is idempotent: it records which batch it already committed and skips a repeat.</p>
+  <div class="analogy">
+    <p>Reading a long book in sessions. Before each chapter you write "next: chapter 7, pages 140–162" on a bookmark (offsets). After finishing you tick it (commit). If you fall asleep mid-chapter, you reread from page 140, not from the start and not from page 163. And if your reading notes already say "chapter 7 summarised", you don't write the summary twice (idempotent sink).</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 250" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">The micro-batch cycle and the checkpoint</title>
+      <desc id="dia-d">Each micro-batch has three steps: write the planned offsets to the checkpoint, process and write to the sink, then write a commit. A crash between steps two and three leaves offsets without a commit, so the batch is replayed with the same offsets and the idempotent sink ignores the duplicate.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <g fill="var(--surface)" stroke="var(--accent)"><rect x="20" y="40" width="170" height="54" rx="8"/><rect x="245" y="40" width="170" height="54" rx="8"/><rect x="470" y="40" width="170" height="54" rx="8"/></g>
+        <text x="105" y="62" text-anchor="middle">1 · write offsets</text><text x="105" y="80" text-anchor="middle" font-size="11" fill="var(--muted)">batch 42 = files 81–90</text>
+        <text x="330" y="62" text-anchor="middle">2 · process + sink</text><text x="330" y="80" text-anchor="middle" font-size="11" fill="var(--muted)">write to Delta</text>
+        <text x="555" y="62" text-anchor="middle">3 · write commit</text><text x="555" y="80" text-anchor="middle" font-size="11" fill="var(--muted)">batch 42 done</text>
+        <rect x="20" y="150" width="620" height="70" rx="10" fill="var(--code-bg)" stroke="var(--line)"/>
+        <text x="330" y="172" text-anchor="middle" font-weight="600">checkpoint/</text>
+        <text x="40" y="198" font-size="11">offsets/42 ✓</text><text x="260" y="198" font-size="11">state/ (if stateful)</text><text x="480" y="198" font-size="11">commits/42 ?</text>
+        <text x="440" y="122" text-anchor="middle" font-size="11" fill="var(--warn)">⚡ crash here → replay batch 42</text>
+        <g fill="none" stroke="var(--line)" stroke-dasharray="3 4"><path id="cy" d="M190 67 H245 M415 67 H470"/><path id="loop" d="M105 94 V150"/><path id="loop3" d="M555 94 V150"/></g>
+        <path id="run" d="M105 30 H555" fill="none"/>
+      </g>
+      <circle r="6" fill="var(--accent)" data-rest="330,30"><animateMotion dur="4s" repeatCount="indefinite"><mpath href="#run"/></animateMotion></circle>
+      <circle r="5" fill="var(--ok)" data-rest="105,122"><animateMotion dur="2s" repeatCount="indefinite"><mpath href="#loop"/></animateMotion></circle>
+      <circle r="5" fill="var(--ok)" data-rest="555,122"><animateMotion dur="2s" begin="1s" repeatCount="indefinite"><mpath href="#loop3"/></animateMotion></circle>
+    </svg>
+    <figcaption class="cap">Notice: offsets are written <b>before</b> processing and the commit <b>after</b>. A crash in between leaves "planned but not done", so the <b>same batch</b> is replayed. The idempotent sink makes that replay harmless.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: crash the stream</h2>
+  <p>Each micro-batch carries 10 rides. Choose where to crash and which kind of sink, run a few batches, restart, and count rows in the sink.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Crash <select id="d-crash"><option value="none">don't crash</option><option value="after-offsets">after writing offsets</option><option value="after-sink" selected>after sink write, before commit</option></select></label>
+      <label>Sink <select id="d-sink"><option value="delta">Delta table (idempotent)</option><option value="api">external API, plain inserts (not idempotent)</option></select></label>
+      <button type="button" class="primary" id="d-batch">Run next micro-batch</button>
+      <button type="button" id="d-restart">Restart stream</button>
+      <button type="button" id="d-wipe">Delete checkpoint</button>
+      <button type="button" id="d-reset">Reset</button>
+    </div>
+    <div class="flow">
+      <div class="pane"><h4>Source rows available</h4><div class="big" id="d-src">0</div></div>
+      <div class="pane"><h4>Checkpoint</h4><div id="d-ck"></div></div>
+      <div class="pane"><h4>Rows in sink</h4><div class="big" id="d-sinkn">0</div><p class="cap" id="d-verdict"></p></div>
+    </div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="Stream log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+<pre><code><span class="c-c"># One query = one checkpoint folder, never shared with another query</span>
+query = (spark.readStream.table(<span class="c-s">"bike_shop.bronze.ride_events"</span>)    <span class="c-c"># replayable source</span>
+    .where(<span class="c-s">"event_type = 'unlock'"</span>)
+    .writeStream
+    .option(<span class="c-s">"checkpointLocation"</span>, <span class="c-s">"/Volumes/bike_shop/silver/_checkpoints/unlocks"</span>)
+    .trigger(availableNow=<span class="c-k">True</span>)
+    .toTable(<span class="c-s">"bike_shop.silver.unlocks"</span>))                           <span class="c-c"># idempotent Delta sink</span>
+
+query.awaitTermination()
+print(query.lastProgress[<span class="c-s">"batchId"</span>])     <span class="c-c"># the micro-batch number stored in the checkpoint</span></code></pre>
+<pre><code><span class="c-c"># What's inside (look, don't touch)</span>
+display(dbutils.fs.ls(<span class="c-s">"/Volumes/bike_shop/silver/_checkpoints/unlocks"</span>))
+<span class="c-c"># commits/  metadata  offsets/  sources/  state/   ← state/ only for stateful queries</span></code></pre>
+  <p class="note">In Lakeflow pipelines you never set <code>checkpointLocation</code>: each streaming table's checkpoint is managed for you, and offsets and output are committed together.</p>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td>Delete the checkpoint and restart</td><td>The query starts over from the beginning of the source: rows already written are written again (duplicates), and state is lost.</td></tr>
+    <tr><td>Two queries share one checkpoint folder</td><td>They overwrite each other's progress: lost or repeated data, or failures. Always one checkpoint per query.</td></tr>
+    <tr><td>Add, remove or change a stateful operation (e.g. change <code>groupBy</code> keys) and restart</td><td>Not allowed: the stored state no longer matches. Needs a new checkpoint (and a plan for reprocessing).</td></tr>
+    <tr><td>Change a filter or add a column (stateless change)</td><td>Usually fine; the new logic applies to batches after the restart.</td></tr>
+    <tr><td>Add a new source to a query</td><td>The new source starts from its beginning; existing sources resume from their offsets.</td></tr>
+    <tr><td>Write to a non-idempotent sink (e.g. an API that inserts every call)</td><td>Replays after crashes create duplicates: you get at-least-once, not exactly-once.</td></tr>
+    <tr><td>Source can't replay (e.g. data already expired from Kafka)</td><td>A replay can't fetch the same data again: data loss on recovery. Keep source retention longer than any expected outage.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th>Guarantee</th><th>Meaning</th><th>Needs</th></tr></thead><tbody>
+    <tr><td>At-most-once</td><td>Each row written zero or one time: may lose data</td><td>No replay</td></tr>
+    <tr><td>At-least-once</td><td>Each row written one or more times: may duplicate</td><td>Replay, but non-idempotent sink</td></tr>
+    <tr><td>Exactly-once (results)</td><td>Each row's effect appears once</td><td>Replayable source + checkpoint + idempotent sink</td></tr>
+  </tbody></table></div>
+  <div class="grid3">
+    <div class="card"><p class="tag">checkpoint/</p><h3>offsets</h3><p>What each batch will read. Written first.</p></div>
+    <div class="card"><p class="tag">checkpoint/</p><h3>commits</h3><p>Which batches finished. Written last.</p></div>
+    <div class="card"><p class="tag">checkpoint/</p><h3>state</h3><p>Remembered values for stateful operators, plus their schema.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>A cluster dies mid-batch; on restart, row counts are correct</td><td>The batch was replayed and the Delta sink skipped the half-done write.</td><td>Nothing to fix: this is the design working.</td></tr>
+    <tr><td>Someone "cleans up" old folders including checkpoints</td><td>Next run reprocesses everything; silver doubles.</td><td>Protect checkpoints like tables; if lost, rebuild the target from scratch.</td></tr>
+    <tr><td>Stream pushes alerts to a messaging API; users get duplicate alerts after restarts</td><td>The API sink isn't idempotent.</td><td>Send with a unique ID per event so the receiver can drop repeats, or write to Delta first.</td></tr>
+    <tr><td>A developer changes the grouping column and the stream won't start</td><td>The stored state schema no longer matches.</td><td>Start with a new checkpoint (and decide how to rebuild the target).</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>A checkpoint alone doesn't give exactly-once. You also need a replayable source and an idempotent sink. Remove either, and you're at-least-once (or worse).</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>"Just delete the checkpoint to fix it" usually causes duplicates or data loss. It's a last resort with a rebuild plan.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Offsets</b> (what a batch will read, written before) vs <b>commits</b> (what finished, written after).</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Streaming checkpoint</b> (query progress) vs <b>Delta checkpoint files</b> in <code>_delta_log</code> (a summary of the table's log).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="1"><p>1. A stream crashes after writing batch 42's offsets and output, but before its commit. What happens on restart?</p>
+      <ol class="opts"><li><button>Batch 42 is skipped</button></li><li><button>Batch 42 is replayed with the same offsets</button></li><li><button>The query starts from the beginning</button></li><li><button>The query fails permanently</button></li></ol>
+      <p class="why" hidden>Offsets without a commit mean "planned, not finished", so Spark re-runs exactly that batch.</p></div>
+    <div class="q" data-answer="3"><p>2. Which combination gives exactly-once results?</p>
+      <ol class="opts"><li><button>Any source + any sink</button></li><li><button>Checkpoint only</button></li><li><button>Idempotent sink only</button></li><li><button>Replayable source + checkpoint + idempotent sink</button></li></ol>
+      <p class="why" hidden>Replay needs a source that can give the same data again, the checkpoint to know what to replay, and a sink that ignores repeats.</p></div>
+    <div class="q" data-answer="0"><p>3. You change the <code>groupBy</code> keys of a streaming aggregation and restart with the same checkpoint. What happens?</p>
+      <ol class="opts"><li><button>The restart fails: stored state doesn't match the new stateful operation</button></li><li><button>State migrates automatically</button></li><li><button>Old results are deleted</button></li><li><button>The change is ignored</button></li></ol>
+      <p class="why" hidden>Changes to stateful operations aren't allowed between restarts. Use a new checkpoint.</p></div>
+    <div class="q" data-answer="2"><p>4. Two streaming queries write to different tables but share one checkpoint folder. What's the risk?</p>
+      <ol class="opts"><li><button>None; it saves space</button></li><li><button>Faster recovery</button></li><li><button>They corrupt each other's progress, causing lost or repeated data</button></li><li><button>Only the schema is shared</button></li></ol>
+      <p class="why" hidden>Each query must have its own checkpoint location.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>The checkpoint holds offsets (before), commits (after) and state; one folder per query.</li>
+    <li>Offsets without a commit → the same batch is replayed on restart.</li>
+    <li>Exactly-once = replayable source + checkpoint + idempotent sink (Delta is idempotent).</li>
+    <li>Changing stateful logic or deleting the checkpoint breaks recovery; plan a rebuild.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#at-least-once">at-least-once</a>
+    <a class="chip" href="../../glossary.html#checkpoint">checkpoint</a>
+    <a class="chip" href="../../glossary.html#commit-streaming">commit (streaming)</a>
+    <a class="chip" href="../../glossary.html#exactly-once">exactly-once</a>
+    <a class="chip" href="../../glossary.html#idempotent">idempotent</a>
+    <a class="chip" href="../../glossary.html#offsets">offsets</a>
+    <a class="chip" href="../../glossary.html#state">state (streaming)</a>
+    <a class="chip" href="../../glossary.html#structured-streaming">Structured Streaming</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/structured-streaming/checkpoints">Structured Streaming checkpoints</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/structured-streaming/production">Production considerations for Structured Streaming</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/best-practices/processing-guarantees">Processing guarantees in Lakeflow pipelines</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  var PER = 10, src, offsets, commits, sinkRows, deltaBatches, seenBatches, qid, down;
+  function draw() {
+    $('d-src').textContent = src;
+    var ck = $('d-ck'); ck.textContent = '';
+    var add = function (t, c) { ck.appendChild(Object.assign(document.createElement('div'), { className: 'item' + (c ? ' ' + c : ''), textContent: t })); };
+    if (offsets === -1) add('(empty)');
+    else { add('offsets: up to batch ' + offsets); add('commits: up to batch ' + commits, commits < offsets ? 'bad' : 'ok'); }
+    if (down) add('stream is DOWN', 'bad');
+    $('d-sinkn').textContent = sinkRows;
+    var unique = Object.keys(seenBatches).length * PER;
+    $('d-verdict').textContent = sinkRows === unique ? '✓ no duplicates' : '✗ ' + (sinkRows - unique) + ' duplicate row(s)';
+    $('d-verdict').className = 'cap';
+  }
+  function writeSink(b) {
+    // the Delta sink recognises a repeat by (query id from the checkpoint, batch id)
+    if ($('d-sink').value === 'delta' && deltaBatches[qid + ':' + b]) { log('ok', '  Delta sink: batch ' + b + ' already committed by this query → skipped (idempotent)'); return; }
+    if (seenBatches[b]) log('bad', '  batch ' + b + ' written AGAIN' + ($('d-sink').value === 'delta' ? ' (new checkpoint = new query id, so Delta can\'t tell)' : ' (the API can\'t detect repeats)'));
+    deltaBatches[qid + ':' + b] = true; seenBatches[b] = true; sinkRows += PER;
+  }
+  $('d-batch').onclick = function () {
+    if (down) { log('skip', 'stream is down: restart it first'); return; }
+    var b = commits + 1; src += PER;
+    log('skip', '> batch ' + b + ': write offsets (10 new rows)');
+    offsets = b;
+    var crash = $('d-crash').value;
+    if (crash === 'after-offsets') { down = true; log('bad', '  ⚡ crash before processing'); draw(); return; }
+    writeSink(b); log('ok', '  wrote batch ' + b + ' to sink');
+    if (crash === 'after-sink') { down = true; log('bad', '  ⚡ crash before the commit was written'); draw(); return; }
+    commits = b; log('ok', '  commit ' + b + ' written');
+    draw();
+  };
+  $('d-restart').onclick = function () {
+    down = false;
+    log('skip', '> restart: read checkpoint');
+    if (offsets === -1 && src > 0) {
+      log('bad', '  no checkpoint: start from the beginning of the source (' + src + ' rows)');
+      for (var b = 0; b * PER < src; b++) { offsets = b; writeSink(b); commits = b; }
+      log('ok', '  caught up to batch ' + commits);
+    } else if (offsets > commits) {
+      log('ok', '  batch ' + offsets + ' has offsets but no commit → replay it with the same offsets');
+      writeSink(offsets); commits = offsets; log('ok', '  commit ' + offsets + ' written');
+    } else log('ok', '  everything committed: resume with the next batch');
+    draw();
+  };
+  $('d-wipe').onclick = function () { offsets = -1; commits = -1; qid++; log('bad', '! checkpoint deleted (sink data is still there)'); draw(); };
+  function reset() { src = 0; offsets = -1; commits = -1; sinkRows = 0; deltaBatches = {}; seenBatches = {}; qid = 0; down = false; $('d-log').textContent = ''; log('skip', 'reset · sink: ' + $('d-sink').selectedOptions[0].text); draw(); }
+  $('d-reset').onclick = reset; $('d-sink').onchange = reset;
+  reset();
+})();
+</script>
+</body>
+</html>

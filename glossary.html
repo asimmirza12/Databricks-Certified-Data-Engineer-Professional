@@ -34,12 +34,18 @@
     <dd>Combining many rows into summary values, such as a sum or count per group. <em>Lesson 00-12.</em></dd>
     <dt id="all-purpose-compute">All-purpose compute</dt>
     <dd>A classic cluster for interactive work that many notebooks can attach to. Not meant for scheduled jobs. <em>Lesson 00-09.</em></dd>
+    <dt id="api">API</dt>
+    <dd>Application programming interface: a defined way for programs to talk to a service. <em>Lesson 01-18.</em></dd>
     <dt id="append-only">Append-only</dt>
     <dd>A source where rows are only added, never updated or deleted. <em>Lesson 01-10.</em></dd>
     <dt id="apache-arrow">Apache Arrow</dt>
     <dd>A fast columnar in-memory data format used to move data between Spark and Python efficiently. <em>Lessons 01-05, 01-06.</em></dd>
     <dt id="artifact">Artifact (bundle)</dt>
     <dd>Something a bundle builds before deploying, such as a Python wheel, defined under <code>artifacts</code>. <em>Lesson 01-02.</em></dd>
+    <dt id="at-least-once">At-least-once</dt>
+    <dd>A delivery guarantee where every record is processed, but some may be processed more than once after a failure. <em>Lessons 01-13, 01-15.</em></dd>
+    <dt id="authentication">Authentication</dt>
+    <dd>Proving who is making a request, for example with OAuth or a token. <em>Lesson 01-18.</em></dd>
     <dt id="auto-cdc">AUTO CDC</dt>
     <dd>The Lakeflow pipelines API (formerly APPLY CHANGES) that applies a CDC feed to a streaming table as SCD Type 1 or 2. <em>Lessons 01-11, 01-12.</em></dd>
     <dt id="auto-loader">Auto Loader</dt>
@@ -90,6 +96,8 @@
     <dd>A file layout that stores all values of one column together. Fast for analytics, compresses well. Parquet is columnar. <em>Lesson 00-03.</em></dd>
     <dt id="commit">Commit</dt>
     <dd>One recorded change to a Delta table, written as a numbered file in the transaction log. Creates a new version. <em>Lesson 00-10.</em></dd>
+    <dt id="commit-streaming">Commit (streaming)</dt>
+    <dd>The checkpoint entry written after a micro-batch reaches the sink, marking it finished. <em>Lesson 01-13.</em></dd>
     <dt id="compression">Compression</dt>
     <dd>Storing data in fewer bytes by encoding repeated patterns. Columnar files compress especially well. <em>Lesson 00-03.</em></dd>
     <dt id="compute">Compute</dt>
@@ -120,6 +128,8 @@
     <dd>The command-line tool for Databricks. <code>databricks bundle …</code> validates, deploys, runs and destroys bundles. <em>Lesson 01-01.</em></dd>
     <dt id="databricks-runtime">Databricks Runtime</dt>
     <dd>The software image on classic compute: Spark plus libraries. LTS versions get long-term support. <em>Lesson 00-09.</em></dd>
+    <dt id="databricks-sdk">Databricks SDK</dt>
+    <dd>Official client libraries (e.g. for Python) that wrap the Databricks REST API with typed objects. <em>Lesson 01-18.</em></dd>
     <dt id="dataframe">DataFrame</dt>
     <dd>Spark's table-like object in code: named, typed columns over distributed rows. Lazy: it describes work rather than holding results. <em>Lesson 00-06.</em></dd>
     <dt id="dataframe-api">DataFrame API</dt>
@@ -130,6 +140,8 @@
     <dd>An old way to attach cloud storage to a Databricks path like <code>/mnt/…</code>. Deprecated: it bypasses Unity Catalog and doesn't work on serverless. <em>Lesson 00-07.</em></dd>
     <dt id="dbu">DBU (Databricks Unit)</dt>
     <dd>The unit Databricks uses to measure and bill processing per hour. Rates differ by compute type. <em>Lesson 00-09.</em></dd>
+    <dt id="declarative">Declarative</dt>
+    <dd>Describing what result you want and letting the system decide how to produce it. <em>Lesson 01-16.</em></dd>
     <dt id="default-package-repository">Default package repository</dt>
     <dd>A workspace admin setting that makes a private index the default for serverless notebooks, jobs and pipelines. <em>Lesson 01-04.</em></dd>
     <dt id="delta-lake">Delta Lake</dt>
@@ -142,6 +154,8 @@
     <dd>A bundle target preset: <code>development</code> (prefixed names, paused schedules) or <code>production</code> (branch and pipeline checks). <em>Lesson 01-01.</em></dd>
     <dt id="driver">Driver</dt>
     <dd>The coordinating process in a Spark cluster. It plans work and hands tasks to executors. <em>Lesson 00-05.</em></dd>
+    <dt id="dynamic-value-reference">Dynamic value reference</dt>
+    <dd>A <code>{{...}}</code> placeholder in job settings, such as <code>{{job.run_id}}</code>, filled in at run time. <em>Lesson 01-17.</em></dd>
     <dt id="elt">ELT (extract, load, transform)</dt>
     <dd>A pipeline order where raw data is saved first and cleaned later, inside the data platform. Keeps a raw copy for re-processing. <em>Lesson 00-01.</em></dd>
     <dt id="entry-point">Entry point</dt>
@@ -152,6 +166,10 @@
     <dd>A pipeline order where data is copied out of a source, cleaned and reshaped, then saved for use. <em>Lesson 00-01.</em></dd>
     <dt id="event">Event</dt>
     <dd>A small record of something that happened at a point in time, like "bike 7 unlocked at 09:14". <em>Lesson 00-04.</em></dd>
+    <dt id="event-time">Event time</dt>
+    <dd>When an event actually happened, taken from a column in the data (not when Spark processed it). <em>Lesson 01-14.</em></dd>
+    <dt id="exactly-once">Exactly-once</dt>
+    <dd>Each record's effect appears in the output once, even after failures. Needs a replayable source, a checkpoint and an idempotent sink. <em>Lesson 01-13.</em></dd>
     <dt id="execute-privilege">EXECUTE</dt>
     <dd>The Unity Catalog privilege that lets a principal call a function. <em>Lesson 01-07.</em></dd>
     <dt id="executor">Executor</dt>
@@ -168,6 +186,8 @@
     <dd>Not opening files whose stored statistics (like min and max values) prove they can't match a query. Also called data skipping. <em>Lesson 00-03.</em></dd>
     <dt id="folder">Folder (directory)</dt>
     <dd>A named container that groups files in storage. <em>Lesson 00-02.</em></dd>
+    <dt id="foreachbatch">foreachBatch</dt>
+    <dd>A Structured Streaming sink that runs your function on each micro-batch as a normal DataFrame, for MERGE or multiple sinks. <em>Lesson 01-15.</em></dd>
     <dt id="full-refresh">Full refresh</dt>
     <dd>A pipeline update that empties streaming tables, resets checkpoints and reprocesses all available source data. <em>Lesson 01-08.</em></dd>
     <dt id="gold">Gold layer</dt>
@@ -178,12 +198,18 @@
     <dd>An open table format: Parquet data files plus metadata files. Supported on Databricks with <code>USING ICEBERG</code>. <em>Lesson 00-03.</em></dd>
     <dt id="idempotent">Idempotent</dt>
     <dd>Safe to repeat: running it again on the same input gives the same result, with no duplicates. <em>Lesson 00-01.</em></dd>
+    <dt id="imperative">Imperative</dt>
+    <dd>Writing each step of how to produce a result yourself. <em>Lesson 01-16.</em></dd>
     <dt id="incremental">Incremental processing</dt>
     <dd>Processing only data that is new since the last run, instead of everything again. <em>Lesson 00-04.</em></dd>
     <dt id="incremental-refresh">Incremental refresh</dt>
     <dd>Refreshing a materialized view by computing only what changed. Needs serverless and a supported query. <em>Lesson 01-10.</em></dd>
     <dt id="infrastructure-as-code">Infrastructure as code</dt>
     <dd>Describing platform resources in version-controlled files instead of creating them by hand. <em>Lesson 01-01.</em></dd>
+    <dt id="job-parameter">Job parameter</dt>
+    <dd>A key-value setting for a job run, pushed to tasks; defaults can be overridden per run. <em>Lesson 01-17.</em></dd>
+    <dt id="job-run">Job run</dt>
+    <dd>One execution of a Lakeflow job, with its own run ID and task results. <em>Lessons 01-17, 01-18.</em></dd>
     <dt id="jobs-compute">Jobs compute</dt>
     <dd>A classic cluster created for one job run and shut down when it finishes. <em>Lesson 00-09.</em></dd>
     <dt id="json">JSON</dt>
@@ -192,6 +218,8 @@
     <dd>The Java Virtual Machine: the runtime Spark's engine runs on. <em>Lesson 01-05.</em></dd>
     <dt id="key">Key (object storage)</dt>
     <dd>The full name of an object, such as <code>rides/2026/11/19/a.json</code>. Slashes are just characters. <em>Lesson 00-07.</em></dd>
+    <dt id="lakeflow-jobs">Lakeflow Jobs</dt>
+    <dd>Databricks' orchestrator for running tasks in order on schedules or triggers. Formerly Databricks Workflows / Jobs. <em>Lesson 01-17.</em></dd>
     <dt id="lakeflow-pipelines">Lakeflow pipelines</dt>
     <dd>Databricks' declarative pipeline product, formerly Delta Live Tables / Lakeflow Declarative Pipelines. Python module <code>pyspark.pipelines</code>. <em>Lesson 01-08.</em></dd>
     <dt id="lakehouse">Lakehouse</dt>
@@ -204,6 +232,8 @@
     <dd>Code written by others that you install and import, also called a package. <em>Lesson 01-03.</em></dd>
     <dt id="library-scope">Library scope</dt>
     <dd>Where an installed library is visible: notebook session, cluster, serverless environment or pipeline environment. <em>Lesson 01-03.</em></dd>
+    <dt id="life-cycle-state">life_cycle_state / result_state</dt>
+    <dd>Run status fields: where a run is (PENDING, RUNNING, TERMINATED…) and, once finished, how it ended (SUCCESS, FAILED…). <em>Lesson 01-18.</em></dd>
     <dt id="magic-command">Magic command</dt>
     <dd>A notebook cell prefix starting with <code>%</code>, such as <code>%sql</code>, <code>%md</code>, <code>%pip</code> or <code>%run</code>, that changes what the cell does. <em>Lesson 00-08.</em></dd>
     <dt id="managed-table">Managed table</dt>
@@ -212,6 +242,8 @@
     <dd>A stored query result kept correct on each refresh, reflecting upstream inserts, updates and deletes. <em>Lessons 01-08, 01-10.</em></dd>
     <dt id="medallion-architecture">Medallion architecture</dt>
     <dd>Organising lakehouse tables into bronze (raw), silver (clean) and gold (business-ready) layers. <em>Lesson 00-12.</em></dd>
+    <dt id="merge">MERGE</dt>
+    <dd>A SQL/Delta command that updates matching rows and inserts new ones (an upsert), optionally deleting. <em>Lesson 01-15.</em></dd>
     <dt id="metadata">Metadata</dt>
     <dd>Data about data, such as a table's name, schema and list of files. <em>Lesson 00-02.</em></dd>
     <dt id="metastore">Metastore</dt>
@@ -228,10 +260,18 @@
     <dd>Variables, temp views and installed libraries held in memory for a notebook. Lost when compute detaches or restarts. <em>Lesson 00-08.</em></dd>
     <dt id="null">NULL</dt>
     <dd>A marker meaning "no value here". Not zero and not an empty string. <em>Lesson 00-02.</em></dd>
+    <dt id="oauth">OAuth</dt>
+    <dd>A standard way to authorise access with short-lived tokens, used for user logins and service principals. <em>Lesson 01-18.</em></dd>
     <dt id="object">Object</dt>
     <dd>A file stored in object storage, plus a little metadata. Written and replaced whole, never edited in place. <em>Lesson 00-07.</em></dd>
+    <dt id="offsets">Offsets</dt>
+    <dd>The checkpoint entries recording exactly which source data each micro-batch reads, written before it runs. <em>Lesson 01-13.</em></dd>
     <dt id="optimize">OPTIMIZE</dt>
     <dd>A Delta command that rewrites many small files into fewer, larger ones. <em>Lesson 00-10; more in module 05.</em></dd>
+    <dt id="orchestrator">Orchestrator</dt>
+    <dd>A tool that runs pieces of work in the right order at the right time and tracks the results. <em>Lesson 01-17.</em></dd>
+    <dt id="output-mode">Output mode</dt>
+    <dd>What a streaming query writes each micro-batch: append (new final rows), update (changed rows) or complete (everything). <em>Lesson 01-14.</em></dd>
     <dt id="package">Package (Python)</dt>
     <dd>An installable folder of Python modules, described by <code>pyproject.toml</code>. <em>Lesson 01-02.</em></dd>
     <dt id="pandas">pandas</dt>
@@ -250,6 +290,8 @@
     <dd>Fixing a dependency to an exact version (<code>==</code>) so installs resolve the same way every time. <em>Lesson 01-04.</em></dd>
     <dt id="pip">pip</dt>
     <dd>Python's package installer. <em>Lesson 01-03.</em></dd>
+    <dt id="pipeline-sink">Pipeline sink</dt>
+    <dd>A Lakeflow pipelines target outside managed tables (Delta path, Kafka, custom Python), including foreach_batch_sink. <em>Lesson 01-16.</em></dd>
     <dt id="pipeline-update">Pipeline update</dt>
     <dd>One run of a Lakeflow pipeline that refreshes its datasets in dependency order. <em>Lesson 01-08.</em></dd>
     <dt id="prefix">Prefix</dt>
@@ -268,18 +310,24 @@
     <dd>A user-defined function in Python called once per row; data is serialized to a Python worker and back. <em>Lesson 01-05.</em></dd>
     <dt id="query">Query</dt>
     <dd>A question you ask a table, usually written in SQL, such as "what was total revenue last week?". The answer comes back as rows. <em>Lesson 00-01.</em></dd>
+    <dt id="real-time-mode">Real-time mode</dt>
+    <dd>A Structured Streaming trigger mode for sub-second latency, with specific compute requirements. <em>Lesson 01-16.</em></dd>
     <dt id="rescued-data-column">Rescued data column</dt>
     <dd>The <code>_rescued_data</code> column where Auto Loader keeps values that don't fit the schema. <em>Lesson 01-09.</em></dd>
     <dt id="resolver">Resolver</dt>
     <dd>The part of pip that picks a version of every package that satisfies all requirements. <em>Lesson 01-04.</em></dd>
     <dt id="resource">Resource (bundle)</dt>
     <dd>Something a bundle creates in a workspace, such as a Lakeflow job, pipeline, dashboard or serving endpoint. <em>Lesson 01-01.</em></dd>
+    <dt id="rest-api">REST API</dt>
+    <dd>An API used by sending HTTP requests to URLs and receiving JSON responses. <em>Lesson 01-18.</em></dd>
     <dt id="restore">RESTORE</dt>
     <dd>A Delta command that makes an older version current again, by adding a new commit. <em>Lesson 00-10.</em></dd>
     <dt id="row">Row</dt>
     <dd>One record in a table, such as one ride. <em>Lesson 00-02.</em></dd>
     <dt id="row-based-format">Row-based format</dt>
     <dd>A file layout that stores each record's values together, one record after another. CSV, JSON and Avro. <em>Lesson 00-03.</em></dd>
+    <dt id="run-if">Run if</dt>
+    <dd>A job task setting that decides whether it runs based on upstream outcomes (default: all succeeded). <em>Lesson 01-17.</em></dd>
     <dt id="scd">SCD (slowly changing dimension)</dt>
     <dd>A table describing things whose details change occasionally, and the strategy for handling those changes. <em>Lesson 01-11.</em></dd>
     <dt id="scd-type-1">SCD Type 1</dt>
@@ -318,6 +366,8 @@
     <dd>Compute that Databricks starts, sizes and manages for you in its own account. Starts in seconds. <em>Lesson 00-09.</em></dd>
     <dt id="service-principal">Service principal</dt>
     <dd>A non-human identity used by automated jobs and CI/CD, so production work doesn't depend on a person's account. <em>Lesson 01-01.</em></dd>
+    <dt id="session-window">Session window</dt>
+    <dd>A window that stays open while events keep arriving and closes after a gap of inactivity. <em>Lesson 01-14.</em></dd>
     <dt id="shuffle">Shuffle</dt>
     <dd>Moving rows between executors so rows with the same key end up together, for example for a group-by or join. Often the slowest step. <em>Lesson 00-05.</em></dd>
     <dt id="silver">Silver layer</dt>
@@ -350,10 +400,18 @@
     <dd>A set of tasks that run without moving data between executors. A shuffle starts a new stage. <em>Lesson 00-05.</em></dd>
     <dt id="start-end-at">__START_AT / __END_AT</dt>
     <dd>Columns AUTO CDC adds in SCD Type 2 targets: when each version became and stopped being true. NULL end = current. <em>Lesson 01-12.</em></dd>
+    <dt id="state">State (streaming)</dt>
+    <dd>Values a streaming query remembers between micro-batches, such as running counts or seen keys. <em>Lessons 01-13 to 01-15.</em></dd>
+    <dt id="state-store">State store</dt>
+    <dd>Where Structured Streaming keeps operator state on executors, saved with checkpoints. RocksDB is the default on recent runtimes. <em>Lesson 01-15.</em></dd>
+    <dt id="stateful">Stateful operation</dt>
+    <dd>A streaming step that needs memory across micro-batches: aggregations, deduplication, joins, custom state. <em>Lesson 01-15.</em></dd>
     <dt id="streaming">Streaming</dt>
     <dd>Processing data continuously and incrementally as it arrives, usually in micro-batches. <em>Lesson 00-04.</em></dd>
     <dt id="streaming-table">Streaming table</dt>
     <dd>A table fed incrementally from an append-only source; each new row is processed once. <em>Lessons 01-08, 01-10.</em></dd>
+    <dt id="structured-streaming">Structured Streaming</dt>
+    <dd>Spark's streaming engine: queries written like batch DataFrame code, run as incremental micro-batches. <em>Lessons 01-13, 01-16.</em></dd>
     <dt id="table">Table</dt>
     <dd>Data organised in rows and named columns, like a tidy spreadsheet, that you can query with SQL. Its rows live in files; the table adds a name, schema and rules. <em>Lessons 00-01, 00-02.</em></dd>
     <dt id="table-format">Table format</dt>
@@ -364,6 +422,10 @@
     <dd>A named deployment destination in a bundle, such as <code>dev</code> or <code>prod</code>, with its own workspace and overrides. <em>Lesson 01-01.</em></dd>
     <dt id="task">Task</dt>
     <dd>One unit of Spark work: one stage on one partition, run by one core. <em>Lesson 00-05.</em></dd>
+    <dt id="job-task">Task (job)</dt>
+    <dd>One step in a Lakeflow job: a notebook, script, SQL query, pipeline, dbt project, another job or control flow. <em>Lesson 01-17.</em></dd>
+    <dt id="task-value">Task value</dt>
+    <dd>A small value set by one job task (<code>dbutils.jobs.taskValues.set</code>) and read by later tasks. <em>Lesson 01-17.</em></dd>
     <dt id="temporary-view">Temporary view</dt>
     <dd>A name for a DataFrame that SQL can use, valid only in the current Spark session. Stores no data. <em>Lesson 00-06.</em></dd>
     <dt id="temporary-view-pipeline">Temporary view (pipeline)</dt>
@@ -380,10 +442,18 @@
     <dd>The <code>_delta_log</code> folder: an ordered record of every commit, listing which files make up each version. <em>Lesson 00-10.</em></dd>
     <dt id="transformation">Transformation</dt>
     <dd>A Spark step that defines new data from old, like <code>filter</code> or <code>join</code>. Lazy: it only adds to the plan. <em>Lesson 00-05.</em></dd>
+    <dt id="transformwithstate">transformWithState</dt>
+    <dd>A Structured Streaming API for custom per-key state with timers and expiry. <em>Lesson 01-15.</em></dd>
     <dt id="transitive-dependency">Transitive dependency</dt>
     <dd>A dependency of one of your dependencies. <em>Lesson 01-04.</em></dd>
     <dt id="trigger">Trigger</dt>
     <dd>The setting that decides when a streaming query runs its next micro-batch. <em>Lesson 00-04.</em></dd>
+    <dt id="job-trigger">Trigger (job)</dt>
+    <dd>What starts a job run: a schedule, file arrival, table update, continuous restart, or a manual/API call. <em>Lesson 01-17.</em></dd>
+    <dt id="tumbling-window">Tumbling window</dt>
+    <dd>Fixed-size, non-overlapping time windows, such as every 10 minutes. <em>Lesson 01-14.</em></dd>
+    <dt id="txn-options">txnAppId / txnVersion</dt>
+    <dd>Delta write options that identify a write so a repeat (same app ID and version) is skipped; used for idempotent foreachBatch writes. <em>Lesson 01-15.</em></dd>
     <dt id="udf">UDF (user-defined function)</dt>
     <dd>Your own function, called from DataFrame code or SQL like a built-in. <em>Lesson 01-05.</em></dd>
     <dt id="unity-catalog">Unity Catalog</dt>
@@ -400,6 +470,8 @@
     <dd>A saved query that behaves like a table but stores no data of its own. <em>Lesson 00-11.</em></dd>
     <dt id="volume">Volume</dt>
     <dd>A Unity Catalog object for governed files, with paths like <code>/Volumes/catalog/schema/volume/</code>. Managed or external. <em>Lessons 00-07, 00-11.</em></dd>
+    <dt id="watermark">Watermark</dt>
+    <dd>A moving cut-off (newest event time minus an allowed delay) after which windows are final, state is cleaned and older events are dropped. <em>Lesson 01-14.</em></dd>
     <dt id="wheel">Wheel (.whl)</dt>
     <dd>A pre-built Python package file. Installing it just unpacks files, so no build step is needed. <em>Lessons 01-02 to 01-04.</em></dd>
     <dt id="workspace">Workspace</dt>

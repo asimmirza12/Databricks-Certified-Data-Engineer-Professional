@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Structured Streaming vs Spark Declarative Pipelines · DE Pro Study Course</title>
+<meta name="description" content="When to hand-write Structured Streaming and when to declare a Lakeflow pipeline (Apache Spark Declarative Pipelines), based on control, operations, data quality, CDC and latency needs.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="01-16">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 01 · Lesson 16</p>
+  <h1>Structured Streaming vs Spark Declarative Pipelines</h1>
+  <p class="lede">You now know both ways to build streaming ETL. This lesson is about choosing: which constraints point to writing the stream yourself, and which point to declaring a pipeline.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>01 · Developing Code for Data Processing (23%)</dd></div>
+    <div><dt>Lesson</dt><dd>16 · Structured Streaming vs Spark Declarative Pipelines</dd></div>
+    <div><dt>Exam objective</dt><dd>S1.8 — Decide between hand-written Structured Streaming and Spark Declarative Pipelines for a given set of operational constraints.</dd></div>
+    <div><dt>Time to read</dt><dd>~14 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq">
+    <li><a class="chip acc" href="08-lakeflow-pipelines-intro.html">01-08 Lakeflow pipelines</a></li>
+    <li><a class="chip acc" href="13-checkpoints-exactly-once.html">01-13 Checkpoints and exactly-once</a></li>
+  </ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p>Both options run on the same Structured Streaming engine. The difference is who manages the surrounding work.</p>
+  <ul>
+    <li><b>Structured Streaming</b> (imperative): you write each <code>readStream</code> and <code>writeStream</code>, choose checkpoint paths, triggers and output modes, write <code>foreachBatch</code> logic, and orchestrate the order of streams with jobs. Maximum control, maximum responsibility.</li>
+    <li><b>Spark Declarative Pipelines</b> (declarative), which you run on Databricks as <b>Lakeflow pipelines</b>: you declare datasets; the pipeline manages dependencies, checkpoints, retries, compute, data-quality expectations, CDC via AUTO CDC, lineage and an event log. Less code, less to operate, but you work within its model.</li>
+  </ul>
+  <p>Some features exist only on one side. AUTO CDC and expectations are pipeline features (AUTO CDC is Databricks-only, not in open-source SDP). Fully custom stateful logic with <code>transformWithState</code>, real-time mode for sub-second latency, and complete freedom over sinks and triggers are Structured Streaming territory, though pipelines do offer sinks and <code>foreach_batch_sink</code> (Python only) for many custom-output cases.</p>
+  <p>The usual default: <b>start with a pipeline</b> for medallion-style ETL; drop down to Structured Streaming when a specific requirement doesn't fit.</p>
+  <div class="analogy">
+    <p>A meal kit versus cooking from scratch. The kit (pipeline) arrives with portions, steps and timings worked out; you just assemble, and it's hard to burn. Cooking from scratch (Structured Streaming) lets you make any dish and tweak every detail, but you shop, time and clean up yourself. Most weeknights the kit wins; the special dinner needs scratch cooking.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 250" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">Who owns each responsibility</title>
+      <desc id="dia-d">A stack of responsibilities: transformation logic, checkpoints, ordering, retries and compute, data quality, CDC, monitoring. On the Structured Streaming side, you own every layer. On the pipeline side, you own only the transformation logic and the platform owns the rest.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <text x="160" y="22" text-anchor="middle" font-weight="600">Structured Streaming</text><text x="500" y="22" text-anchor="middle" font-weight="600">Lakeflow pipeline (SDP)</text>
+        <g font-size="11">
+          <rect x="40" y="34" width="240" height="26" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="160" y="52" text-anchor="middle">logic · you</text>
+          <rect x="40" y="64" width="240" height="26" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="160" y="82" text-anchor="middle">checkpoints · you</text>
+          <rect x="40" y="94" width="240" height="26" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="160" y="112" text-anchor="middle">order of streams · you (jobs)</text>
+          <rect x="40" y="124" width="240" height="26" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="160" y="142" text-anchor="middle">retries + compute · you</text>
+          <rect x="40" y="154" width="240" height="26" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="160" y="172" text-anchor="middle">data quality · custom code</text>
+          <rect x="40" y="184" width="240" height="26" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="160" y="202" text-anchor="middle">CDC · MERGE in foreachBatch</text>
+          <rect x="380" y="34" width="240" height="26" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="500" y="52" text-anchor="middle">logic · you</text>
+          <rect x="380" y="64" width="240" height="26" rx="4" fill="var(--surface)" stroke="var(--ok)"/><text x="500" y="82" text-anchor="middle">checkpoints · managed</text>
+          <rect x="380" y="94" width="240" height="26" rx="4" fill="var(--surface)" stroke="var(--ok)"/><text x="500" y="112" text-anchor="middle">order · dependency graph</text>
+          <rect x="380" y="124" width="240" height="26" rx="4" fill="var(--surface)" stroke="var(--ok)"/><text x="500" y="142" text-anchor="middle">retries + compute · managed</text>
+          <rect x="380" y="154" width="240" height="26" rx="4" fill="var(--surface)" stroke="var(--ok)"/><text x="500" y="172" text-anchor="middle">data quality · expectations</text>
+          <rect x="380" y="184" width="240" height="26" rx="4" fill="var(--surface)" stroke="var(--ok)"/><text x="500" y="202" text-anchor="middle">CDC · AUTO CDC</text>
+        </g>
+        <text x="330" y="236" text-anchor="middle" font-size="11" fill="var(--muted)">blue = your job · green = handled by the platform</text>
+      </g>
+      <rect x="-120" y="-15" width="240" height="30" rx="5" fill="none" stroke="var(--warn)" stroke-width="3" data-rest="500,107"><animateMotion dur="5s" repeatCount="indefinite" path="M160 47 V197 M500 47 V197"/></rect>
+    </svg>
+    <figcaption class="cap">Notice: the <b>logic</b> layer is yours either way. Everything below it is <b>your job</b> in Structured Streaming (blue) and <b>handled for you</b> in a pipeline (green). The question is whether you need the control those lower layers give.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: which fits these constraints?</h2>
+  <p>Tick the requirements of a workload. The demo weighs them and explains the choice.</p>
+  <div class="stage">
+    <div class="ctrls" id="d-reqs" role="group" aria-label="Requirements"></div>
+    <div class="flow">
+      <div class="pane"><h4>Structured Streaming</h4><div class="big" id="d-ss">0</div></div>
+      <div class="pane"><h4>Lakeflow pipeline</h4><div class="big" id="d-sdp">0</div></div>
+    </div>
+    <div class="note" id="d-verdict" aria-live="polite"></div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="Reasoning log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p>The same bronze → silver stream, both ways. Structured Streaming:</p>
+<pre><code><span class="c-c"># You choose paths, trigger and output, and schedule it with a job</span>
+(spark.readStream.table(<span class="c-s">"bike_shop.bronze.rides_raw"</span>)
+    .where(<span class="c-s">"price IS NOT NULL"</span>)
+    .writeStream
+    .option(<span class="c-s">"checkpointLocation"</span>, <span class="c-s">"/Volumes/bike_shop/silver/_checkpoints/rides"</span>)
+    .trigger(availableNow=<span class="c-k">True</span>)
+    .toTable(<span class="c-s">"bike_shop.silver.rides"</span>))</code></pre>
+  <p>Lakeflow pipeline, with a data-quality rule thrown in:</p>
+<pre><code><span class="c-k">from</span> pyspark <span class="c-k">import</span> pipelines <span class="c-k">as</span> dp
+
+<span class="c-k">@dp.table</span>(name=<span class="c-s">"rides"</span>)
+<span class="c-k">@dp.expect_or_drop</span>(<span class="c-s">"has_price"</span>, <span class="c-s">"price IS NOT NULL"</span>)   <span class="c-c"># module 03; dropped rows counted in the event log</span>
+<span class="c-k">def</span> rides():
+    <span class="c-k">return</span> spark.readStream.table(<span class="c-s">"bike_shop.bronze.rides_raw"</span>)
+<span class="c-c"># no checkpoint, trigger or write code: the pipeline handles them</span></code></pre>
+  <p>A custom sink inside a pipeline (for cases that once forced plain Structured Streaming):</p>
+<pre><code><span class="c-k">@dp.foreach_batch_sink</span>(name=<span class="c-s">"ops_db_sink"</span>)               <span class="c-c"># Python only; check preview status in the docs</span>
+<span class="c-k">def</span> to_ops_db(df, batch_id):
+    df.write.format(<span class="c-s">"jdbc"</span>).option(<span class="c-s">"dbtable"</span>, <span class="c-s">"bike_alerts"</span>).mode(<span class="c-s">"append"</span>).save()  <span class="c-c"># connection options omitted</span>
+
+<span class="c-k">@dp.append_flow</span>(target=<span class="c-s">"ops_db_sink"</span>)
+<span class="c-k">def</span> alerts_to_ops():
+    <span class="c-k">return</span> spark.readStream.table(<span class="c-s">"rides"</span>).where(<span class="c-s">"minutes &gt; 180"</span>)</code></pre>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Requirement</th><th>Pushes towards</th></tr></thead><tbody>
+    <tr><td>Data-quality rules with metrics (warn / drop / fail)</td><td>Pipeline: expectations are built in.</td></tr>
+    <tr><td>CDC with SCD Type 1 or 2</td><td>Pipeline: AUTO CDC. (Hand-written: MERGE in foreachBatch.)</td></tr>
+    <tr><td>Small team, many streams, little time to operate them</td><td>Pipeline: managed checkpoints, ordering, retries, monitoring.</td></tr>
+    <tr><td>Sub-second latency (real-time mode)</td><td>Structured Streaming.</td></tr>
+    <tr><td>Custom per-key state with timers (<code>transformWithState</code>)</td><td>Structured Streaming.</td></tr>
+    <tr><td>Unusual sink or fine control of triggers per stream</td><td>Structured Streaming, or pipeline sinks / <code>foreach_batch_sink</code> if they fit.</td></tr>
+    <tr><td>Logic written in SQL by analysts</td><td>Pipeline: SQL is a first-class pipeline language.</td></tr>
+    <tr><td>Large existing, working Structured Streaming code base</td><td>Often keep it; migrate where pipeline features pay off.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th></th><th>Structured Streaming</th><th>Lakeflow pipeline (SDP)</th></tr></thead><tbody>
+    <tr><td>Style</td><td>Imperative: how</td><td>Declarative: what</td></tr>
+    <tr><td>Checkpoints</td><td>You manage paths</td><td>Managed</td></tr>
+    <tr><td>Multi-stream ordering</td><td>Jobs, by hand</td><td>Dependency graph</td></tr>
+    <tr><td>Data quality</td><td>Custom code</td><td>Expectations + metrics</td></tr>
+    <tr><td>CDC / SCD</td><td>MERGE in foreachBatch</td><td>AUTO CDC</td></tr>
+    <tr><td>Custom sinks</td><td>Any (foreachBatch)</td><td>Sinks, foreach_batch_sink (Python)</td></tr>
+    <tr><td>Lowest latency</td><td>Real-time mode</td><td>Continuous mode (seconds)</td></tr>
+    <tr><td>Languages</td><td>Python, Scala, SQL-in-code</td><td>Python and SQL</td></tr>
+    <tr><td>Monitoring</td><td>Query progress, your own logging</td><td>Pipeline UI + event log</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>A team runs 30 hand-written streams, each with its own job and checkpoint</td><td>Lots of operational glue; ordering mistakes cause gaps.</td><td>Consolidate medallion flows into a pipeline.</td></tr>
+    <tr><td>Fraud checks must respond in under a second</td><td>Micro-batch pipelines add seconds of latency.</td><td>Structured Streaming in real-time mode.</td></tr>
+    <tr><td>Customer master data arrives as a CDC feed and needs history</td><td>Hand-written MERGE logic for SCD 2 is error-prone.</td><td>Pipeline with AUTO CDC, <code>stored_as_scd_type=2</code>.</td></tr>
+    <tr><td>Session logic needs per-user timers that fire after inactivity</td><td>Built-in operators don't fit.</td><td>Structured Streaming with <code>transformWithState</code>.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>"Pipelines can't do streaming." They are streaming: streaming tables run on Structured Streaming underneath.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>AUTO CDC is a Databricks Lakeflow pipelines feature, not part of open-source Apache Spark Declarative Pipelines.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Apache Spark Declarative Pipelines</b> (the open-source framework) vs <b>Lakeflow pipelines</b> (Databricks' product built on it, with extra features).</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p>Pipeline <b>continuous mode</b> (always-on micro-batches, seconds) vs Structured Streaming <b>real-time mode</b> (sub-second, strict requirements).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="2"><p>1. A small team needs bronze/silver/gold streaming ETL with data-quality metrics and minimal operations work. Best fit?</p>
+      <ol class="opts"><li><button>Hand-written Structured Streaming with one job per stream</button></li><li><button>Real-time mode</button></li><li><button>A Lakeflow pipeline</button></li><li><button>A daily batch notebook</button></li></ol>
+      <p class="why" hidden>Pipelines manage checkpoints, ordering, retries and expectations, which is exactly what a small team wants.</p></div>
+    <div class="q" data-answer="0"><p>2. Which requirement points most strongly to plain Structured Streaming?</p>
+      <ol class="opts"><li><button>Sub-second latency using real-time mode</button></li><li><button>SCD Type 2 from a CDC feed</button></li><li><button>Expectations that drop bad rows</button></li><li><button>SQL-only logic</button></li></ol>
+      <p class="why" hidden>Real-time mode is a Structured Streaming feature. The others are pipeline strengths.</p></div>
+    <div class="q" data-answer="3"><p>3. In a pipeline, who manages streaming checkpoints?</p>
+      <ol class="opts"><li><button>You, with <code>checkpointLocation</code></button></li><li><button>A separate job</button></li><li><button>Nobody; pipelines don't checkpoint</button></li><li><button>The pipeline, per streaming table</button></li></ol>
+      <p class="why" hidden>Checkpoints are managed for each streaming table and flow.</p></div>
+    <div class="q" data-answer="1"><p>4. Which statement about AUTO CDC is true?</p>
+      <ol class="opts"><li><button>It's part of open-source Spark Declarative Pipelines</button></li><li><button>It's available in Databricks Lakeflow pipelines</button></li><li><button>It only works in Structured Streaming jobs</button></li><li><button>It requires real-time mode</button></li></ol>
+      <p class="why" hidden>AUTO CDC is a Lakeflow pipelines feature that isn't in the open-source framework.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>Same engine; the difference is how much the platform manages for you.</li>
+    <li>Pipelines: managed checkpoints, ordering, retries, expectations, AUTO CDC, event log. Default for medallion ETL.</li>
+    <li>Structured Streaming: real-time mode, transformWithState, full control of sinks and triggers.</li>
+    <li>Pipeline sinks and <code>foreach_batch_sink</code> close part of the custom-output gap.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#declarative">declarative</a>
+    <a class="chip" href="../../glossary.html#imperative">imperative</a>
+    <a class="chip" href="../../glossary.html#lakeflow-pipelines">Lakeflow pipelines</a>
+    <a class="chip" href="../../glossary.html#pipeline-sink">pipeline sink</a>
+    <a class="chip" href="../../glossary.html#real-time-mode">real-time mode</a>
+    <a class="chip" href="../../glossary.html#sdp">Spark Declarative Pipelines</a>
+    <a class="chip" href="../../glossary.html#structured-streaming">Structured Streaming</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/concepts/">Pipeline concepts</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/concepts/sinks">Sinks in Lakeflow pipelines</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/structured-streaming/concepts">Structured Streaming concepts</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/structured-streaming/triggers">Trigger intervals (including real-time mode)</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  // [label, points to SS, points to pipeline, reason]
+  var REQS = [
+    ['Data-quality rules with metrics', 0, 2, 'expectations are built into pipelines'],
+    ['CDC with SCD Type 2 history', 0, 2, 'AUTO CDC handles ordering, deletes and history'],
+    ['Small team, little time to operate streams', 0, 2, 'checkpoints, retries and ordering are managed'],
+    ['Logic written in SQL', 0, 1, 'SQL is a first-class pipeline language'],
+    ['Sub-second latency', 3, 0, 'real-time mode is a Structured Streaming feature'],
+    ['Custom per-key state with timers', 2, 0, 'transformWithState lives in Structured Streaming'],
+    ['Exotic sink, full control of each trigger', 2, 1, 'foreachBatch gives total freedom; pipeline sinks cover some cases'],
+    ['Big existing Structured Streaming code base', 1, 0, 'rewriting working code has a cost']
+  ];
+  var box = $('d-reqs');
+  REQS.forEach(function (r, i) {
+    var l = document.createElement('label'); l.className = 'tog';
+    var c = document.createElement('input'); c.type = 'checkbox'; c.dataset.i = i; c.onchange = score;
+    l.append(c, ' ' + r[0]); box.appendChild(l);
+  });
+  function score() {
+    var ss = 0, sdp = 0, picked = [].filter.call(box.querySelectorAll('input'), function (c) { return c.checked; });
+    $('d-log').textContent = '';
+    picked.forEach(function (c) { var r = REQS[+c.dataset.i]; ss += r[1]; sdp += r[2]; log(r[1] > r[2] ? 'bad' : 'ok', (r[1] > r[2] ? '→ SS: ' : '→ pipeline: ') + r[0] + ' (' + r[3] + ')'); });
+    $('d-ss').textContent = ss; $('d-sdp').textContent = sdp;
+    $('d-verdict').textContent = !picked.length ? 'Tick some requirements.' :
+      sdp > ss ? 'Lakeflow pipeline fits best. Use plain Structured Streaming only for the pieces that need it.' :
+      ss > sdp ? 'Structured Streaming fits best for this workload (it can still read tables a pipeline produces).' :
+      'A tie: many teams use a pipeline for the main ETL and a separate Structured Streaming job for the special part.';
+  }
+  score();
+})();
+</script>
+</body>
+</html>

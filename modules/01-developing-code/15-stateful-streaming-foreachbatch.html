@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stateful streaming and foreachBatch · DE Pro Study Course</title>
+<meta name="description" content="Stateful operators and the state store, and foreachBatch for MERGE upserts and multiple sinks, written idempotently so replays after failure don't duplicate data.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="01-15">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 01 · Lesson 15</p>
+  <h1>Stateful streaming and foreachBatch</h1>
+  <p class="lede">Some streaming logic must remember things between batches; some sinks can't be written by a plain stream. This lesson covers both: where state lives, and how <code>foreachBatch</code> lets you run any batch code safely on every micro-batch.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>01 · Developing Code for Data Processing (23%)</dd></div>
+    <div><dt>Lesson</dt><dd>15 · Stateful streaming and foreachBatch</dd></div>
+    <div><dt>Exam objective</dt><dd>S1.12 — Use watermarks, output modes, <code>foreachBatch</code> and checkpoints so stateful streams recover exactly once.</dd></div>
+    <div><dt>Time to read</dt><dd>~18 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq"><li><a class="chip acc" href="14-output-modes-watermarks.html">01-14 Output modes and watermarks</a></li></ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p>A <span class="def">stateless</span> step looks at each row alone (filter, rename, cast). A <span class="def">stateful</span> step needs memory across micro-batches:</p>
+  <ul>
+    <li><b>Aggregations</b> (counts per window), which remember running totals.</li>
+    <li><b>Deduplication</b> (<code>dropDuplicates</code>, <code>dropDuplicatesWithinWatermark</code>), which remembers keys already seen.</li>
+    <li><b>Stream-stream joins</b>, which remember rows from each side until a match can arrive.</li>
+    <li><b>Custom logic</b> with <code>transformWithState</code>: your own per-key state, timers and expiry.</li>
+  </ul>
+  <p>That memory lives in the <span class="def">state store</span> on the executors and is saved with each checkpoint so it survives restarts. On Databricks the RocksDB state store, which keeps state on local disk instead of in memory, is the default on recent runtimes. Watermarks keep state from growing forever.</p>
+  <p><code>foreachBatch</code> hands you each micro-batch as an ordinary DataFrame, plus its <code>batch_id</code>. Inside, you can run any batch code: a <code>MERGE INTO</code> upsert, writes to two tables, a write to a database without a streaming connector. It's the standard way to get "update" behaviour into Delta.</p>
+  <p>The catch: Spark may replay a batch after a failure, and your function runs again. <code>foreachBatch</code> is <span class="def">at-least-once</span>, so you must make it idempotent. For Delta writes, pass <code>txnAppId</code> (a fixed name for this query) and <code>txnVersion</code> (the <code>batch_id</code>); Delta then skips a write it already committed. For MERGE, make the logic safe to repeat: de-duplicate the batch, then upsert by key.</p>
+  <div class="analogy">
+    <p>A café's loyalty card is state: the barista must remember how many stamps you have between visits. <code>foreachBatch</code> is the manager who, at the end of every hour, takes that hour's receipts and does whatever bookkeeping is needed: updating the ledger, emailing a supplier. If the manager is interrupted and starts the hour again, each receipt must carry a number so nothing is booked twice.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 250" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">foreachBatch fans one micro-batch out to several sinks</title>
+      <desc id="dia-d">A stream produces micro-batch 42. foreachBatch receives it as a normal DataFrame with batch id 42. Inside, it de-duplicates, merges into a Delta table, and appends to an audit table using txnAppId and txnVersion 42. If batch 42 is replayed, the writes that already committed are skipped.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <rect x="10" y="90" width="130" height="60" rx="8" fill="var(--surface)" stroke="var(--line)"/><text x="75" y="115" text-anchor="middle" font-size="11">stream</text><text x="75" y="133" text-anchor="middle" font-size="11" fill="var(--muted)">micro-batch 42</text>
+        <rect x="190" y="50" width="220" height="140" rx="12" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="300" y="74" text-anchor="middle" font-weight="600">foreachBatch(df, 42)</text>
+        <text x="204" y="100" font-size="11">1 · dedupe by key</text><text x="204" y="122" font-size="11">2 · MERGE into customers</text><text x="204" y="144" font-size="11">3 · append audit rows</text><text x="204" y="166" font-size="11" fill="var(--muted)">txnAppId + txnVersion=42</text>
+        <rect x="470" y="50" width="170" height="54" rx="8" fill="var(--surface)" stroke="var(--ok)"/><text x="555" y="74" text-anchor="middle" font-size="11">customers (Delta)</text><text x="555" y="92" text-anchor="middle" font-size="11" fill="var(--muted)">upserted</text>
+        <rect x="470" y="136" width="170" height="54" rx="8" fill="var(--surface)" stroke="var(--ok)"/><text x="555" y="160" text-anchor="middle" font-size="11">audit (Delta)</text><text x="555" y="178" text-anchor="middle" font-size="11" fill="var(--muted)">skips repeats of 42</text>
+        <g fill="none" stroke="var(--line)" stroke-dasharray="3 4"><path id="i" d="M140 120 H190"/><path id="a" d="M410 100 C440 100 440 77 470 77"/><path id="b" d="M410 140 C440 140 440 163 470 163"/></g>
+      </g>
+      <circle r="5" fill="var(--accent)" data-rest="165,120"><animateMotion dur="2s" repeatCount="indefinite"><mpath href="#i"/></animateMotion></circle>
+      <circle r="5" fill="var(--ok)" data-rest="440,88"><animateMotion dur="2s" begin="1s" repeatCount="indefinite"><mpath href="#a"/></animateMotion></circle>
+      <circle r="5" fill="var(--ok)" data-rest="440,152"><animateMotion dur="2s" begin="1.3s" repeatCount="indefinite"><mpath href="#b"/></animateMotion></circle>
+    </svg>
+    <figcaption class="cap">Notice: inside <code>foreachBatch</code> it's <b>normal batch code</b>, so one micro-batch can feed <b>several sinks</b>. The <code>batch_id</code> doubles as a <b>write version</b> so replays don't double-write.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: a safe foreachBatch</h2>
+  <p>Batch 7 holds customer updates, including two updates for the same customer. It is MERGEd into <code>customers</code> and appended to <code>audit</code>. Toggle the safety measures, then run, crash and replay.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog"><input type="checkbox" id="d-dedupe" checked> De-duplicate the batch before MERGE</label>
+      <label class="tog"><input type="checkbox" id="d-txn" checked> Audit write uses txnAppId / txnVersion</label>
+      <label class="tog"><input type="checkbox" id="d-crash"> Crash after the audit write</label>
+    </div>
+    <div class="ctrls">
+      <button type="button" class="primary" id="d-run">Run batch 7</button>
+      <button type="button" id="d-replay">Restart (replays unfinished batch)</button>
+      <button type="button" id="d-reset">Reset</button>
+    </div>
+    <div class="flow">
+      <div class="pane"><h4>Batch 7 input</h4><div id="d-in"></div></div>
+      <div class="pane"><h4>customers (MERGE target)</h4><div id="d-cust"></div></div>
+      <div class="pane"><h4>audit rows</h4><div class="big" id="d-audit">0</div><p class="cap" id="d-auditn"></p></div>
+    </div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="foreachBatch log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+<pre><code><span class="c-k">from</span> delta.tables <span class="c-k">import</span> DeltaTable
+<span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> functions <span class="c-k">as</span> F, Window
+
+APP_ID = <span class="c-s">"customers_upsert_v1"</span>     <span class="c-c"># fixed per query; change it if you start a new checkpoint</span>
+
+<span class="c-k">def</span> upsert_customers(batch_df, batch_id):
+    <span class="c-c"># 1. keep only the latest change per customer in this batch (MERGE fails on duplicate keys)</span>
+    latest = (batch_df
+        .withColumn(<span class="c-s">"rn"</span>, F.row_number().over(
+            Window.partitionBy(<span class="c-s">"customer_id"</span>).orderBy(F.col(<span class="c-s">"event_ts"</span>).desc())))
+        .where(<span class="c-s">"rn = 1"</span>).drop(<span class="c-s">"rn"</span>))
+
+    <span class="c-c"># 2. upsert: safe to repeat, because a re-run sets the same values again</span>
+    (DeltaTable.forName(batch_df.sparkSession, <span class="c-s">"bike_shop.silver.customers"</span>).alias(<span class="c-s">"t"</span>)
+        .merge(latest.alias(<span class="c-s">"s"</span>), <span class="c-s">"t.customer_id = s.customer_id"</span>)
+        .whenMatchedUpdateAll(condition=<span class="c-s">"s.event_ts &gt; t.event_ts"</span>)   <span class="c-c"># never go backwards</span>
+        .whenNotMatchedInsertAll()
+        .execute())
+
+    <span class="c-c"># 3. append to an audit table idempotently: Delta skips (APP_ID, batch_id) it has seen</span>
+    (batch_df.select(<span class="c-s">"customer_id"</span>, <span class="c-s">"event_ts"</span>, F.lit(batch_id).alias(<span class="c-s">"batch_id"</span>))
+        .write.format(<span class="c-s">"delta"</span>).mode(<span class="c-s">"append"</span>)
+        .option(<span class="c-s">"txnAppId"</span>, APP_ID)
+        .option(<span class="c-s">"txnVersion"</span>, batch_id)
+        .saveAsTable(<span class="c-s">"bike_shop.silver.customer_audit"</span>))
+
+(spark.readStream.table(<span class="c-s">"bike_shop.bronze.customer_changes"</span>)
+    .writeStream
+    .foreachBatch(upsert_customers)
+    .option(<span class="c-s">"checkpointLocation"</span>, <span class="c-s">"/Volumes/bike_shop/silver/_checkpoints/customers_upsert"</span>)
+    .trigger(availableNow=<span class="c-k">True</span>)
+    .start())</code></pre>
+  <p class="note">If a batch is written to several sinks, consider <code>batch_df.persist()</code> at the start and <code>unpersist()</code> at the end, so the batch isn't recomputed for each write. In a Lakeflow pipeline, the equivalent is a <code>foreach_batch_sink</code> (Python only; check its preview status in the docs).</p>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td>MERGE a batch with two rows for the same key</td><td>MERGE fails: multiple source rows match one target row. De-duplicate first.</td></tr>
+    <tr><td>Plain <code>append</code> inside foreachBatch, no txn options</td><td>A replayed batch appends again: duplicates.</td></tr>
+    <tr><td>Add <code>txnAppId</code> + <code>txnVersion = batch_id</code></td><td>Delta skips writes it already committed for that app and version, making appends idempotent.</td></tr>
+    <tr><td>New checkpoint, same <code>txnAppId</code></td><td>Batch IDs restart from 0, so Delta would skip "already seen" versions: data loss. Use a new app ID with a new checkpoint.</td></tr>
+    <tr><td>Write to an external database in foreachBatch</td><td>Works, but replays repeat it; use upserts keyed on a natural key there.</td></tr>
+    <tr><td>Stateful operator without a watermark</td><td>State grows forever; eventually slow or out of memory.</td></tr>
+    <tr><td>Change a stateful operator and restart on the same checkpoint</td><td>Not allowed (lesson 01-13).</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th></th><th>Plain streaming write (<code>toTable</code>)</th><th><code>foreachBatch</code></th></tr></thead><tbody>
+    <tr><td>Sinks</td><td>One, with a streaming connector</td><td>Any number; anything batch code can write</td></tr>
+    <tr><td>Upserts (MERGE)</td><td>No</td><td>Yes</td></tr>
+    <tr><td>Guarantee to Delta</td><td>Exactly-once</td><td>At-least-once unless you make it idempotent</td></tr>
+    <tr><td>Effort</td><td>Low</td><td>You own correctness</td></tr>
+  </tbody></table></div>
+  <div class="grid2">
+    <div class="card"><p class="tag">Stateful operator</p><h3>Aggregation / window</h3><p>Running totals per key or window; watermark cleans up.</p></div>
+    <div class="card"><p class="tag">Stateful operator</p><h3>Deduplication</h3><p><code>dropDuplicatesWithinWatermark</code> remembers keys only as long as needed.</p></div>
+    <div class="card"><p class="tag">Stateful operator</p><h3>Stream-stream join</h3><p>Buffers both sides; needs watermarks and a time-range condition.</p></div>
+    <div class="card"><p class="tag">Stateful operator</p><h3>transformWithState</h3><p>Your own per-key state with timers and expiry for custom logic.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>Streaming upsert fails: "multiple source rows matched"</td><td>One micro-batch had several changes for one customer.</td><td>Keep the latest per key (window + <code>row_number</code>) before MERGE.</td></tr>
+    <tr><td>Audit table has occasional duplicate batches after cluster restarts</td><td>Replays re-ran plain appends.</td><td>Add <code>txnAppId</code>/<code>txnVersion</code>, or MERGE on a unique key.</td></tr>
+    <tr><td>A dedup stream's memory grows for weeks</td><td><code>dropDuplicates</code> with no watermark remembers every key forever.</td><td>Use <code>dropDuplicatesWithinWatermark</code> with a sensible watermark.</td></tr>
+    <tr><td>An older change overwrites a newer one</td><td>Out-of-order batches; MERGE updates unconditionally.</td><td>Add a condition like <code>s.event_ts &gt; t.event_ts</code> (or use AUTO CDC in a pipeline).</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p><code>foreachBatch</code> is at-least-once. Answers claiming it's automatically exactly-once are wrong; idempotent writes make the results exactly-once.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>Streaming upserts into Delta → <code>foreachBatch</code> + MERGE (or AUTO CDC in a pipeline), not update output mode on a Delta sink.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><code>foreachBatch</code> (runs your function on a whole micro-batch DataFrame) vs <code>foreach</code> (runs per row: slower, rarely needed).</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><code>txnVersion</code> (Delta write idempotency) vs the Delta table <b>version</b> (its commit number).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="1"><p>1. You must upsert streaming changes into a Delta table. Best approach in plain Structured Streaming?</p>
+      <ol class="opts"><li><button>Update output mode straight to the Delta table</button></li><li><button><code>foreachBatch</code> with a MERGE on the key</button></li><li><button>Complete output mode</button></li><li><button><code>foreach</code> with one INSERT per row</button></li></ol>
+      <p class="why" hidden>The Delta sink doesn't support update mode; foreachBatch with MERGE gives upsert behaviour.</p></div>
+    <div class="q" data-answer="3"><p>2. How do you make a Delta append inside <code>foreachBatch</code> idempotent?</p>
+      <ol class="opts"><li><button>Use complete mode</button></li><li><button>Delete the checkpoint after each batch</button></li><li><button>Call <code>persist()</code></button></li><li><button>Set <code>txnAppId</code> to a fixed name and <code>txnVersion</code> to <code>batch_id</code></button></li></ol>
+      <p class="why" hidden>Delta records the (app ID, version) pair and skips a repeat write.</p></div>
+    <div class="q" data-answer="0"><p>3. A MERGE inside foreachBatch fails because two source rows match one target row. Fix?</p>
+      <ol class="opts"><li><button>De-duplicate the batch to the latest row per key before MERGE</button></li><li><button>Switch to append mode</button></li><li><button>Raise the watermark</button></li><li><button>Use a bigger cluster</button></li></ol>
+      <p class="why" hidden>MERGE needs at most one source row per target key.</p></div>
+    <div class="q" data-answer="2"><p>4. Which operation is stateful?</p>
+      <ol class="opts"><li><button><code>filter(price &gt; 0)</code></button></li><li><button><code>withColumn("km", miles * 1.6)</code></button></li><li><button><code>dropDuplicatesWithinWatermark(["event_id"])</code></button></li><li><button><code>select("ride_id")</code></button></li></ol>
+      <p class="why" hidden>Deduplication must remember keys seen in earlier batches. The others look at each row alone.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>Stateful operators (aggregations, dedup, joins, transformWithState) keep state in the state store, saved with checkpoints.</li>
+    <li>Watermarks keep state bounded; RocksDB is the default state store on recent runtimes.</li>
+    <li><code>foreachBatch</code> runs batch code per micro-batch: MERGE upserts, many sinks.</li>
+    <li>It's at-least-once: de-duplicate, upsert by key, and use <code>txnAppId</code>/<code>txnVersion</code> for idempotent Delta writes.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#at-least-once">at-least-once</a>
+    <a class="chip" href="../../glossary.html#foreachbatch">foreachBatch</a>
+    <a class="chip" href="../../glossary.html#idempotent">idempotent</a>
+    <a class="chip" href="../../glossary.html#merge">MERGE</a>
+    <a class="chip" href="../../glossary.html#stateful">stateful</a>
+    <a class="chip" href="../../glossary.html#state-store">state store</a>
+    <a class="chip" href="../../glossary.html#transformwithstate">transformWithState</a>
+    <a class="chip" href="../../glossary.html#txn-options">txnAppId / txnVersion</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/structured-streaming/foreach">Use foreachBatch to write to arbitrary sinks</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/structured-streaming/delta-lake">Delta table streaming reads and writes</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/stateful-applications">Custom stateful applications (transformWithState)</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  var BATCH = [
+    { id: 'c1', city: 'Riverside', ts: 3 },
+    { id: 'c2', city: 'Hillview', ts: 4 },
+    { id: 'c1', city: 'Northport', ts: 5 }
+  ];
+  var cust, audit, auditVersions, unfinished;
+  function draw() {
+    var i = $('d-in'); i.textContent = '';
+    BATCH.forEach(function (r) { i.appendChild(Object.assign(document.createElement('div'), { className: 'item', textContent: r.id + ' → ' + r.city + ' (ts ' + r.ts + ')' })); });
+    var c = $('d-cust'); c.textContent = '';
+    Object.keys(cust).sort().forEach(function (k) { c.appendChild(Object.assign(document.createElement('div'), { className: 'item', textContent: k + '  ' + cust[k].city + ' (ts ' + cust[k].ts + ')' })); });
+    $('d-audit').textContent = audit;
+    $('d-auditn').textContent = audit === BATCH.length ? '✓ one audit row per change' : audit > BATCH.length ? '✗ ' + (audit - BATCH.length) + ' duplicate(s)' : '';
+  }
+  function runBatch(isReplay) {
+    log('skip', '> foreachBatch(df, batch_id=7)' + (isReplay ? ' · REPLAY' : ''));
+    var rows = BATCH;
+    if ($('d-dedupe').checked) {
+      var best = {}; rows.forEach(function (r) { if (!best[r.id] || r.ts > best[r.id].ts) best[r.id] = r; });
+      rows = Object.keys(best).map(function (k) { return best[k]; });
+      log('ok', '  dedupe: ' + BATCH.length + ' rows → ' + rows.length + ' (latest per customer)');
+    } else {
+      var keys = {}, dup = BATCH.some(function (r) { if (keys[r.id]) return true; keys[r.id] = 1; return false; });
+      if (dup) { log('bad', '  MERGE FAILED: multiple source rows matched target row c1. Batch not committed.'); unfinished = true; draw(); return; }
+    }
+    rows.forEach(function (r) { if (!cust[r.id] || r.ts > cust[r.id].ts) cust[r.id] = { city: r.city, ts: r.ts }; });
+    log('ok', '  MERGE into customers: ' + rows.length + ' upsert(s) (repeating it gives the same result)');
+    if ($('d-txn').checked && auditVersions[7]) log('ok', '  audit append skipped: txnAppId/txnVersion 7 already committed');
+    else { audit += BATCH.length; auditVersions[7] = true; log(isReplay ? 'bad' : 'ok', '  audit append: +' + BATCH.length + ' rows' + (isReplay ? ' (again!)' : '')); }
+    if ($('d-crash').checked && !isReplay) { unfinished = true; log('bad', '  ⚡ crash before the stream commits batch 7'); draw(); return; }
+    unfinished = false; log('ok', '  batch 7 committed in the checkpoint'); draw();
+  }
+  $('d-run').onclick = function () { if (unfinished) { log('skip', 'batch 7 is unfinished: restart to replay it'); return; } if (audit) { log('skip', 'batch 7 already done; reset to try again'); return; } runBatch(false); };
+  $('d-replay').onclick = function () { if (!unfinished) { log('skip', 'nothing to replay'); return; } runBatch(true); };
+  function reset() { cust = { c1: { city: 'Westbrook', ts: 1 } }; audit = 0; auditVersions = {}; unfinished = false; $('d-log').textContent = ''; log('skip', 'reset · customers has c1 in Westbrook'); draw(); }
+  $('d-reset').onclick = reset;
+  reset();
+})();
+</script>
+</body>
+</html>
