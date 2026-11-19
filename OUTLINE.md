@@ -93,12 +93,12 @@ IDs are ours. Weights are per section of the exam guide. Wording is our own summ
 | 01-04 | Troubleshooting dependency conflicts | S1.2 | 01-03, 01-02 | [x] |
 | 01-05 | Python and SQL UDFs | S1.3 | 00-06 | [x] |
 | 01-06 | Pandas UDFs | S1.3 | 01-05 | [x] |
-| 01-07 | Unity Catalog functions | S1.3 | 01-05, 00-11 | [ ] |
-| 01-08 | Lakeflow pipelines: the declarative way | S1.4 | 00-04, 00-12 | [ ] |
-| 01-09 | Streaming ingestion with Auto Loader in pipelines | S1.4 | 01-08 | [ ] |
-| 01-10 | Streaming tables vs materialized views | S1.6 | 01-08 | [ ] |
-| 01-11 | AUTO CDC and SCD Type 1 | S1.7 | 01-10 | [ ] |
-| 01-12 | AUTO CDC and SCD Type 2 | S1.7 | 01-11 | [ ] |
+| 01-07 | Unity Catalog functions | S1.3 | 01-05, 00-11 | [x] |
+| 01-08 | Lakeflow pipelines: the declarative way | S1.4 | 00-04, 00-12 | [x] |
+| 01-09 | Streaming ingestion with Auto Loader in pipelines | S1.4 | 01-08 | [x] |
+| 01-10 | Streaming tables vs materialized views | S1.6 | 01-08 | [x] |
+| 01-11 | AUTO CDC and SCD Type 1 | S1.7 | 01-10 | [x] |
+| 01-12 | AUTO CDC and SCD Type 2 | S1.7 | 01-11 | [x] |
 | 01-13 | Checkpoints and exactly-once recovery | S1.12 | 00-04 | [ ] |
 | 01-14 | Output modes and watermarks | S1.12 | 01-13 | [ ] |
 | 01-15 | Stateful streaming and foreachBatch | S1.12 | 01-14 | [ ] |

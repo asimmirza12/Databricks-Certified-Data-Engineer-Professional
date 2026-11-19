@@ -34,10 +34,16 @@
     <dd>Combining many rows into summary values, such as a sum or count per group. <em>Lesson 00-12.</em></dd>
     <dt id="all-purpose-compute">All-purpose compute</dt>
     <dd>A classic cluster for interactive work that many notebooks can attach to. Not meant for scheduled jobs. <em>Lesson 00-09.</em></dd>
+    <dt id="append-only">Append-only</dt>
+    <dd>A source where rows are only added, never updated or deleted. <em>Lesson 01-10.</em></dd>
     <dt id="apache-arrow">Apache Arrow</dt>
     <dd>A fast columnar in-memory data format used to move data between Spark and Python efficiently. <em>Lessons 01-05, 01-06.</em></dd>
     <dt id="artifact">Artifact (bundle)</dt>
     <dd>Something a bundle builds before deploying, such as a Python wheel, defined under <code>artifacts</code>. <em>Lesson 01-02.</em></dd>
+    <dt id="auto-cdc">AUTO CDC</dt>
+    <dd>The Lakeflow pipelines API (formerly APPLY CHANGES) that applies a CDC feed to a streaming table as SCD Type 1 or 2. <em>Lessons 01-11, 01-12.</em></dd>
+    <dt id="auto-loader">Auto Loader</dt>
+    <dd>The <code>cloudFiles</code> streaming source that ingests each new file in cloud storage exactly once. <em>Lesson 01-09.</em></dd>
     <dt id="auto-termination">Auto-termination</dt>
     <dd>Shutting down a classic cluster automatically after a set time with no activity, to stop billing. <em>Lesson 00-09.</em></dd>
     <dt id="autoscaling">Autoscaling</dt>
@@ -48,6 +54,8 @@
     <dd>A compact, binary, row-based file format that stores its schema with the data. Common for messages on Kafka. <em>Lesson 00-03.</em></dd>
     <dt id="batch-processing">Batch processing</dt>
     <dd>Processing a chunk of collected data in one run, usually on a schedule. <em>Lesson 00-04.</em></dd>
+    <dt id="batch-python-udf">Batch Python UDF (Unity Catalog)</dt>
+    <dd>A Unity Catalog Python function declared with <code>PARAMETER STYLE PANDAS</code> and a <code>HANDLER</code> that processes iterators of pandas Series. <em>Lesson 01-07.</em></dd>
     <dt id="bronze">Bronze layer</dt>
     <dd>The raw layer of the medallion architecture: data as it arrived, plus source details. <em>Lesson 00-12.</em></dd>
     <dt id="bucket">Bucket</dt>
@@ -60,8 +68,12 @@
     <dd>The first level inside a Unity Catalog metastore. Holds schemas. <em>Lesson 00-11.</em></dd>
     <dt id="catalyst">Catalyst optimizer</dt>
     <dd>Spark's query planner. It turns DataFrame or SQL code into an efficient physical plan. <em>Lesson 00-06.</em></dd>
+    <dt id="cdc-feed">CDC feed</dt>
+    <dd>The stream of change events (operation, key, values, sequence) from a source. <em>Lesson 01-11.</em></dd>
     <dt id="cell">Cell</dt>
     <dd>One block of code or text in a notebook, run on its own. <em>Lesson 00-08.</em></dd>
+    <dt id="cdc">Change data capture (CDC)</dt>
+    <dd>Recording each insert, update and delete in a source as an event so others can replay the changes. <em>Lesson 01-11.</em></dd>
     <dt id="checkpoint">Checkpoint</dt>
     <dd>A folder where a streaming query records what it has already processed, so it can restart where it stopped. <em>Lesson 00-04.</em></dd>
     <dt id="ci-cd">CI/CD</dt>
@@ -94,6 +106,8 @@
     <dd>A secret, such as a cloud role or key, that proves you may access something. Unity Catalog stores storage credentials so users never handle them. <em>Lesson 00-07.</em></dd>
     <dt id="csv">CSV (comma-separated values)</dt>
     <dd>A plain-text, row-based format: one line per row, values split by commas. No types or schema inside. <em>Lesson 00-03.</em></dd>
+    <dt id="dag">DAG (dependency graph)</dt>
+    <dd>Directed acyclic graph: the map of which dataset depends on which, used to run steps in order. <em>Lesson 01-08.</em></dd>
     <dt id="data-engineering">Data engineering</dt>
     <dd>The work of moving data from where it is created to where people use it, and making it clean and reliable along the way. <em>Lesson 00-01.</em></dd>
     <dt id="data-pipeline">Data pipeline</dt>
@@ -110,6 +124,8 @@
     <dd>Spark's table-like object in code: named, typed columns over distributed rows. Lazy: it describes work rather than holding results. <em>Lesson 00-06.</em></dd>
     <dt id="dataframe-api">DataFrame API</dt>
     <dd>The set of methods (<code>select</code>, <code>where</code>, <code>groupBy</code>…) used to build DataFrame queries in Python, Scala or R. <em>Lesson 00-06.</em></dd>
+    <dt id="dataset">Dataset (pipeline)</dt>
+    <dd>Something a Lakeflow pipeline defines: a streaming table, materialized view or temporary view. <em>Lesson 01-08.</em></dd>
     <dt id="dbfs-mount">DBFS mount</dt>
     <dd>An old way to attach cloud storage to a Databricks path like <code>/mnt/…</code>. Deprecated: it bypasses Unity Catalog and doesn't work on serverless. <em>Lesson 00-07.</em></dd>
     <dt id="dbu">DBU (Databricks Unit)</dt>
@@ -136,18 +152,24 @@
     <dd>A pipeline order where data is copied out of a source, cleaned and reshaped, then saved for use. <em>Lesson 00-01.</em></dd>
     <dt id="event">Event</dt>
     <dd>A small record of something that happened at a point in time, like "bike 7 unlocked at 09:14". <em>Lesson 00-04.</em></dd>
+    <dt id="execute-privilege">EXECUTE</dt>
+    <dd>The Unity Catalog privilege that lets a principal call a function. <em>Lesson 01-07.</em></dd>
     <dt id="executor">Executor</dt>
     <dd>A worker process in a Spark cluster that runs tasks on partitions of data. On Databricks, one per worker machine. <em>Lesson 00-05.</em></dd>
     <dt id="external-table">External table</dt>
     <dd>A Unity Catalog table whose files live at a storage path you manage. Dropping it leaves the files. <em>Lesson 00-11.</em></dd>
     <dt id="file">File</dt>
     <dd>A named chunk of bytes saved in storage. The computer stores it without knowing what is inside. <em>Lesson 00-02.</em></dd>
+    <dt id="file-events">File events</dt>
+    <dd>A Unity Catalog feature on external locations that tracks new files so Auto Loader doesn't have to list directories. <em>Lesson 01-09.</em></dd>
     <dt id="file-format">File format</dt>
     <dd>The agreed layout of bytes inside a file, such as CSV, JSON or Parquet. <em>Lesson 00-03.</em></dd>
     <dt id="file-skipping">File skipping</dt>
     <dd>Not opening files whose stored statistics (like min and max values) prove they can't match a query. Also called data skipping. <em>Lesson 00-03.</em></dd>
     <dt id="folder">Folder (directory)</dt>
     <dd>A named container that groups files in storage. <em>Lesson 00-02.</em></dd>
+    <dt id="full-refresh">Full refresh</dt>
+    <dd>A pipeline update that empties streaming tables, resets checkpoints and reprocesses all available source data. <em>Lesson 01-08.</em></dd>
     <dt id="gold">Gold layer</dt>
     <dd>The business-ready layer of the medallion architecture, often aggregated for a purpose. <em>Lesson 00-12.</em></dd>
     <dt id="governance">Governance</dt>
@@ -158,6 +180,8 @@
     <dd>Safe to repeat: running it again on the same input gives the same result, with no duplicates. <em>Lesson 00-01.</em></dd>
     <dt id="incremental">Incremental processing</dt>
     <dd>Processing only data that is new since the last run, instead of everything again. <em>Lesson 00-04.</em></dd>
+    <dt id="incremental-refresh">Incremental refresh</dt>
+    <dd>Refreshing a materialized view by computing only what changed. Needs serverless and a supported query. <em>Lesson 01-10.</em></dd>
     <dt id="infrastructure-as-code">Infrastructure as code</dt>
     <dd>Describing platform resources in version-controlled files instead of creating them by hand. <em>Lesson 01-01.</em></dd>
     <dt id="jobs-compute">Jobs compute</dt>
@@ -168,6 +192,8 @@
     <dd>The Java Virtual Machine: the runtime Spark's engine runs on. <em>Lesson 01-05.</em></dd>
     <dt id="key">Key (object storage)</dt>
     <dd>The full name of an object, such as <code>rides/2026/11/19/a.json</code>. Slashes are just characters. <em>Lesson 00-07.</em></dd>
+    <dt id="lakeflow-pipelines">Lakeflow pipelines</dt>
+    <dd>Databricks' declarative pipeline product, formerly Delta Live Tables / Lakeflow Declarative Pipelines. Python module <code>pyspark.pipelines</code>. <em>Lesson 01-08.</em></dd>
     <dt id="lakehouse">Lakehouse</dt>
     <dd>Keeping all data in low-cost object storage, in open table formats, with warehouse-style reliability and governance on top. <em>Lesson 00-08.</em></dd>
     <dt id="latency">Latency</dt>
@@ -182,6 +208,8 @@
     <dd>A notebook cell prefix starting with <code>%</code>, such as <code>%sql</code>, <code>%md</code>, <code>%pip</code> or <code>%run</code>, that changes what the cell does. <em>Lesson 00-08.</em></dd>
     <dt id="managed-table">Managed table</dt>
     <dd>A Unity Catalog table whose storage Unity Catalog chooses and maintains. Dropping it deletes the data after a recovery window. The default. <em>Lesson 00-11.</em></dd>
+    <dt id="materialized-view">Materialized view</dt>
+    <dd>A stored query result kept correct on each refresh, reflecting upstream inserts, updates and deletes. <em>Lessons 01-08, 01-10.</em></dd>
     <dt id="medallion-architecture">Medallion architecture</dt>
     <dd>Organising lakehouse tables into bronze (raw), silver (clean) and gold (business-ready) layers. <em>Lesson 00-12.</em></dd>
     <dt id="metadata">Metadata</dt>
@@ -222,6 +250,8 @@
     <dd>Fixing a dependency to an exact version (<code>==</code>) so installs resolve the same way every time. <em>Lesson 01-04.</em></dd>
     <dt id="pip">pip</dt>
     <dd>Python's package installer. <em>Lesson 01-03.</em></dd>
+    <dt id="pipeline-update">Pipeline update</dt>
+    <dd>One run of a Lakeflow pipeline that refreshes its datasets in dependency order. <em>Lesson 01-08.</em></dd>
     <dt id="prefix">Prefix</dt>
     <dd>The start of an object key. Tools show keys with a shared prefix as a "folder". <em>Lesson 00-07.</em></dd>
     <dt id="private-index">Private index</dt>
@@ -238,6 +268,8 @@
     <dd>A user-defined function in Python called once per row; data is serialized to a Python worker and back. <em>Lesson 01-05.</em></dd>
     <dt id="query">Query</dt>
     <dd>A question you ask a table, usually written in SQL, such as "what was total revenue last week?". The answer comes back as rows. <em>Lesson 00-01.</em></dd>
+    <dt id="rescued-data-column">Rescued data column</dt>
+    <dd>The <code>_rescued_data</code> column where Auto Loader keeps values that don't fit the schema. <em>Lesson 01-09.</em></dd>
     <dt id="resolver">Resolver</dt>
     <dd>The part of pip that picks a version of every package that satisfies all requirements. <em>Lesson 01-04.</em></dd>
     <dt id="resource">Resource (bundle)</dt>
@@ -248,6 +280,12 @@
     <dd>One record in a table, such as one ride. <em>Lesson 00-02.</em></dd>
     <dt id="row-based-format">Row-based format</dt>
     <dd>A file layout that stores each record's values together, one record after another. CSV, JSON and Avro. <em>Lesson 00-03.</em></dd>
+    <dt id="scd">SCD (slowly changing dimension)</dt>
+    <dd>A table describing things whose details change occasionally, and the strategy for handling those changes. <em>Lesson 01-11.</em></dd>
+    <dt id="scd-type-1">SCD Type 1</dt>
+    <dd>Keep only the latest values; updates overwrite and history is lost. <em>Lesson 01-11.</em></dd>
+    <dt id="scd-type-2">SCD Type 2</dt>
+    <dd>Keep every version of a row with the time range it was true. <em>Lesson 01-12.</em></dd>
     <dt id="schema">Schema (of a table)</dt>
     <dd>The list of a table's columns and each column's data type. Not the same as a Unity Catalog schema, which is a container (lesson 00-11). <em>Lesson 00-02.</em></dd>
     <dt id="uc-schema">Schema (Unity Catalog)</dt>
@@ -256,10 +294,22 @@
     <dd>A table rejecting writes whose columns or types don't fit its schema. <em>Lesson 00-02.</em></dd>
     <dt id="schema-evolution">Schema evolution</dt>
     <dd>Changing a table's schema to accept new data, for example adding a column with <code>mergeSchema</code>. Opt-in. <em>Lesson 00-02.</em></dd>
+    <dt id="schema-evolution-mode">Schema evolution mode</dt>
+    <dd>Auto Loader setting for new columns: addNewColumns, rescue, failOnNewColumns or none. <em>Lesson 01-09.</em></dd>
+    <dt id="schema-hints">Schema hints</dt>
+    <dd>Types you specify for some columns while Auto Loader infers the rest. <em>Lesson 01-09.</em></dd>
+    <dt id="schema-inference">Schema inference</dt>
+    <dd>Working out column names and types by sampling the data. <em>Lesson 01-09.</em></dd>
+    <dt id="schema-location">Schema location</dt>
+    <dd>Where Auto Loader stores the inferred schema and its changes. Managed for you inside pipelines. <em>Lesson 01-09.</em></dd>
     <dt id="schema-on-read">Schema-on-read</dt>
     <dd>Working out data's structure when reading it, not when storing it. <em>Lesson 00-02.</em></dd>
     <dt id="schema-on-write">Schema-on-write</dt>
     <dd>Fixing the structure first and only accepting data that matches it. How tables work. <em>Lesson 00-02.</em></dd>
+    <dt id="securable">Securable</dt>
+    <dd>Any Unity Catalog object you can grant privileges on: catalogs, schemas, tables, views, volumes, functions and more. <em>Lesson 01-07.</em></dd>
+    <dt id="sequence-by">sequence_by</dt>
+    <dd>The AUTO CDC setting naming the column that gives the true order of change events. <em>Lessons 01-11, 01-12.</em></dd>
     <dt id="serialization">Serialization</dt>
     <dd>Converting data into bytes so it can be sent between processes, then converting it back. <em>Lesson 01-05.</em></dd>
     <dt id="series">Series (pandas)</dt>
@@ -274,12 +324,16 @@
     <dd>The cleaned, de-duplicated, validated layer of the medallion architecture. <em>Lesson 00-12.</em></dd>
     <dt id="skew">Skew</dt>
     <dd>Uneven data: one key or partition has far more rows than the others, so one task runs much longer. <em>Lesson 00-05.</em></dd>
+    <dt id="skipchangecommits">skipChangeCommits</dt>
+    <dd>A Delta streaming read option that ignores commits which update or delete existing rows. <em>Lesson 01-10.</em></dd>
     <dt id="source">Source</dt>
     <dd>The system where data is first created or stored before a pipeline reads it, such as an app's database, log files or sensors. <em>Lesson 00-01.</em></dd>
     <dt id="source-archive">Source archive (sdist)</dt>
     <dd>A package's source code as a <code>.tar.gz</code>. pip must build it during install, which can need compilers. <em>Lesson 01-03.</em></dd>
     <dt id="apache-spark">Apache Spark</dt>
     <dd>Open-source engine that processes large data in parallel across a cluster of machines. Databricks is built on it. <em>Lesson 00-05.</em></dd>
+    <dt id="sdp">Apache Spark Declarative Pipelines</dt>
+    <dd>The open-source declarative pipeline framework that Lakeflow pipelines build on. <em>Lesson 01-08.</em></dd>
     <dt id="spark-job">Spark job</dt>
     <dd>All the work Spark does to answer one action. Different from a Lakeflow job. <em>Lesson 00-05.</em></dd>
     <dt id="spark-session">Spark session</dt>
@@ -294,22 +348,34 @@
     <dd>Compute that runs only SQL, built for queries and dashboards. Types: serverless, pro, classic. <em>Lesson 00-09.</em></dd>
     <dt id="stage">Stage</dt>
     <dd>A set of tasks that run without moving data between executors. A shuffle starts a new stage. <em>Lesson 00-05.</em></dd>
+    <dt id="start-end-at">__START_AT / __END_AT</dt>
+    <dd>Columns AUTO CDC adds in SCD Type 2 targets: when each version became and stopped being true. NULL end = current. <em>Lesson 01-12.</em></dd>
     <dt id="streaming">Streaming</dt>
     <dd>Processing data continuously and incrementally as it arrives, usually in micro-batches. <em>Lesson 00-04.</em></dd>
+    <dt id="streaming-table">Streaming table</dt>
+    <dd>A table fed incrementally from an append-only source; each new row is processed once. <em>Lessons 01-08, 01-10.</em></dd>
     <dt id="table">Table</dt>
     <dd>Data organised in rows and named columns, like a tidy spreadsheet, that you can query with SQL. Its rows live in files; the table adds a name, schema and rules. <em>Lessons 00-01, 00-02.</em></dd>
     <dt id="table-format">Table format</dt>
     <dd>A way of organising data files plus metadata so they behave as a table with safe changes, such as Delta Lake or Iceberg. <em>Lesson 00-03.</em></dd>
+    <dt id="table-function">Table function</dt>
+    <dd>A function that returns rows (<code>RETURNS TABLE</code>) and is used in a FROM clause. <em>Lesson 01-07.</em></dd>
     <dt id="target">Target (bundle)</dt>
     <dd>A named deployment destination in a bundle, such as <code>dev</code> or <code>prod</code>, with its own workspace and overrides. <em>Lesson 01-01.</em></dd>
     <dt id="task">Task</dt>
     <dd>One unit of Spark work: one stage on one partition, run by one core. <em>Lesson 00-05.</em></dd>
     <dt id="temporary-view">Temporary view</dt>
     <dd>A name for a DataFrame that SQL can use, valid only in the current Spark session. Stores no data. <em>Lesson 00-06.</em></dd>
+    <dt id="temporary-view-pipeline">Temporary view (pipeline)</dt>
+    <dd>A pipeline-only helper dataset that stores nothing and is not published. <em>Lesson 01-08.</em></dd>
     <dt id="three-level-namespace">Three-level namespace</dt>
     <dd>Unity Catalog naming: <code>catalog.schema.object</code>, like <code>bike_shop.silver.rides</code>. <em>Lesson 00-11.</em></dd>
     <dt id="time-travel">Time travel</dt>
     <dd>Querying an older version of a Delta table with <code>VERSION AS OF</code> or <code>TIMESTAMP AS OF</code>. <em>Lesson 00-10.</em></dd>
+    <dt id="tombstone">Tombstone</dt>
+    <dd>A temporary record that a key was deleted, so late, older updates don't bring it back. <em>Lesson 01-11.</em></dd>
+    <dt id="track-history">Track history</dt>
+    <dd>AUTO CDC SCD Type 2 setting for which columns create new versions; other columns update in place. <em>Lesson 01-12.</em></dd>
     <dt id="transaction-log">Transaction log</dt>
     <dd>The <code>_delta_log</code> folder: an ordered record of every commit, listing which files make up each version. <em>Lesson 00-10.</em></dd>
     <dt id="transformation">Transformation</dt>
@@ -322,6 +388,10 @@
     <dd>Your own function, called from DataFrame code or SQL like a built-in. <em>Lesson 01-05.</em></dd>
     <dt id="unity-catalog">Unity Catalog</dt>
     <dd>Databricks' system for naming, organising and governing data and AI assets. <em>Lesson 00-11.</em></dd>
+    <dt id="uc-function">Unity Catalog function</dt>
+    <dd>A permanent SQL or Python function stored as <code>catalog.schema.function</code>, shared with EXECUTE. <em>Lesson 01-07.</em></dd>
+    <dt id="upsert">Upsert</dt>
+    <dd>Update a row if its key exists, otherwise insert it. <em>Lesson 01-11.</em></dd>
     <dt id="vacuum">VACUUM</dt>
     <dd>A Delta command that deletes files no longer in the table and older than the retention period (7 days by default). <em>Lesson 00-10.</em></dd>
     <dt id="version">Version (Delta)</dt>

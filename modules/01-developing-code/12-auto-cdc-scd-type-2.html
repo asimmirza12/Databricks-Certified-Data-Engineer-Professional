@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AUTO CDC and SCD Type 2 · DE Pro Study Course</title>
+<meta name="description" content="Keep the full history of every row with AUTO CDC and stored_as_scd_type=2: __START_AT and __END_AT, choosing which columns create history, deletes, and querying current vs past values.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="01-12">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 01 · Lesson 12</p>
+  <h1>AUTO CDC and SCD Type 2</h1>
+  <p class="lede">Sometimes "what is it now?" isn't enough: you need "what was it on the day of that sale?". SCD Type 2 keeps every version of a row, each with the time range it was true.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>01 · Developing Code for Data Processing (23%)</dd></div>
+    <div><dt>Lesson</dt><dd>12 · AUTO CDC and SCD Type 2</dd></div>
+    <div><dt>Exam objective</dt><dd>S1.7 — Build CDC flows with the AUTO CDC APIs, keeping history (SCD 2) or not (SCD 1), set with <code>stored_as_scd_type</code>.</dd></div>
+    <div><dt>Time to read</dt><dd>~17 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq"><li><a class="chip acc" href="11-auto-cdc-scd-type-1.html">01-11 AUTO CDC and SCD Type 1</a></li></ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p>With <span class="def">SCD Type 2</span>, an update doesn't overwrite. Instead, the current row is "closed" and a new row is added with the new values. Each row carries two extra columns that AUTO CDC fills in for you:</p>
+  <ul>
+    <li><code>__START_AT</code>: the sequence value (usually a timestamp) from which this version was true.</li>
+    <li><code>__END_AT</code>: when it stopped being true. NULL means "still current".</li>
+  </ul>
+  <p>So the current row for a key is the one where <code>__END_AT IS NULL</code>, and the row that was true at any moment is the one whose range covers that moment. The values in both columns come from your <code>sequence_by</code> column, which is why they must have the same type.</p>
+  <p>Not every change deserves a history row. A customer's <code>last_login</code> changes constantly, but you only care when their <code>city</code> or <code>email</code> changes. <code>track_history_column_list</code> (or <code>track_history_except_column_list</code>) says which columns create a new version; changes to other columns just update the current row in place. By default, all columns are tracked.</p>
+  <p>A delete in Type 2 closes the current row (sets its <code>__END_AT</code>) instead of erasing history.</p>
+  <div class="analogy">
+    <p>A passport's stamped pages versus a whiteboard. Type 1 is the whiteboard: wipe and rewrite, the past is gone. Type 2 is the passport: every visa has a "valid from" and "valid until" date, old ones stay in the book, and only one is valid today. And you don't get a new visa every time you change hotels: only changes that matter (tracked columns) get a new stamp.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 250" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">Versions of one customer on a timeline</title>
+      <desc id="dia-d">Customer c1 has three versions on a timeline: Northport from time 1 to 3, Riverside from 3 to 7, and Hillview from 7 onward with no end. A question about time 5 finds the Riverside version.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <line x1="40" y1="200" x2="640" y2="200" stroke="var(--line)"/>
+        <g font-size="11" fill="var(--muted)"><text x="60" y="220">t1</text><text x="200" y="220">t3</text><text x="290" y="220">t5</text><text x="470" y="220">t7</text><text x="600" y="220">now</text></g>
+        <rect x="60" y="40" width="140" height="40" rx="6" fill="var(--surface)" stroke="var(--line)"/><text x="130" y="58" text-anchor="middle" font-size="11">c1 · Northport</text><text x="130" y="73" text-anchor="middle" font-size="11" fill="var(--muted)">t1 → t3</text>
+        <rect x="200" y="90" width="270" height="40" rx="6" fill="var(--surface)" stroke="var(--line)"/><text x="335" y="108" text-anchor="middle" font-size="11">c1 · Riverside</text><text x="335" y="123" text-anchor="middle" font-size="11" fill="var(--muted)">t3 → t7</text>
+        <rect x="470" y="140" width="170" height="40" rx="6" fill="var(--surface)" stroke="var(--ok)" stroke-width="2"/><text x="555" y="158" text-anchor="middle" font-size="11">c1 · Hillview</text><text x="555" y="173" text-anchor="middle" font-size="11" fill="var(--ok)">t7 → NULL (current)</text>
+        <line x1="290" y1="30" x2="290" y2="200" stroke="var(--accent)" stroke-dasharray="4 3"/>
+        <text x="296" y="30" font-size="11" fill="var(--accent)">"where did c1 live at t5?"</text>
+      </g>
+      <g>
+        <circle r="7" fill="none" stroke="var(--accent)" stroke-width="3" cx="290" cy="110">
+          <animate attributeName="r" values="7;14;7" dur="2s" repeatCount="indefinite"/>
+        </circle>
+      </g>
+    </svg>
+    <figcaption class="cap">Notice: the versions <b>don't overlap</b>: each one's end is the next one's start. Exactly one row has no end (<b>current</b>). A point-in-time question (dashed line) lands in <b>exactly one</b> version.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: build a history table</h2>
+  <p>Changes for customer c1 arrive, one of them late. Choose whether to track every column or only <code>city</code> and <code>email</code>, and watch history rows appear.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Track history on <select id="d-track"><option value="all">all columns (default)</option><option value="some">city, email only</option></select></label>
+      <button type="button" id="d-next">Deliver next event</button>
+      <button type="button" class="primary" id="d-all">Deliver all</button>
+      <button type="button" id="d-reset">Reset</button>
+    </div>
+    <div class="flow">
+      <div class="pane"><h4>CDC feed (arrival order)</h4><div id="d-feed"></div></div>
+      <div class="pane"><h4>Target: customers_history (SCD 2)</h4><div id="d-tgt"></div></div>
+    </div>
+    <div class="ctrls"><label>Point-in-time query: as of t <input type="range" id="d-t" min="1" max="9" value="5"></label><span class="chip acc" id="d-ans">–</span></div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="SCD 2 log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p>Python, in a pipeline:</p>
+<pre><code><span class="c-k">from</span> pyspark <span class="c-k">import</span> pipelines <span class="c-k">as</span> dp
+<span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> functions <span class="c-k">as</span> F
+
+dp.create_streaming_table(<span class="c-s">"customers_history"</span>)
+
+dp.create_auto_cdc_flow(
+    target=<span class="c-s">"customers_history"</span>,
+    source=<span class="c-s">"customers_cdc_bronze"</span>,
+    keys=[<span class="c-s">"customer_id"</span>],
+    sequence_by=F.col(<span class="c-s">"event_ts"</span>),                    <span class="c-c"># becomes __START_AT / __END_AT</span>
+    apply_as_deletes=F.expr(<span class="c-s">"op = 'DELETE'"</span>),       <span class="c-c"># closes the current version</span>
+    except_column_list=[<span class="c-s">"op"</span>, <span class="c-s">"event_ts"</span>],
+    stored_as_scd_type=2,                              <span class="c-c"># keep history</span>
+    track_history_column_list=[<span class="c-s">"city"</span>, <span class="c-s">"email"</span>]      <span class="c-c"># other columns update in place</span>
+)</code></pre>
+  <p>SQL:</p>
+<pre><code><span class="c-k">CREATE OR REFRESH STREAMING TABLE</span> customers_history;
+
+<span class="c-k">CREATE FLOW</span> customers_history_flow <span class="c-k">AS AUTO CDC INTO</span> customers_history
+<span class="c-k">FROM STREAM</span>(customers_cdc_bronze)
+<span class="c-k">KEYS</span> (customer_id)
+<span class="c-k">APPLY AS DELETE WHEN</span> op = <span class="c-s">'DELETE'</span>
+<span class="c-k">SEQUENCE BY</span> event_ts
+<span class="c-k">COLUMNS</span> * <span class="c-k">EXCEPT</span> (op, event_ts)
+<span class="c-k">STORED AS SCD TYPE</span> 2
+<span class="c-k">TRACK HISTORY ON</span> (city, email);</code></pre>
+  <p>Querying the history:</p>
+<pre><code><span class="c-c">-- Current version of every customer</span>
+<span class="c-k">SELECT</span> * <span class="c-k">FROM</span> customers_history <span class="c-k">WHERE</span> __END_AT <span class="c-k">IS NULL</span>;
+
+<span class="c-c">-- Which city each customer lived in when each ride happened</span>
+<span class="c-k">SELECT</span> r.ride_id, r.started_at, c.city
+<span class="c-k">FROM</span> rides_silver r
+<span class="c-k">JOIN</span> customers_history c
+  <span class="c-k">ON</span> r.customer_id = c.customer_id
+ <span class="c-k">AND</span> r.started_at &gt;= c.__START_AT
+ <span class="c-k">AND</span> (r.started_at &lt; c.__END_AT <span class="c-k">OR</span> c.__END_AT <span class="c-k">IS NULL</span>);</code></pre>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td><code>stored_as_scd_type=2</code></td><td>Each tracked change closes the current row and adds a new one with <code>__START_AT</code>/<code>__END_AT</code>.</td></tr>
+    <tr><td>No track-history list (default)</td><td>Every column change creates a version. Frequently changing columns can bloat the table.</td></tr>
+    <tr><td><code>track_history_column_list=[...]</code> / <code>TRACK HISTORY ON (...)</code></td><td>Only these columns create versions; others overwrite the current row.</td></tr>
+    <tr><td><code>track_history_except_column_list</code></td><td>Track every column except the listed ones.</td></tr>
+    <tr><td>A delete event (with <code>apply_as_deletes</code>)</td><td>The current version gets an <code>__END_AT</code>; history is kept. No row remains current.</td></tr>
+    <tr><td>Declare the target schema yourself</td><td>You must include <code>__START_AT</code> and <code>__END_AT</code> with the same type as the <code>sequence_by</code> column.</td></tr>
+    <tr><td>Late, out-of-order event</td><td>AUTO CDC slots it into the right place in history based on <code>sequence_by</code>, adjusting neighbouring versions.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th></th><th>SCD Type 1</th><th>SCD Type 2</th></tr></thead><tbody>
+    <tr><td>Rows per key</td><td>One</td><td>One per tracked version</td></tr>
+    <tr><td>History</td><td>Lost</td><td>Kept with <code>__START_AT</code>/<code>__END_AT</code></td></tr>
+    <tr><td>Current value</td><td>The row itself</td><td><code>WHERE __END_AT IS NULL</code></td></tr>
+    <tr><td>Delete</td><td>Row removed</td><td>Current row closed</td></tr>
+    <tr><td>Table size</td><td>Stable</td><td>Grows with changes</td></tr>
+    <tr><td>Good for</td><td>"What is it now?" (contact details, prices now)</td><td>"What was it then?" (reporting by historic region, audits)</td></tr>
+  </tbody></table></div>
+  <div class="grid3">
+    <div class="card"><p class="tag">Column</p><h3>__START_AT</h3><p>When this version became true (from <code>sequence_by</code>).</p></div>
+    <div class="card"><p class="tag">Column</p><h3>__END_AT</h3><p>When it stopped being true. NULL = current.</p></div>
+    <div class="card"><p class="tag">Setting</p><h3>track history</h3><p>Which column changes deserve a new version.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>Finance needs revenue by the region a customer lived in at the time</td><td>A Type 1 table only knows today's region.</td><td>Keep customers as SCD Type 2 and join on the validity range.</td></tr>
+    <tr><td>The history table has 40 versions per customer per day</td><td><code>last_login</code> changes are creating versions.</td><td>Set <code>track_history_column_list</code> to the columns that matter.</td></tr>
+    <tr><td>A dashboard double-counts customers</td><td>It reads all history rows, not just current ones.</td><td>Filter <code>__END_AT IS NULL</code>, or publish a current-only view.</td></tr>
+    <tr><td>Deleted customers vanish from history reports</td><td>A Type 1 table was used.</td><td>Type 2 keeps closed versions after a delete.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>The current row is the one with <code>__END_AT IS NULL</code>, not the one with the largest <code>__START_AT</code> after a delete (a deleted key has no current row).</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>Untracked columns still change: they're updated in place on the current row, just without creating a new version.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>SCD Type 2 history</b> (business history, kept forever, queryable by range) vs <b>Delta time travel</b> (technical table versions, limited by VACUUM retention).</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><code>track_history_column_list</code> (which columns create versions) vs <code>except_column_list</code> (which columns are stored at all).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="2"><p>1. How do you select only the current version of each customer from an SCD Type 2 table built by AUTO CDC?</p>
+      <ol class="opts"><li><button><code>WHERE __START_AT IS NULL</code></button></li><li><button><code>ORDER BY __START_AT DESC LIMIT 1</code></button></li><li><button><code>WHERE __END_AT IS NULL</code></button></li><li><button><code>WHERE op = 'INSERT'</code></button></li></ol>
+      <p class="why" hidden>An open-ended range (no end) marks the version that is true now.</p></div>
+    <div class="q" data-answer="0"><p>2. Only changes to <code>city</code> should create new versions; <code>last_login</code> changes should just update the current row. Which setting?</p>
+      <ol class="opts"><li><button><code>track_history_column_list=["city"]</code></button></li><li><button><code>except_column_list=["last_login"]</code></button></li><li><button><code>stored_as_scd_type=1</code></button></li><li><button><code>ignore_null_updates=True</code></button></li></ol>
+      <p class="why" hidden>Track-history settings choose which columns create versions. <code>except_column_list</code> would drop <code>last_login</code> entirely.</p></div>
+    <div class="q" data-answer="3"><p>3. What does a delete event do in SCD Type 2?</p>
+      <ol class="opts"><li><button>Erases all rows for that key</button></li><li><button>Nothing</button></li><li><button>Adds a row with NULL values</button></li><li><button>Sets <code>__END_AT</code> on the current version, keeping history</button></li></ol>
+      <p class="why" hidden>History is preserved; the key simply has no current version after the delete.</p></div>
+    <div class="q" data-answer="1"><p>4. Where do <code>__START_AT</code> and <code>__END_AT</code> values come from?</p>
+      <ol class="opts"><li><button>The time the pipeline update ran</button></li><li><button>The <code>sequence_by</code> column</button></li><li><button>The Delta table version number</button></li><li><button>The file modification time</button></li></ol>
+      <p class="why" hidden>They're taken from <code>sequence_by</code>, which is why a declared schema must give them the same type.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li><code>stored_as_scd_type=2</code> keeps every version with <code>__START_AT</code>/<code>__END_AT</code> taken from <code>sequence_by</code>.</li>
+    <li>Current rows: <code>__END_AT IS NULL</code>. Point-in-time: join on the validity range.</li>
+    <li>Track history only on columns that matter; others update in place.</li>
+    <li>Deletes close the current version; history stays.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#auto-cdc">AUTO CDC</a>
+    <a class="chip" href="../../glossary.html#scd-type-2">SCD Type 2</a>
+    <a class="chip" href="../../glossary.html#sequence-by">sequence_by</a>
+    <a class="chip" href="../../glossary.html#start-end-at">__START_AT / __END_AT</a>
+    <a class="chip" href="../../glossary.html#track-history">track history</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/cdc">The AUTO CDC APIs</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/developer/ldp-python-ref-apply-changes"><code>create_auto_cdc_flow</code> (Python)</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/developer/ldp-sql-ref-apply-changes-into">AUTO CDC INTO (SQL)</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  // arrival order; seq 5 arrives after seq 6 (late)
+  var FEED = [
+    { seq: 1, op: 'INSERT', city: 'Northport', email: 'ana@old.example', login: 'Mon' },
+    { seq: 2, op: 'UPDATE', city: 'Northport', email: 'ana@old.example', login: 'Tue' },
+    { seq: 3, op: 'UPDATE', city: 'Riverside', email: 'ana@old.example', login: 'Tue' },
+    { seq: 4, op: 'UPDATE', city: 'Riverside', email: 'ana@old.example', login: 'Thu' },
+    { seq: 6, op: 'UPDATE', city: 'Hillview', email: 'ana@new.example', login: 'Sat' },
+    { seq: 5, op: 'UPDATE', city: 'Riverside', email: 'ana@new.example', login: 'Fri' },
+    { seq: 8, op: 'DELETE' }
+  ];
+  var pos, versions;
+  function tracked(a, b) {
+    if ($('d-track').value === 'all') return a.city !== b.city || a.email !== b.email || a.login !== b.login;
+    return a.city !== b.city || a.email !== b.email;
+  }
+  // Rebuild history from all delivered events in sequence order (AUTO CDC orders by sequence_by).
+  function rebuild() {
+    var evs = FEED.slice(0, pos).slice().sort(function (a, b) { return a.seq - b.seq; });
+    versions = [];
+    evs.forEach(function (e) {
+      var cur = versions.length && versions[versions.length - 1].end === null ? versions[versions.length - 1] : null;
+      if (e.op === 'DELETE') { if (cur) cur.end = e.seq; return; }
+      if (!cur) { versions.push({ city: e.city, email: e.email, login: e.login, start: e.seq, end: null }); return; }
+      if (tracked(cur, e)) { cur.end = e.seq; versions.push({ city: e.city, email: e.email, login: e.login, start: e.seq, end: null }); }
+      else cur.login = e.login; // untracked change: overwrite in place
+    });
+  }
+  function draw() {
+    var f = $('d-feed'); f.textContent = '';
+    FEED.forEach(function (e, i) { f.appendChild(Object.assign(document.createElement('div'), { className: 'item' + (i < pos ? '' : ' cap'), textContent: (i < pos ? '✓ ' : '· ') + 'seq ' + e.seq + ' ' + e.op + (e.city ? ' ' + e.city + ' ' + e.email.split('@')[0] + '@… login ' + e.login : '') + (i === 5 ? '  (late)' : '') })); });
+    var t = $('d-tgt'); t.textContent = '';
+    if (!versions.length) t.appendChild(Object.assign(document.createElement('p'), { className: 'cap', textContent: 'empty' }));
+    versions.forEach(function (v) { t.appendChild(Object.assign(document.createElement('div'), { className: 'item' + (v.end === null ? ' ok' : ''), textContent: 'c1 ' + v.city + ' ' + v.email.split('@')[1] + ' login ' + v.login + ' · __START_AT t' + v.start + ' · __END_AT ' + (v.end === null ? 'NULL (current)' : 't' + v.end) })); });
+    var at = +$('d-t').value, hit = versions.find(function (v) { return at >= v.start && (v.end === null || at < v.end); });
+    $('d-ans').textContent = 'as of t' + at + ': ' + (hit ? hit.city : versions.length ? 'no version (before first, or deleted)' : 'no data yet');
+  }
+  function step() {
+    if (pos >= FEED.length) { log('skip', 'feed finished'); return; }
+    var e = FEED[pos], before = versions.length; pos++;
+    rebuild();
+    if (e.op === 'DELETE') log('ok', '  seq ' + e.seq + ' DELETE → current version closed at t' + e.seq + ', history kept');
+    else if (pos === 6) log('ok', '  seq 5 arrives late → slotted between t4 and t6 by sequence_by');
+    else log(versions.length > before ? 'ok' : 'skip', '  seq ' + e.seq + ' ' + e.op + ' → ' + (versions.length > before ? 'new version' : 'untracked change, current row updated in place'));
+    draw();
+  }
+  function reset() { pos = 0; versions = []; $('d-log').textContent = ''; log('skip', 'reset · tracking ' + $('d-track').selectedOptions[0].text); draw(); }
+  $('d-next').onclick = step;
+  $('d-all').onclick = function () { while (pos < FEED.length) step(); log('skip', '= ' + versions.length + ' version row(s)'); };
+  $('d-reset').onclick = reset; $('d-track').onchange = reset; $('d-t').oninput = draw;
+  reset();
+})();
+</script>
+</body>
+</html>

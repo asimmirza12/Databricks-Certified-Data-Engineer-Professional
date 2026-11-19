@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AUTO CDC and SCD Type 1 · DE Pro Study Course</title>
+<meta name="description" content="Apply a feed of inserts, updates and deletes to a table with the AUTO CDC API (formerly APPLY CHANGES), keep only the latest version of each row (SCD Type 1), and handle out-of-order events.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="01-11">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 01 · Lesson 11</p>
+  <h1>AUTO CDC and SCD Type 1</h1>
+  <p class="lede">Source databases send a stream of changes: this row was added, that one changed, another deleted. AUTO CDC turns that stream into an up-to-date table, even when the changes arrive in the wrong order.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>01 · Developing Code for Data Processing (23%)</dd></div>
+    <div><dt>Lesson</dt><dd>11 · AUTO CDC and SCD Type 1</dd></div>
+    <div><dt>Exam objective</dt><dd>S1.7 — Build CDC flows with the AUTO CDC APIs, keeping history (SCD 2) or not (SCD 1). This lesson: Type 1. Next: Type 2.</dd></div>
+    <div><dt>Time to read</dt><dd>~18 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq"><li><a class="chip acc" href="10-streaming-tables-vs-materialized-views.html">01-10 Streaming tables vs materialized views</a></li></ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p><span class="def">Change data capture</span> (CDC) means recording every change made to a source table as an event: an insert, an update or a delete, with the new values and a time or sequence number. A <span class="def">CDC feed</span> is that list of change events.</p>
+  <p>To turn a CDC feed into a usable table you must, for each event: find the row by its key, then insert, overwrite or delete it. That's an <span class="def">upsert</span> (update if it exists, insert if not) plus deletes. Doing it by hand with <code>MERGE</code> gets hard when events arrive late or out of order, or several changes to one row land in the same batch.</p>
+  <p>The <span class="def">AUTO CDC API</span> (formerly <code>APPLY CHANGES</code>) does this for you inside a Lakeflow pipeline. You tell it:</p>
+  <ul>
+    <li><code>keys</code>: which column(s) identify a row (e.g. <code>customer_id</code>).</li>
+    <li><code>sequence_by</code>: which column gives the true order of events (a timestamp or sequence number). The highest value wins, regardless of arrival order.</li>
+    <li><code>apply_as_deletes</code>: which events mean "delete".</li>
+    <li><code>stored_as_scd_type</code>: 1 or 2.</li>
+  </ul>
+  <p><span class="def">SCD</span> means "slowly changing dimension": a table describing things (customers, bikes) whose details change now and then. <b>Type 1</b> keeps only the latest values: an update overwrites the old row, and history is lost. Type 1 is the default.</p>
+  <div class="analogy">
+    <p>A contacts app on your phone. Messages arrive saying "Ana's number is now 555-0102", "delete Ben", "Ana's number is now 555-0101". If the messages come out of order, you'd keep the wrong number. Reading the timestamp on each message and keeping only the newest is <code>sequence_by</code>. Type 1 is the phone overwriting the old number: you can't see what it used to be.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 250" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">Out-of-order events resolved by sequence</title>
+      <desc id="dia-d">Three change events for customer c1 arrive in the order sequence 1, 3, 2. AUTO CDC compares sequence numbers per key, so the event with sequence 3 wins and the late event with sequence 2 is ignored. The target table keeps one current row for c1.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <text x="20" y="24" font-weight="600">arrival order</text>
+        <g fill="var(--surface)" stroke="var(--line)"><rect x="20" y="36" width="190" height="34" rx="6"/><rect x="20" y="78" width="190" height="34" rx="6"/></g>
+        <rect x="20" y="120" width="190" height="34" rx="6" fill="var(--surface)" stroke="var(--warn)" stroke-dasharray="4 3"/>
+        <text x="30" y="58" font-size="11">seq 1 INSERT c1 ana@old</text><text x="30" y="100" font-size="11">seq 3 UPDATE c1 ana@new</text><text x="30" y="142" font-size="11" fill="var(--warn)">seq 2 UPDATE c1 ana@mid  late</text>
+        <rect x="270" y="70" width="150" height="70" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="345" y="96" text-anchor="middle" font-weight="600">AUTO CDC</text><text x="345" y="116" text-anchor="middle" font-size="11">per key: highest</text><text x="345" y="130" text-anchor="middle" font-size="11">sequence wins</text>
+        <rect x="480" y="80" width="160" height="50" rx="8" fill="var(--surface)" stroke="var(--ok)"/>
+        <text x="560" y="102" text-anchor="middle" font-size="11">c1 · ana@new</text><text x="560" y="120" text-anchor="middle" font-size="11" fill="var(--muted)">SCD Type 1: one row</text>
+        <text x="345" y="190" text-anchor="middle" font-size="11" fill="var(--warn)">seq 2 &lt; seq 3 → ignored</text>
+        <g fill="none" stroke="var(--line)" stroke-dasharray="3 4"><path id="a" d="M210 53 C240 53 240 90 270 90"/><path id="b" d="M210 95 H270"/><path id="c" d="M210 137 C240 137 240 120 270 120"/><path id="o" d="M420 105 H480"/><path id="x" d="M345 140 V178"/></g>
+      </g>
+      <circle r="5" fill="var(--accent)" data-rest="240,72"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#a"/></animateMotion></circle>
+      <circle r="5" fill="var(--accent)" data-rest="240,95"><animateMotion dur="3s" begin="1s" repeatCount="indefinite"><mpath href="#b"/></animateMotion></circle>
+      <circle r="5" fill="var(--warn)" data-rest="345,160"><animateMotion dur="3s" begin="2s" repeatCount="indefinite"><mpath href="#x"/></animateMotion></circle>
+      <circle r="5" fill="var(--ok)" data-rest="450,105"><animateMotion dur="1.5s" repeatCount="indefinite"><mpath href="#o"/></animateMotion></circle>
+    </svg>
+    <figcaption class="cap">Notice: the late event (seq 2, red) arrives last but is <b>older</b>, so it is dropped. The target keeps the value from the <b>highest sequence</b>. Arrival order doesn't matter; sequence order does.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: apply a messy CDC feed</h2>
+  <p>Six change events arrive in a jumbled order, including a late update for a customer who was already deleted. Apply them with AUTO CDC (using <code>sequence_by</code>), then reset and apply them "naively" in arrival order.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog"><input type="checkbox" id="d-seq" checked> Use sequence_by (AUTO CDC)</label>
+      <button type="button" id="d-next">Deliver next event</button>
+      <button type="button" class="primary" id="d-all">Deliver all</button>
+      <button type="button" id="d-reset">Reset</button>
+    </div>
+    <div class="flow">
+      <div class="pane"><h4>CDC feed (arrival order)</h4><div id="d-feed"></div></div>
+      <div class="pane"><h4>Target: customers (SCD 1)</h4><div id="d-tgt"></div></div>
+    </div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="CDC log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p>Python, in a pipeline. The target is a streaming table you declare first:</p>
+<pre><code><span class="c-k">from</span> pyspark <span class="c-k">import</span> pipelines <span class="c-k">as</span> dp
+<span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> functions <span class="c-k">as</span> F
+
+<span class="c-c"># bronze: the raw CDC feed (e.g. JSON files from the source database's change log)</span>
+<span class="c-k">@dp.table</span>
+<span class="c-k">def</span> customers_cdc_bronze():
+    <span class="c-k">return</span> (spark.readStream.format(<span class="c-s">"cloudFiles"</span>)
+            .option(<span class="c-s">"cloudFiles.format"</span>, <span class="c-s">"json"</span>)
+            .load(<span class="c-s">"/Volumes/bike_shop/raw/landing/customers_cdc/"</span>))
+
+<span class="c-c"># silver: one current row per customer</span>
+dp.create_streaming_table(<span class="c-s">"customers_silver"</span>)
+
+dp.create_auto_cdc_flow(
+    target=<span class="c-s">"customers_silver"</span>,
+    source=<span class="c-s">"customers_cdc_bronze"</span>,
+    keys=[<span class="c-s">"customer_id"</span>],                              <span class="c-c"># identifies the row</span>
+    sequence_by=F.col(<span class="c-s">"event_ts"</span>),                       <span class="c-c"># true order of events</span>
+    apply_as_deletes=F.expr(<span class="c-s">"op = 'DELETE'"</span>),          <span class="c-c"># which events delete</span>
+    except_column_list=[<span class="c-s">"op"</span>, <span class="c-s">"event_ts"</span>],                <span class="c-c"># don't copy feed-only columns</span>
+    stored_as_scd_type=1                                  <span class="c-c"># keep latest only (the default)</span>
+)</code></pre>
+  <p>The same in SQL:</p>
+<pre><code><span class="c-k">CREATE OR REFRESH STREAMING TABLE</span> customers_silver;
+
+<span class="c-k">CREATE FLOW</span> customers_cdc_flow <span class="c-k">AS AUTO CDC INTO</span> customers_silver
+<span class="c-k">FROM STREAM</span>(customers_cdc_bronze)
+<span class="c-k">KEYS</span> (customer_id)
+<span class="c-k">APPLY AS DELETE WHEN</span> op = <span class="c-s">'DELETE'</span>
+<span class="c-k">SEQUENCE BY</span> event_ts
+<span class="c-k">COLUMNS</span> * <span class="c-k">EXCEPT</span> (op, event_ts)
+<span class="c-k">STORED AS SCD TYPE</span> 1;</code></pre>
+  <p class="note">The hand-written alternative is <code>MERGE INTO</code> inside <code>foreachBatch</code> (lesson 01-15), where you must de-duplicate each batch and compare sequence numbers yourself.</p>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td>Use a column that doesn't reflect true order as <code>sequence_by</code> (e.g. load time)</td><td>Late events can overwrite newer ones. Use the source's commit time or log sequence number.</td></tr>
+    <tr><td>Omit <code>apply_as_deletes</code></td><td>Delete events are treated as upserts: the row isn't removed (and may get the delete event's values).</td></tr>
+    <tr><td><code>ignore_null_updates=True</code></td><td>NULLs in an update keep the existing values: useful when the source sends only changed columns.</td></tr>
+    <tr><td><code>column_list</code> / <code>except_column_list</code></td><td>Choose which source columns land in the target (drop <code>op</code>, metadata, etc.).</td></tr>
+    <tr><td><code>apply_as_truncates</code></td><td>An event that empties the whole table. SCD Type 1 only.</td></tr>
+    <tr><td>Tombstone retention (<code>pipelines.cdc.tombstoneGCThresholdInSeconds</code>, about 2 days by default)</td><td>How long deleted keys are remembered so late, older updates don't bring them back.</td></tr>
+    <tr><td><code>stored_as_scd_type=2</code></td><td>Keep history rows instead of overwriting (next lesson).</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th></th><th>AUTO CDC</th><th>Hand-written MERGE in foreachBatch</th></tr></thead><tbody>
+    <tr><td>Out-of-order events</td><td>Handled with <code>sequence_by</code></td><td>You write the comparison logic</td></tr>
+    <tr><td>Many changes to one key in a batch</td><td>Handled</td><td>You must de-duplicate first or MERGE fails</td></tr>
+    <tr><td>Late updates after delete</td><td>Tombstones prevent resurrection</td><td>Easy to get wrong</td></tr>
+    <tr><td>SCD Type 2 history</td><td>One setting</td><td>Complex MERGE logic</td></tr>
+    <tr><td>Where it runs</td><td>Lakeflow pipelines only</td><td>Any Structured Streaming job</td></tr>
+  </tbody></table></div>
+  <div class="grid3">
+    <div class="card"><p class="tag">Event</p><h3>INSERT</h3><p>New key: row added (an upsert).</p></div>
+    <div class="card"><p class="tag">Event</p><h3>UPDATE</h3><p>Existing key: row overwritten in Type 1 (also an upsert).</p></div>
+    <div class="card"><p class="tag">Event</p><h3>DELETE</h3><p>Matched by <code>apply_as_deletes</code>: row removed, key remembered for a while.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>Customer emails flip back to old values now and then</td><td>Events arrive out of order and the pipeline uses arrival order.</td><td>Use AUTO CDC with <code>sequence_by</code> on the source's change timestamp.</td></tr>
+    <tr><td>Deleted customers keep reappearing in silver</td><td>No <code>apply_as_deletes</code>, so deletes are upserted.</td><td>Add <code>apply_as_deletes = op = 'DELETE'</code>.</td></tr>
+    <tr><td>A downstream streaming table reading the SCD 1 target fails</td><td>The target receives updates and deletes, so it's not append-only.</td><td>Read it with a materialized view downstream (or <code>skipChangeCommits</code> if ignoring changes is acceptable).</td></tr>
+    <tr><td>The source sends only changed columns; other values turn NULL</td><td>Each update overwrites every column.</td><td>Set <code>ignore_null_updates</code>.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>The target of AUTO CDC must be a <b>streaming table</b> declared in the pipeline (<code>create_streaming_table</code> / <code>CREATE OR REFRESH STREAMING TABLE</code>), not a materialized view.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>Old name: <code>APPLY CHANGES INTO</code> / <code>dlt.apply_changes</code> is now AUTO CDC / <code>dp.create_auto_cdc_flow</code>. Same idea.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><code>keys</code> (which row) vs <code>sequence_by</code> (which version of that row wins).</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>SCD Type 1</b> (overwrite; current values only) vs <b>Type 2</b> (new row per change; full history).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="1"><p>1. Updates for the same customer sometimes arrive out of order. Which AUTO CDC parameter makes the newest change win?</p>
+      <ol class="opts"><li><button><code>keys</code></button></li><li><button><code>sequence_by</code></button></li><li><button><code>apply_as_deletes</code></button></li><li><button><code>except_column_list</code></button></li></ol>
+      <p class="why" hidden><code>sequence_by</code> orders events per key; the highest value wins regardless of arrival order.</p></div>
+    <div class="q" data-answer="3"><p>2. What does SCD Type 1 keep?</p>
+      <ol class="opts"><li><button>Every past version with start and end times</button></li><li><button>Only inserts, never updates</button></li><li><button>Only deleted rows</button></li><li><button>One current row per key; updates overwrite</button></li></ol>
+      <p class="why" hidden>Type 1 overwrites in place, so only the latest values remain.</p></div>
+    <div class="q" data-answer="0"><p>3. Delete events in the feed are not removing rows. What's missing?</p>
+      <ol class="opts"><li><button><code>apply_as_deletes</code> with the condition that marks deletes</button></li><li><button>A bigger cluster</button></li><li><button><code>stored_as_scd_type=2</code></button></li><li><button>A temporary view</button></li></ol>
+      <p class="why" hidden>Without <code>apply_as_deletes</code>, AUTO CDC treats every event as an upsert.</p></div>
+    <div class="q" data-answer="2"><p>4. What must the AUTO CDC target be?</p>
+      <ol class="opts"><li><button>A materialized view</button></li><li><button>An external Parquet folder</button></li><li><button>A streaming table declared in the pipeline</button></li><li><button>A temporary view</button></li></ol>
+      <p class="why" hidden>AUTO CDC flows write into a streaming table you declare first.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>CDC feeds carry inserts, updates and deletes; AUTO CDC (formerly APPLY CHANGES) applies them in a pipeline.</li>
+    <li><code>keys</code> pick the row, <code>sequence_by</code> picks the winning version, <code>apply_as_deletes</code> marks deletes.</li>
+    <li>SCD Type 1 (default) overwrites: latest values only.</li>
+    <li>The target is a streaming table; downstream, read it with a materialized view.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#auto-cdc">AUTO CDC</a>
+    <a class="chip" href="../../glossary.html#cdc">change data capture</a>
+    <a class="chip" href="../../glossary.html#cdc-feed">CDC feed</a>
+    <a class="chip" href="../../glossary.html#scd">SCD</a>
+    <a class="chip" href="../../glossary.html#scd-type-1">SCD Type 1</a>
+    <a class="chip" href="../../glossary.html#sequence-by">sequence_by</a>
+    <a class="chip" href="../../glossary.html#tombstone">tombstone</a>
+    <a class="chip" href="../../glossary.html#upsert">upsert</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/cdc">The AUTO CDC APIs</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/developer/ldp-python-ref-apply-changes"><code>create_auto_cdc_flow</code> (Python)</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/developer/ldp-sql-ref-apply-changes-into">AUTO CDC INTO (SQL)</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/what-is-change-data-capture">What is change data capture?</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  // arrival order is deliberately not sequence order
+  var FEED = [
+    { seq: 1, op: 'INSERT', id: 'c1', email: 'ana@old.example' },
+    { seq: 1, op: 'INSERT', id: 'c2', email: 'ben@one.example' },
+    { seq: 3, op: 'UPDATE', id: 'c1', email: 'ana@new.example' },
+    { seq: 4, op: 'DELETE', id: 'c2', email: null },
+    { seq: 2, op: 'UPDATE', id: 'c1', email: 'ana@mid.example' },
+    { seq: 3, op: 'UPDATE', id: 'c2', email: 'ben@two.example' }
+  ];
+  var pos, tgt, seen; // seen[key] = highest seq applied (kept after delete = tombstone)
+  function draw() {
+    var f = $('d-feed'); f.textContent = '';
+    FEED.forEach(function (e, i) { f.appendChild(Object.assign(document.createElement('div'), { className: 'item' + (i < pos ? '' : ' cap'), textContent: (i < pos ? '✓ ' : '· ') + 'seq ' + e.seq + ' ' + e.op + ' ' + e.id + (e.email ? ' ' + e.email : '') })); });
+    var t = $('d-tgt'); t.textContent = '';
+    var keys = Object.keys(tgt).sort();
+    if (!keys.length) t.appendChild(Object.assign(document.createElement('p'), { className: 'cap', textContent: 'empty' }));
+    keys.forEach(function (k) { t.appendChild(Object.assign(document.createElement('div'), { className: 'item', textContent: k + '  ' + tgt[k] })); });
+  }
+  function verdict() {
+    if (pos < FEED.length) return;
+    var ok = tgt.c1 === 'ana@new.example' && !tgt.c2;
+    log(ok ? 'ok' : 'bad', ok ? '= correct: c1 has the newest email, c2 stays deleted' : '= WRONG: ' + (tgt.c1 !== 'ana@new.example' ? 'c1 has an older email' : '') + (tgt.c1 !== 'ana@new.example' && tgt.c2 ? ' and ' : '') + (tgt.c2 ? 'deleted c2 came back' : ''));
+  }
+  function apply() {
+    if (pos >= FEED.length) { log('skip', 'feed finished'); return; }
+    var e = FEED[pos++], useSeq = $('d-seq').checked;
+    if (useSeq && seen[e.id] !== undefined && e.seq <= seen[e.id]) {
+      log('skip', '  seq ' + e.seq + ' ' + e.op + ' ' + e.id + ': older than seq ' + seen[e.id] + ' already applied → ignored' + (!tgt[e.id] ? ' (tombstone)' : ''));
+    } else {
+      if (useSeq) seen[e.id] = e.seq;
+      if (e.op === 'DELETE') { delete tgt[e.id]; log('ok', '  seq ' + e.seq + ' DELETE ' + e.id + ' → row removed'); }
+      else { tgt[e.id] = e.email; log(useSeq ? 'ok' : 'skip', '  seq ' + e.seq + ' ' + e.op + ' ' + e.id + ' → upsert ' + e.email); }
+    }
+    draw(); verdict();
+  }
+  function reset() { pos = 0; tgt = {}; seen = {}; $('d-log').textContent = ''; log('skip', 'reset · ' + ($('d-seq').checked ? 'AUTO CDC with sequence_by' : 'naive: apply in arrival order')); draw(); }
+  $('d-next').onclick = apply;
+  $('d-all').onclick = function () { while (pos < FEED.length) apply(); };
+  $('d-reset').onclick = reset; $('d-seq').onchange = reset;
+  reset();
+})();
+</script>
+</body>
+</html>

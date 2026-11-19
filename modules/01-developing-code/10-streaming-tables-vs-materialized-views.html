@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Streaming tables vs materialized views · DE Pro Study Course</title>
+<meta name="description" content="How to choose between a streaming table and a materialized view based on latency, cost, refresh behaviour and whether the source only appends.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="01-10">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 01 · Lesson 10</p>
+  <h1>Streaming tables vs materialized views</h1>
+  <p class="lede">Both keep a table up to date automatically. One processes each new row once and forgets it; the other keeps the answer to a query correct. Picking wrongly gives either stale numbers or a big bill.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>01 · Developing Code for Data Processing (23%)</dd></div>
+    <div><dt>Lesson</dt><dd>10 · Streaming tables vs materialized views</dd></div>
+    <div><dt>Exam objective</dt><dd>S1.6 — Pick a streaming table or a materialized view based on freshness, cost and refresh needs.</dd></div>
+    <div><dt>Time to read</dt><dd>~16 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq"><li><a class="chip acc" href="08-lakeflow-pipelines-intro.html">01-08 Lakeflow pipelines</a></li></ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p>A <span class="def">streaming table</span> reads its source as a stream. On each refresh it processes only rows it hasn't seen, appends the results, and never looks back. That makes it cheap and fast, but it assumes the source is <span class="def">append-only</span>: rows are added, never changed or deleted.</p>
+  <p>A <span class="def">materialized view</span> stores the result of a query and guarantees that, after each refresh, the result matches what the query would return right now. If a source row is corrected or deleted, the view reflects it. To do that it may need to recompute. On serverless, Databricks tries an <span class="def">incremental refresh</span> (work out only what changed); when the query can't be done incrementally, or on classic compute, it does a full recompute.</p>
+  <p>The rule of thumb:</p>
+  <ul>
+    <li><b>Streaming table</b>: ingestion and row-by-row cleaning of append-only data (files, message buses). Low latency, cost grows with new data only.</li>
+    <li><b>Materialized view</b>: aggregations, joins, anything that must stay correct when inputs change. Cost depends on how much must be recomputed.</li>
+  </ul>
+  <p>Both can be created inside a pipeline, or on their own from Databricks SQL with a refresh <code>SCHEDULE</code> or <code>TRIGGER ON UPDATE</code>; standalone ones get a serverless pipeline behind the scenes.</p>
+  <div class="analogy">
+    <p>A streaming table is a guestbook: each visitor signs a new line, and nobody goes back to edit old lines. A materialized view is the scoreboard at a match: if the referee overturns a goal, the score changes. The guestbook is cheap to keep; the scoreboard must be recalculated when the past changes.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 250" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">New rows vs changed rows</title>
+      <desc id="dia-d">A source table receives new rows and one correction to an old row. The streaming table picks up only the new rows, appending them. The materialized view refreshes its result so the corrected value is reflected in its totals.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <rect x="20" y="40" width="170" height="170" rx="10" fill="var(--surface)" stroke="var(--line)"/>
+        <text x="105" y="62" text-anchor="middle" font-weight="600">source table</text>
+        <text x="34" y="88" font-size="11">r01 $6</text><text x="34" y="108" font-size="11">r02 $11.5 → <tspan fill="var(--warn)">$9.5</tspan></text>
+        <text x="34" y="128" font-size="11">r03 $8</text><text x="34" y="148" font-size="11" fill="var(--ok)">r04 $7  new</text><text x="34" y="168" font-size="11" fill="var(--ok)">r05 $10 new</text>
+        <rect x="430" y="20" width="210" height="90" rx="10" fill="var(--surface)" stroke="var(--silver)" stroke-width="2"/>
+        <text x="535" y="42" text-anchor="middle" font-weight="600">streaming table</text>
+        <text x="444" y="66" font-size="11">appends r04, r05</text><text x="444" y="86" font-size="11" fill="var(--warn)">r02 correction: not seen</text><text x="444" y="102" font-size="11" fill="var(--muted)">(append-only source expected)</text>
+        <rect x="430" y="140" width="210" height="90" rx="10" fill="var(--surface)" stroke="var(--gold)" stroke-width="2"/>
+        <text x="535" y="162" text-anchor="middle" font-weight="600">materialized view</text>
+        <text x="444" y="186" font-size="11">SUM(price) = $40.50</text><text x="444" y="206" font-size="11" fill="var(--ok)">includes the correction</text>
+        <g fill="none" stroke="var(--line)" stroke-dasharray="3 4"><path id="n" d="M190 155 C320 155 320 70 430 70"/><path id="c" d="M190 105 C320 105 320 185 430 185"/></g>
+      </g>
+      <circle r="5" fill="var(--ok)" data-rest="300,120"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#n"/></animateMotion></circle>
+      <circle r="5" fill="var(--warn)" data-rest="300,150"><animateMotion dur="3s" begin="1.5s" repeatCount="indefinite"><mpath href="#c"/></animateMotion></circle>
+    </svg>
+    <figcaption class="cap">Notice: new rows (green) flow to <b>both</b>. The correction to an old row (red) only reaches the <b>materialized view</b>. A streaming table reads changes as a stream of new data and doesn't revisit history.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: append, correct, delete</h2>
+  <p>A <code>rides</code> table feeds two targets: a streaming table copy and a materialized view of total revenue. Change the source and refresh. Watch correctness and rows processed.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <button type="button" id="d-add">Append 2 rides</button>
+      <button type="button" id="d-fix">Correct r02's price</button>
+      <button type="button" id="d-del">Delete r01</button>
+      <label class="tog"><input type="checkbox" id="d-skip"> Stream reads with skipChangeCommits</label>
+      <label class="tog"><input type="checkbox" id="d-inc" checked> Serverless (incremental MV refresh)</label>
+      <button type="button" class="primary" id="d-ref">Refresh both</button>
+    </div>
+    <div class="flow">
+      <div class="pane"><h4>Source: rides</h4><div id="d-src"></div></div>
+      <div class="pane"><h4><span class="chip silver">ST</span> rides_copy · total</h4><div class="big" id="d-st">–</div><p class="cap" id="d-stn"></p></div>
+      <div class="pane"><h4><span class="chip gold">MV</span> revenue · total</h4><div class="big" id="d-mv">–</div><p class="cap" id="d-mvn"></p></div>
+    </div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="Refresh log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p>Inside a pipeline (SQL):</p>
+<pre><code><span class="c-c">-- Append-only ingestion and cleaning: streaming table</span>
+<span class="c-k">CREATE OR REFRESH STREAMING TABLE</span> rides_silver
+<span class="c-k">AS SELECT</span> ride_id, town, price, started_at
+<span class="c-k">FROM STREAM</span>(rides_bronze)
+<span class="c-k">WHERE</span> price &gt; 0;
+
+<span class="c-c">-- Aggregation that must stay correct: materialized view</span>
+<span class="c-k">CREATE OR REFRESH MATERIALIZED VIEW</span> revenue_by_town
+<span class="c-k">AS SELECT</span> town, <span class="c-k">SUM</span>(price) <span class="c-k">AS</span> revenue, <span class="c-k">COUNT</span>(*) <span class="c-k">AS</span> rides
+<span class="c-k">FROM</span> rides_silver
+<span class="c-k">GROUP BY</span> town;</code></pre>
+  <p>Standalone, from Databricks SQL, with a refresh policy:</p>
+<pre><code><span class="c-c">-- Refresh every hour (a job is created for you)</span>
+<span class="c-k">CREATE OR REPLACE MATERIALIZED VIEW</span> bike_shop.gold.revenue_by_town
+  <span class="c-k">SCHEDULE EVERY</span> 1 <span class="c-k">HOUR</span>
+<span class="c-k">AS SELECT</span> town, <span class="c-k">SUM</span>(price) <span class="c-k">AS</span> revenue <span class="c-k">FROM</span> bike_shop.silver.rides <span class="c-k">GROUP BY</span> town;
+
+<span class="c-c">-- Or refresh whenever an upstream table changes (at most about once a minute)</span>
+<span class="c-k">ALTER MATERIALIZED VIEW</span> bike_shop.gold.revenue_by_town <span class="c-k">ADD TRIGGER ON UPDATE</span>;
+
+<span class="c-c">-- A standalone streaming table over files</span>
+<span class="c-k">CREATE OR REFRESH STREAMING TABLE</span> bike_shop.bronze.rides_raw
+  <span class="c-k">SCHEDULE EVERY</span> 15 <span class="c-k">MINUTES</span>
+<span class="c-k">AS SELECT</span> * <span class="c-k">FROM STREAM</span> read_files(<span class="c-s">'/Volumes/bike_shop/raw/landing/rides/'</span>, format =&gt; <span class="c-s">'json'</span>);</code></pre>
+  <p class="note">Check the exact <code>SCHEDULE</code> / <code>TRIGGER ON UPDATE</code> syntax in the CREATE MATERIALIZED VIEW reference; clauses are added over time (verify in the docs).</p>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td>Source rows are updated or deleted under a streaming table</td><td>The stream fails, because the source is no longer append-only.</td></tr>
+    <tr><td>Stream reads the Delta source with <code>skipChangeCommits</code></td><td>The stream ignores update/delete commits and keeps going, but the streaming table never reflects those changes.</td></tr>
+    <tr><td>Aggregation written as a streaming table</td><td>Aggregates produce updates, not appends, so they belong in a materialized view (stateful streaming aggregates need watermarks; lesson 01-14).</td></tr>
+    <tr><td>Materialized view on classic compute</td><td>Always a full recompute. Incremental refresh needs serverless.</td></tr>
+    <tr><td>Query uses something incremental refresh doesn't support</td><td>Falls back to a full recompute: correct but costlier. The event log's planning information shows which technique was used.</td></tr>
+    <tr><td>Source is Kafka (no history kept)</td><td>Use a streaming table. A materialized view can't recompute from a source that forgets old messages.</td></tr>
+    <tr><td><code>TRIGGER ON UPDATE</code> on a standalone MV</td><td>Refreshes soon after upstream tables change, instead of on a fixed timetable.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th></th><th>Streaming table</th><th>Materialized view</th></tr></thead><tbody>
+    <tr><td>Processes</td><td>Each new source row once</td><td>Whatever is needed to make the result correct</td></tr>
+    <tr><td>Source must be</td><td>Append-only (files, Kafka, append-only Delta)</td><td>Tables or views with history (Delta, other STs/MVs)</td></tr>
+    <tr><td>Upstream updates/deletes</td><td>Not reflected (or stream fails)</td><td>Reflected</td></tr>
+    <tr><td>Latency</td><td>Low; can run continuously</td><td>Per refresh (scheduled or triggered)</td></tr>
+    <tr><td>Cost driver</td><td>Volume of new data</td><td>How much must be recomputed</td></tr>
+    <tr><td>Typical layer</td><td>Bronze, silver</td><td>Gold</td></tr>
+    <tr><td>Logic changes apply to old rows?</td><td>No, only after a full refresh</td><td>Yes, on the next refresh</td></tr>
+  </tbody></table></div>
+  <div class="grid2">
+    <div class="card"><p class="tag">Pick a streaming table when…</p><p>data only arrives (events, files, messages), you want low latency, or the source forgets history.</p></div>
+    <div class="card"><p class="tag">Pick a materialized view when…</p><p>you aggregate or join, inputs can change, or the result must always match its query.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>Daily revenue built as a streaming table shows wrong totals after refunds</td><td>Refunds update old rows; the stream never revisits them.</td><td>Build daily revenue as a materialized view.</td></tr>
+    <tr><td>A silver streaming table fails after someone ran DELETE on bronze</td><td>The source stopped being append-only.</td><td>Avoid editing bronze; if deletes are required, use <code>skipChangeCommits</code> knowingly, or an MV.</td></tr>
+    <tr><td>A materialized view over 3 years of data gets expensive every hour</td><td>Each refresh is a full recompute (classic compute or an unsupported query).</td><td>Use serverless and an incremental-friendly query; check planning info in the event log.</td></tr>
+    <tr><td>Clickstream from Kafka must appear within seconds</td><td>An MV refresh schedule can't keep up and Kafka doesn't keep history.</td><td>Streaming table in a continuous pipeline.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>"Lowest latency for append-only events" → streaming table. "Must stay correct when source rows change" → materialized view. Look for which constraint the question stresses.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>Incremental refresh of materialized views is a serverless feature. On classic compute, expect full recomputes.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Materialized view</b> (stores results, refreshed) vs a regular <b>view</b> (stores nothing, runs the query each time it's read).</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><code>skipChangeCommits</code> (ignore upstream changes and keep streaming) vs <b>AUTO CDC</b> (apply upstream changes properly; next lessons).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="0"><p>1. JSON events land every minute and must be queryable within seconds. Which dataset type for ingestion?</p>
+      <ol class="opts"><li><button>Streaming table</button></li><li><button>Materialized view refreshed daily</button></li><li><button>Regular view</button></li><li><button>Temporary view</button></li></ol>
+      <p class="why" hidden>Append-only, low-latency ingestion is the streaming table's job.</p></div>
+    <div class="q" data-answer="2"><p>2. A gold table sums revenue per day; past rides are sometimes refunded (updated). Which dataset type keeps totals correct?</p>
+      <ol class="opts"><li><button>Streaming table</button></li><li><button>Streaming table with skipChangeCommits</button></li><li><button>Materialized view</button></li><li><button>Temporary view</button></li></ol>
+      <p class="why" hidden>Materialized views reflect upstream updates. A streaming table with skipChangeCommits would just ignore the refunds.</p></div>
+    <div class="q" data-answer="3"><p>3. A materialized view always fully recomputes, even for tiny changes. What's a likely cause?</p>
+      <ol class="opts"><li><button>It has too few columns</button></li><li><button>It reads a Delta table</button></li><li><button>It has a schedule</button></li><li><button>It runs on classic compute, or uses a query incremental refresh doesn't support</button></li></ol>
+      <p class="why" hidden>Incremental refresh needs serverless and a supported query; otherwise Databricks recomputes fully.</p></div>
+    <div class="q" data-answer="1"><p>4. Someone deletes rows in a Delta table that a streaming table reads. What happens by default?</p>
+      <ol class="opts"><li><button>The streaming table deletes them too</button></li><li><button>The stream fails because the source isn't append-only</button></li><li><button>Nothing at all</button></li><li><button>The streaming table becomes a materialized view</button></li></ol>
+      <p class="why" hidden>Streaming reads expect appends. Use skipChangeCommits to ignore changes, or a different design (MV or AUTO CDC).</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>Streaming table: each new row once, append-only source, low latency, cost follows new data.</li>
+    <li>Materialized view: result always matches its query, handles upstream changes, cost follows recompute work.</li>
+    <li>Incremental MV refresh needs serverless and a supported query; otherwise full recompute.</li>
+    <li>Ingest and clean with streaming tables; aggregate and join with materialized views.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#append-only">append-only</a>
+    <a class="chip" href="../../glossary.html#incremental-refresh">incremental refresh</a>
+    <a class="chip" href="../../glossary.html#materialized-view">materialized view</a>
+    <a class="chip" href="../../glossary.html#skipchangecommits">skipChangeCommits</a>
+    <a class="chip" href="../../glossary.html#streaming-table">streaming table</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/concepts/streaming-tables">Streaming tables</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/concepts/materialized-views">Materialized views</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/incremental-refresh">Incremental refresh for materialized views</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/dbsql/schedule-refreshes">Schedule refreshes</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  var src, st, stSeen, pendingChange, stFailed, next;
+  var sum = function (rows) { return rows.reduce(function (s, r) { return s + r.price; }, 0); };
+  function draw() {
+    var box = $('d-src'); box.textContent = '';
+    src.forEach(function (r) { box.appendChild(Object.assign(document.createElement('div'), { className: 'item', textContent: r.id + '  $' + r.price.toFixed(2) + (r.changed ? '  (changed)' : '') })); });
+  }
+  $('d-add').onclick = function () {
+    for (var i = 0; i < 2; i++) { src.push({ id: 'r' + String(next).padStart(2, '0'), price: 5 + next }); next++; }
+    log('skip', '+ 2 rides appended to source'); draw();
+  };
+  $('d-fix').onclick = function () {
+    var r = src.find(function (x) { return x.id === 'r02'; }); if (!r) { log('skip', 'r02 is gone'); return; }
+    r.price -= 2; r.changed = true; pendingChange = true; log('skip', '~ r02 price corrected in source (an UPDATE commit)'); draw();
+  };
+  $('d-del').onclick = function () {
+    var n = src.length; src = src.filter(function (x) { return x.id !== 'r01'; });
+    if (src.length < n) { pendingChange = true; log('skip', '- r01 deleted from source (a DELETE commit)'); } draw();
+  };
+  $('d-ref').onclick = function () {
+    log('skip', '> refresh');
+    // Streaming table
+    if ((pendingChange || stFailed) && !$('d-skip').checked) { stFailed = true; log('bad', '  ST: stream FAILED · source had an update/delete, not an append (stays failed until fixed)'); }
+    else {
+      var news = src.filter(function (r) { return !stSeen[r.id]; });
+      news.forEach(function (r) { stSeen[r.id] = 1; st.push({ id: r.id, price: r.price }); });
+      if (pendingChange) log('skip', '  ST: change commits skipped (skipChangeCommits) · copy keeps old values');
+      log('ok', '  ST: processed ' + news.length + ' new row(s)');
+      stFailed = false;
+    }
+    // Materialized view
+    var inc = $('d-inc').checked;
+    log('ok', '  MV: ' + (inc ? 'incremental refresh · touched only changed groups' : 'full recompute · read all ' + src.length + ' rows'));
+    var truth = sum(src), stTotal = sum(st);
+    $('d-st').textContent = stFailed ? 'FAILED' : '$' + stTotal.toFixed(2);
+    $('d-stn').textContent = stFailed ? 'fix the source or the design' : (Math.abs(stTotal - truth) < 0.001 ? '✓ matches source' : '✗ differs from source by $' + Math.abs(stTotal - truth).toFixed(2));
+    $('d-mv').textContent = '$' + truth.toFixed(2);
+    $('d-mvn').textContent = '✓ matches source';
+    pendingChange = false;
+    Course.flash($('d-mv'));
+  };
+  src = [{ id: 'r01', price: 6 }, { id: 'r02', price: 11.5 }, { id: 'r03', price: 8 }];
+  st = []; stSeen = {}; pendingChange = false; stFailed = false; next = 4;
+  draw();
+})();
+</script>
+</body>
+</html>

@@ -79,4 +79,4 @@ still hardcode it so it shows without JavaScript. README.md carries the same tex
 - New shared styles/behaviour go into `course.css` / `course.js`, never a single page.
 
 ## Status
-See `OUTLINE.md`. Built so far: Module 00 complete; Module 01 lessons 01-01 to 01-06.
+See `OUTLINE.md`. Built so far: Module 00 complete; Module 01 lessons 01-01 to 01-12.

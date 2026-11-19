@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Unity Catalog functions · DE Pro Study Course</title>
+<meta name="description" content="Permanent SQL and Python functions stored in Unity Catalog: how to create, share and govern them, add dependencies, and choose batch Python UDFs for speed.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="01-07">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 01 · Lesson 07</p>
+  <h1>Unity Catalog functions</h1>
+  <p class="lede">A function saved in Unity Catalog is like a table: it has a three-part name, an owner, permissions and lineage. Anyone you grant can call it from SQL or Python, on any compute that supports it.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>01 · Developing Code for Data Processing (23%)</dd></div>
+    <div><dt>Lesson</dt><dd>07 · Unity Catalog functions</dd></div>
+    <div><dt>Exam objective</dt><dd>S1.3 — Write UDFs in Python, pandas and SQL, including functions stored in Unity Catalog, and pick the right kind for the constraints.</dd></div>
+    <div><dt>Time to read</dt><dd>~16 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq">
+    <li><a class="chip acc" href="05-python-and-sql-udfs.html">01-05 Python and SQL UDFs</a></li>
+    <li><a class="chip acc" href="../00-foundations/11-unity-catalog-basics.html">00-11 Unity Catalog basics</a></li>
+  </ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p>A <span class="def">Unity Catalog function</span> is a user-defined function stored permanently in a schema, named <code>catalog.schema.function</code>. Unlike a temporary function or <code>spark.udf.register</code>, it survives the session and can be shared.</p>
+  <p>It is a <span class="def">securable</span>: an object Unity Catalog controls access to. To call it, a user needs <code>USE CATALOG</code>, <code>USE SCHEMA</code> and <code>EXECUTE</code> on the function. To create one, they need <code>CREATE FUNCTION</code> on the schema.</p>
+  <p>There are three common kinds:</p>
+  <ul>
+    <li><b>SQL functions</b>: the body is a SQL expression (or a query, for a function that returns a table). Fast, because the engine inlines them.</li>
+    <li><b>Python functions</b>: the body is Python, written between <code>$$</code> markers. They run in an isolated, sandboxed Python environment. Extra libraries are declared in an <code>ENVIRONMENT</code> clause.</li>
+    <li><b>Batch Python functions</b>: Python functions with <code>PARAMETER STYLE PANDAS</code> and a <code>HANDLER</code>, which receive iterators of pandas Series, like the pandas UDFs of lesson 01-06. Much faster than row-at-a-time Python for large data.</li>
+  </ul>
+  <p>Because they live in Unity Catalog, these functions are discoverable in Catalog Explorer, appear in lineage, and can be used inside row filters and column masks (module 06).</p>
+  <div class="analogy">
+    <p>A temporary function is a sticky note on your own monitor. A Unity Catalog function is a procedure filed in the company handbook: it has a title and an owner, anyone with clearance can look it up and follow it, and the handbook records who used it.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 250" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">One governed function, many callers</title>
+      <desc id="dia-d">A function bike_shop.silver.price_band is stored in Unity Catalog with its owner and grants. A notebook, a SQL warehouse dashboard and a pipeline all call it. Each call is checked for EXECUTE plus USE CATALOG and USE SCHEMA, and recorded in lineage.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <rect x="230" y="70" width="200" height="110" rx="12" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="330" y="96" text-anchor="middle" font-weight="600">bike_shop.silver</text><text x="330" y="114" text-anchor="middle" font-weight="600">.price_band()</text>
+        <text x="330" y="138" text-anchor="middle" font-size="11">owner: data_eng</text><text x="330" y="156" text-anchor="middle" font-size="11">EXECUTE → analysts</text>
+        <g fill="var(--surface)" stroke="var(--line)"><rect x="10" y="20" width="150" height="40" rx="8"/><rect x="10" y="105" width="150" height="40" rx="8"/><rect x="10" y="190" width="150" height="40" rx="8"/></g>
+        <text x="85" y="44" text-anchor="middle" font-size="11">notebook (Python)</text><text x="85" y="129" text-anchor="middle" font-size="11">dashboard (SQL)</text><text x="85" y="214" text-anchor="middle" font-size="11">pipeline</text>
+        <rect x="500" y="100" width="150" height="50" rx="8" fill="var(--surface)" stroke="var(--ok)"/><text x="575" y="122" text-anchor="middle" font-size="11">lineage + audit</text><text x="575" y="138" text-anchor="middle" font-size="11" fill="var(--muted)">who called what</text>
+        <g fill="none" stroke="var(--line)" stroke-dasharray="3 4"><path id="a" d="M160 40 C200 40 200 100 230 100"/><path id="b" d="M160 125 H230"/><path id="c" d="M160 210 C200 210 200 150 230 150"/><path id="l" d="M430 125 H500"/></g>
+      </g>
+      <circle r="5" fill="var(--accent)" data-rest="195,70"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#a"/></animateMotion></circle>
+      <circle r="5" fill="var(--accent)" data-rest="195,125"><animateMotion dur="3s" begin="1s" repeatCount="indefinite"><mpath href="#b"/></animateMotion></circle>
+      <circle r="5" fill="var(--accent)" data-rest="195,180"><animateMotion dur="3s" begin="2s" repeatCount="indefinite"><mpath href="#c"/></animateMotion></circle>
+      <circle r="5" fill="var(--ok)" data-rest="465,125"><animateMotion dur="1.5s" repeatCount="indefinite"><mpath href="#l"/></animateMotion></circle>
+    </svg>
+    <figcaption class="cap">Notice: <b>one definition</b>, many callers in different languages and tools. Every call passes the <b>permission check</b>, and usage shows up in <b>lineage</b>. Fix the function once and every caller gets the fix.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: pick the right function for the constraints</h2>
+  <p>Answer three questions about your logic. The demo recommends a kind of function and writes the skeleton for you.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Logic needs <select id="d-lang"><option value="sql">only SQL expressions</option><option value="py">Python (a library or complex code)</option></select></label>
+      <label>Data size <select id="d-size"><option value="small">small (lookup tables, a few thousand rows)</option><option value="big">large (millions of rows)</option></select></label>
+      <label>Who uses it <select id="d-who"><option value="me">only me, this session</option><option value="team">other teams, SQL warehouses, pipelines</option></select></label>
+      <button type="button" class="primary" id="d-go">Recommend</button>
+    </div>
+    <div class="note" id="d-rec" aria-live="polite"></div>
+    <pre><code id="d-code"></code></pre>
+    <div class="log" id="d-log" aria-live="polite" aria-label="Recommendation log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p>A SQL function and a table function, shared with a group:</p>
+<pre><code><span class="c-c">-- Scalar SQL function</span>
+<span class="c-k">CREATE OR REPLACE FUNCTION</span> bike_shop.silver.price_band(minutes <span class="c-k">INT</span>)
+  <span class="c-k">RETURNS STRING</span>
+  <span class="c-k">COMMENT</span> <span class="c-s">'short / medium / long by ride length'</span>
+  <span class="c-k">RETURN CASE WHEN</span> minutes &lt; 15 <span class="c-k">THEN</span> <span class="c-s">'short'</span> <span class="c-k">WHEN</span> minutes &lt; 45 <span class="c-k">THEN</span> <span class="c-s">'medium'</span> <span class="c-k">ELSE</span> <span class="c-s">'long'</span> <span class="c-k">END</span>;
+
+<span class="c-c">-- SQL table function: returns rows, used in FROM</span>
+<span class="c-k">CREATE OR REPLACE FUNCTION</span> bike_shop.gold.rides_in_town(t <span class="c-k">STRING</span>)
+  <span class="c-k">RETURNS TABLE</span> (ride_id <span class="c-k">STRING</span>, price <span class="c-k">DECIMAL</span>(8,2))
+  <span class="c-k">RETURN SELECT</span> ride_id, price <span class="c-k">FROM</span> bike_shop.silver.rides <span class="c-k">WHERE</span> town = t;
+
+<span class="c-k">SELECT</span> * <span class="c-k">FROM</span> bike_shop.gold.rides_in_town(<span class="c-s">'Riverside'</span>);
+
+<span class="c-c">-- Share: callers need USE CATALOG, USE SCHEMA and EXECUTE</span>
+<span class="c-k">GRANT EXECUTE ON FUNCTION</span> bike_shop.silver.price_band <span class="c-k">TO</span> `analysts`;</code></pre>
+  <p>A Python function with a library dependency:</p>
+<pre><code><span class="c-k">CREATE OR REPLACE FUNCTION</span> bike_shop.silver.station_slug(name <span class="c-k">STRING</span>)
+  <span class="c-k">RETURNS STRING</span>
+  <span class="c-k">LANGUAGE PYTHON</span>
+  <span class="c-k">ENVIRONMENT</span> (
+    dependencies = <span class="c-s">'["python-slugify==8.0.4"]'</span>,
+    environment_version = <span class="c-s">'None'</span>            <span class="c-c">-- required with ENVIRONMENT; check the docs for current values</span>
+  )
+  <span class="c-k">AS</span> $$
+    <span class="c-k">from</span> slugify <span class="c-k">import</span> slugify
+    <span class="c-k">return None if</span> name <span class="c-k">is None else</span> slugify(name)
+  $$;</code></pre>
+  <p>A batch Python function: pandas Series in, pandas Series out, for big data:</p>
+<pre><code><span class="c-k">CREATE OR REPLACE FUNCTION</span> bike_shop.silver.km_from_miles(miles <span class="c-k">DOUBLE</span>)
+  <span class="c-k">RETURNS DOUBLE</span>
+  <span class="c-k">LANGUAGE PYTHON</span>
+  <span class="c-k">PARAMETER STYLE PANDAS</span>
+  <span class="c-k">HANDLER</span> <span class="c-s">'convert'</span>
+  <span class="c-k">AS</span> $$
+    <span class="c-k">import</span> pandas <span class="c-k">as</span> pd
+    <span class="c-k">from</span> typing <span class="c-k">import</span> Iterator
+    <span class="c-k">def</span> convert(batches: Iterator[pd.Series]) -&gt; Iterator[pd.Series]:
+        <span class="c-k">for</span> miles <span class="c-k">in</span> batches:
+            <span class="c-k">yield</span> miles * 1.60934
+  $$;</code></pre>
+<pre><code><span class="c-c"># Call any of them from Python too</span>
+spark.sql(<span class="c-s">"SELECT ride_id, bike_shop.silver.price_band(minutes) AS band FROM bike_shop.silver.rides"</span>)</code></pre>
+  <p class="note">The <code>environment_version</code> value and supported compute change over time. Check the "SQL and Python UDFs in Unity Catalog" page before relying on a specific value (verify in the docs).</p>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td>Grant <code>EXECUTE</code> but not <code>USE SCHEMA</code></td><td>Calls still fail. Like tables, functions need the parent USE privileges too.</td></tr>
+    <tr><td>Add an <code>ENVIRONMENT</code> clause with dependencies</td><td>The function installs those packages (PyPI, volume wheels or URLs) in its own isolated environment. <code>environment_version</code> becomes required.</td></tr>
+    <tr><td>Dependency wheel stored in a volume</td><td>Depending on the environment version, callers may also need <code>READ VOLUME</code> on that volume (verify for your version).</td></tr>
+    <tr><td>Native wheel built for only one CPU type</td><td>Serverless can run on x86_64 or ARM (aarch64), so it can fail. Provide both, marked with <code>platform_machine</code>.</td></tr>
+    <tr><td>Row-at-a-time Python → <code>PARAMETER STYLE PANDAS</code></td><td>Data arrives in pandas batches; much faster on large tables. Needs a <code>HANDLER</code>.</td></tr>
+    <tr><td><code>CREATE OR REPLACE</code> an existing function</td><td>All callers get the new logic immediately. Treat it like changing a shared table: test first.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th></th><th>Session UDF (<code>@udf</code>, <code>spark.udf.register</code>, temporary)</th><th>UC SQL function</th><th>UC Python function</th><th>UC batch Python function</th></tr></thead><tbody>
+    <tr><td>Lives</td><td>This session</td><td>Unity Catalog</td><td>Unity Catalog</td><td>Unity Catalog</td></tr>
+    <tr><td>Shareable with grants</td><td>No</td><td>Yes (EXECUTE)</td><td>Yes (EXECUTE)</td><td>Yes (EXECUTE)</td></tr>
+    <tr><td>Speed on big data</td><td>Depends on type</td><td>Fast (inlined)</td><td>Slow (row by row)</td><td>Good (pandas batches)</td></tr>
+    <tr><td>Python libraries</td><td>Whatever the compute has</td><td>No</td><td>Yes, via ENVIRONMENT</td><td>Yes, via ENVIRONMENT</td></tr>
+    <tr><td>Usable in row filters / masks</td><td>No</td><td>Yes</td><td>Verify in the docs</td><td>Verify in the docs</td></tr>
+  </tbody></table></div>
+  <div class="grid3">
+    <div class="card"><p class="tag">Returns</p><h3>Scalar function</h3><p>One value per call; used in SELECT, WHERE, etc.</p></div>
+    <div class="card"><p class="tag">Returns</p><h3>Table function</h3><p><code>RETURNS TABLE (...)</code>; used in FROM like a parameterised view.</p></div>
+    <div class="card"><p class="tag">Privilege</p><h3>EXECUTE</h3><p>Lets a principal call the function. Plus USE CATALOG and USE SCHEMA.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>Analysts on a SQL warehouse can't use a Python UDF defined in a notebook</td><td>That UDF exists only in the notebook's session.</td><td>Create it as a Unity Catalog function and grant EXECUTE.</td></tr>
+    <tr><td>Granted EXECUTE but analysts still get permission denied</td><td>They lack USE SCHEMA on <code>silver</code>.</td><td>Grant the parent USE privileges.</td></tr>
+    <tr><td>A UC Python function scoring 200M rows is very slow</td><td>It processes one row per call.</td><td>Rewrite as a batch function with <code>PARAMETER STYLE PANDAS</code>.</td></tr>
+    <tr><td>A function works some days, fails others, with an architecture error</td><td>Its native wheel only supports one CPU type.</td><td>Ship both x86_64 and aarch64 wheels with <code>platform_machine</code> markers.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>"Register it with <code>spark.udf.register</code> so the whole team can use it." No: that lasts one session. Sharing needs a Unity Catalog function.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>When the constraint is "only SQL logic, fastest, shared", the answer is a <b>SQL</b> UC function, not Python.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><code>EXECUTE</code> (call a function) vs <code>SELECT</code> (read a table or view). Functions don't use SELECT.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Batch UC Python function</b> (<code>PARAMETER STYLE PANDAS</code>, stored in UC) vs a <b>pandas UDF</b> (<code>@pandas_udf</code>, session-scoped in your code).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="1"><p>1. Analysts must call your cleaning logic from dashboards on a SQL warehouse. The logic is a CASE expression. Best choice?</p>
+      <ol class="opts"><li><button>A pandas UDF in a notebook</button></li><li><button>A Unity Catalog SQL function with EXECUTE granted to analysts</button></li><li><button><code>spark.udf.register</code></button></li><li><button>A temporary function</button></li></ol>
+      <p class="why" hidden>It must be permanent and shareable, and SQL-only logic is fastest as a SQL function. Session functions vanish and can't be granted.</p></div>
+    <div class="q" data-answer="2"><p>2. Which privileges let a group call <code>bike_shop.silver.price_band</code>?</p>
+      <ol class="opts"><li><button>SELECT on the function</button></li><li><button>EXECUTE only</button></li><li><button>USE CATALOG on bike_shop, USE SCHEMA on silver, EXECUTE on the function</button></li><li><button>MODIFY on the schema</button></li></ol>
+      <p class="why" hidden>Functions use EXECUTE, and like every securable they also need the parent USE privileges.</p></div>
+    <div class="q" data-answer="0"><p>3. A UC Python function needs the <code>python-slugify</code> package. How do you provide it?</p>
+      <ol class="opts"><li><button>List it in the function's ENVIRONMENT clause</button></li><li><button><code>%pip install</code> in your notebook</button></li><li><button>An init script on the SQL warehouse</button></li><li><button>It isn't possible</button></li></ol>
+      <p class="why" hidden>UC Python functions run in their own isolated environment, with dependencies declared in ENVIRONMENT.</p></div>
+    <div class="q" data-answer="3"><p>4. A UC Python function is too slow on a 500-million-row table. Which change helps most?</p>
+      <ol class="opts"><li><button>Grant more privileges</button></li><li><button>Make it temporary</button></li><li><button>Add more dependencies</button></li><li><button>Use <code>PARAMETER STYLE PANDAS</code> with a handler that processes pandas batches</button></li></ol>
+      <p class="why" hidden>Batch UC Python functions receive iterators of pandas Series, avoiding row-by-row overhead.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>UC functions are permanent securables: <code>catalog.schema.function</code>, owner, grants, lineage.</li>
+    <li>Callers need USE CATALOG + USE SCHEMA + EXECUTE.</li>
+    <li>SQL functions are fastest; Python functions add libraries via ENVIRONMENT; batch Python (<code>PARAMETER STYLE PANDAS</code>) suits big data.</li>
+    <li>Session UDFs can't be shared; pick UC functions when others or SQL warehouses need the logic.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#batch-python-udf">batch Python UDF</a>
+    <a class="chip" href="../../glossary.html#execute-privilege">EXECUTE</a>
+    <a class="chip" href="../../glossary.html#securable">securable</a>
+    <a class="chip" href="../../glossary.html#table-function">table function</a>
+    <a class="chip" href="../../glossary.html#uc-function">Unity Catalog function</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/udf/unity-catalog">SQL and Python UDFs in Unity Catalog</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/udf/python-batch-udf">Batch Python UDFs in Unity Catalog</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-create-sql-function">CREATE FUNCTION</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  var CODE = {
+    'sql-me': 'CREATE TEMPORARY FUNCTION price_band(minutes INT) RETURNS STRING\n  RETURN CASE WHEN minutes < 15 THEN \'short\' ELSE \'long\' END;',
+    'sql-team': 'CREATE OR REPLACE FUNCTION bike_shop.silver.price_band(minutes INT)\n  RETURNS STRING\n  RETURN CASE WHEN minutes < 15 THEN \'short\' ELSE \'long\' END;\nGRANT EXECUTE ON FUNCTION bike_shop.silver.price_band TO `analysts`;',
+    'py-small-me': '@udf(returnType="string", useArrow=True)\ndef station_slug(name):\n    return None if name is None else name.lower().replace(" ", "-")',
+    'py-big-me': '@pandas_udf("string")\ndef station_slug(names: pd.Series) -> pd.Series:\n    return names.str.lower().str.replace(" ", "-")',
+    'py-small-team': 'CREATE OR REPLACE FUNCTION bike_shop.silver.station_slug(name STRING)\n  RETURNS STRING LANGUAGE PYTHON\n  AS $$\n    return None if name is None else name.lower().replace(" ", "-")\n  $$;\nGRANT EXECUTE ON FUNCTION bike_shop.silver.station_slug TO `analysts`;',
+    'py-big-team': 'CREATE OR REPLACE FUNCTION bike_shop.silver.station_slug(name STRING)\n  RETURNS STRING LANGUAGE PYTHON\n  PARAMETER STYLE PANDAS HANDLER \'run\'\n  AS $$\n    def run(batches):\n        for names in batches:\n            yield names.str.lower().str.replace(" ", "-")\n  $$;\nGRANT EXECUTE ON FUNCTION bike_shop.silver.station_slug TO `analysts`;'
+  };
+  var REC = {
+    'sql-me': 'Temporary SQL function (or just a built-in expression). Fast, but gone after the session.',
+    'sql-team': 'Unity Catalog SQL function. Inlined by the engine, shareable with EXECUTE, works on SQL warehouses.',
+    'py-small-me': 'Session Python UDF with useArrow=True. Fine for small data in your own notebook.',
+    'py-big-me': 'pandas UDF in your code: batches of rows, far faster than row-by-row Python.',
+    'py-small-team': 'Unity Catalog Python function. Shareable and governed; add ENVIRONMENT if it needs libraries.',
+    'py-big-team': 'Unity Catalog batch Python function (PARAMETER STYLE PANDAS). Shareable and fast on large data.'
+  };
+  $('d-go').onclick = function () {
+    var l = $('d-lang').value, s = $('d-size').value, w = $('d-who').value;
+    var key = l === 'sql' ? 'sql-' + w : 'py-' + s + '-' + w;
+    $('d-rec').textContent = '→ ' + REC[key];
+    $('d-code').textContent = CODE[key];
+    log('ok', '> ' + [$('d-lang'), $('d-size'), $('d-who')].map(function (e) { return e.selectedOptions[0].text; }).join(' · '));
+    if (l === 'sql' && s === 'big') log('skip', '  SQL functions are inlined, so size barely matters');
+  };
+  $('d-go').onclick();
+})();
+</script>
+</body>
+</html>

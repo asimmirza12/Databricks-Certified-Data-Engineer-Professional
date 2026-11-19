@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Streaming ingestion with Auto Loader in pipelines · DE Pro Study Course</title>
+<meta name="description" content="Use Auto Loader inside a Lakeflow pipeline to ingest new files exactly once, infer and evolve schemas, rescue unexpected data, and discover files efficiently.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="01-09">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 01 · Lesson 09</p>
+  <h1>Streaming ingestion with Auto Loader in pipelines</h1>
+  <p class="lede">Files keep landing in cloud storage, and their shape changes when apps change. Auto Loader picks up each new file exactly once and decides what to do with surprises. Inside a pipeline, most of its plumbing is handled for you.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>01 · Developing Code for Data Processing (23%)</dd></div>
+    <div><dt>Lesson</dt><dd>09 · Streaming ingestion with Auto Loader in pipelines</dd></div>
+    <div><dt>Exam objective</dt><dd>S1.4 — Build production streaming pipelines with Lakeflow pipelines and Auto Loader. (Module 02 revisits Auto Loader outside pipelines and across formats.)</dd></div>
+    <div><dt>Time to read</dt><dd>~18 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq"><li><a class="chip acc" href="08-lakeflow-pipelines-intro.html">01-08 Lakeflow pipelines</a></li></ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p><span class="def">Auto Loader</span> is a streaming source, named <code>cloudFiles</code>, that watches a cloud storage path and processes each new file once. It remembers processed files in the stream's checkpoint, so re-runs never load a file twice. In SQL, <code>STREAM read_files(...)</code> uses Auto Loader under the hood.</p>
+  <p>It can also work out the columns for you: <span class="def">schema inference</span>. It samples files, writes the inferred schema to a <span class="def">schema location</span>, and keeps it up to date. By default it infers every JSON and CSV column as a string; set <code>cloudFiles.inferColumnTypes</code> to <code>true</code> to get numbers and dates, or give <span class="def">schema hints</span> for specific columns.</p>
+  <p>When a file brings a new column, the <span class="def">schema evolution mode</span> decides what happens:</p>
+  <ul>
+    <li><code>addNewColumns</code> (default without a given schema): add the column. The stream stops once with an error, saves the new schema, and works after a restart. A pipeline restarts it for you.</li>
+    <li><code>rescue</code>: never change the schema and never fail. Unknown data goes into the <span class="def">rescued data column</span> (<code>_rescued_data</code>) as JSON.</li>
+    <li><code>failOnNewColumns</code>: fail and stay failed until someone updates the schema.</li>
+    <li><code>none</code> (default when you provide a schema): ignore new columns; nothing is rescued unless you ask for a rescued data column.</li>
+  </ul>
+  <p>Inside a Lakeflow pipeline you don't set a checkpoint or schema location: the pipeline manages both.</p>
+  <div class="analogy">
+    <p>Auto Loader is a post-room clerk with a logbook. Every new parcel is opened once and ticked off, so no parcel is handled twice. When a parcel arrives with an unexpected extra item, the clerk's instructions say whether to add a new shelf (add columns), put the item in a "found items" tray (rescue), stop and call the manager (fail), or ignore it (none).</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 250" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">Auto Loader picks up only new files</title>
+      <desc id="dia-d">Files land in a storage path. Auto Loader discovers new ones by directory listing or file events, checks the checkpoint to skip processed files, applies the schema from the schema location, and writes rows to the bronze streaming table. Unknown fields go to the rescued data column.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <text x="20" y="22" font-weight="600">/Volumes/…/landing/rides/</text>
+        <g fill="var(--code-bg)" stroke="var(--line)"><rect x="20" y="36" width="130" height="26" rx="4"/><rect x="20" y="68" width="130" height="26" rx="4"/></g>
+        <rect x="20" y="100" width="130" height="26" rx="4" fill="var(--surface)" stroke="var(--accent)"/><rect x="20" y="132" width="130" height="26" rx="4" fill="var(--surface)" stroke="var(--accent)"/>
+        <text x="30" y="54" font-size="11" fill="var(--muted)">day1.json ✓ done</text><text x="30" y="86" font-size="11" fill="var(--muted)">day2.json ✓ done</text>
+        <text x="30" y="118" font-size="11">day3.json  new</text><text x="30" y="150" font-size="11">day4.json  new</text>
+        <rect x="220" y="60" width="180" height="110" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="310" y="84" text-anchor="middle" font-weight="600">Auto Loader</text>
+        <text x="232" y="108" font-size="11">checkpoint: skip done</text><text x="232" y="128" font-size="11">schema location</text><text x="232" y="148" font-size="11">evolution mode</text>
+        <rect x="470" y="60" width="170" height="60" rx="8" fill="var(--surface)" stroke="var(--bronze)" stroke-width="2"/><text x="555" y="86" text-anchor="middle" font-size="11">rides_bronze</text><text x="555" y="104" text-anchor="middle" font-size="11" fill="var(--muted)">streaming table</text>
+        <rect x="470" y="140" width="170" height="44" rx="8" fill="var(--surface)" stroke="var(--warn)" stroke-dasharray="4 3"/><text x="555" y="166" text-anchor="middle" font-size="11">_rescued_data</text>
+        <text x="20" y="200" font-size="11" fill="var(--muted)">discovery: directory listing, or file events (recommended where available)</text>
+        <g fill="none" stroke="var(--line)" stroke-dasharray="3 4"><path id="in" d="M150 130 C185 130 185 115 220 115"/><path id="out" d="M400 100 H470"/><path id="res" d="M400 150 C440 150 440 162 470 162"/></g>
+      </g>
+      <circle r="5" fill="var(--accent)" data-rest="185,122"><animateMotion dur="2.5s" repeatCount="indefinite"><mpath href="#in"/></animateMotion></circle>
+      <circle r="5" fill="var(--bronze)" data-rest="435,100"><animateMotion dur="2.5s" begin="1.2s" repeatCount="indefinite"><mpath href="#out"/></animateMotion></circle>
+      <circle r="5" fill="var(--warn)" data-rest="440,156"><animateMotion dur="2.5s" begin="1.8s" repeatCount="indefinite"><mpath href="#res"/></animateMotion></circle>
+    </svg>
+    <figcaption class="cap">Notice: files already in the checkpoint (grey) are <b>skipped</b>; only new files (blue) are read. Known fields go to the table; unexpected ones can be <b>rescued</b> instead of lost.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: a new field arrives</h2>
+  <p>Day 1 files are normal. Day 2's app update adds <code>promo_code</code>. Day 3 sends <code>price</code> as the text "free". Pick an evolution mode, land each day and run a pipeline update.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Evolution mode <select id="d-mode">
+        <option value="addNewColumns">addNewColumns</option><option value="rescue">rescue</option>
+        <option value="failOnNewColumns">failOnNewColumns</option><option value="none">none (schema given)</option>
+      </select></label>
+      <label class="tog"><input type="checkbox" id="d-types" checked> inferColumnTypes = true</label>
+    </div>
+    <div class="ctrls">
+      <button type="button" id="d-day">Land next day's file</button>
+      <button type="button" class="primary" id="d-upd">Run pipeline update</button>
+      <button type="button" id="d-reset">Reset</button>
+    </div>
+    <div class="flow">
+      <div class="pane"><h4>Table schema</h4><div id="d-schema"></div></div>
+      <div class="pane"><h4>rides_bronze rows</h4><div id="d-rows"></div></div>
+    </div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="Auto Loader log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p>SQL in a pipeline: options go into <code>read_files</code>.</p>
+<pre><code><span class="c-k">CREATE OR REFRESH STREAMING TABLE</span> rides_bronze
+<span class="c-k">COMMENT</span> <span class="c-s">'Raw ride events, one row per JSON record'</span>
+<span class="c-k">AS SELECT</span>
+  *,
+  _metadata.file_path              <span class="c-k">AS</span> source_file,
+  _metadata.file_modification_time <span class="c-k">AS</span> file_time
+<span class="c-k">FROM STREAM</span> read_files(
+  <span class="c-s">'/Volumes/bike_shop/raw/landing/rides/'</span>,
+  format =&gt; <span class="c-s">'json'</span>,
+  schemaHints =&gt; <span class="c-s">'price DECIMAL(8,2), started_at TIMESTAMP'</span>,
+  schemaEvolutionMode =&gt; <span class="c-s">'addNewColumns'</span>
+);</code></pre>
+  <p>Python in a pipeline: no checkpoint or schema location needed.</p>
+<pre><code><span class="c-k">from</span> pyspark <span class="c-k">import</span> pipelines <span class="c-k">as</span> dp
+<span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> functions <span class="c-k">as</span> F
+
+<span class="c-k">@dp.table</span>(comment=<span class="c-s">"Raw ride events"</span>)
+<span class="c-k">def</span> rides_bronze():
+    <span class="c-k">return</span> (spark.readStream.format(<span class="c-s">"cloudFiles"</span>)
+        .option(<span class="c-s">"cloudFiles.format"</span>, <span class="c-s">"json"</span>)
+        .option(<span class="c-s">"cloudFiles.inferColumnTypes"</span>, <span class="c-s">"true"</span>)          <span class="c-c"># else every column is a string</span>
+        .option(<span class="c-s">"cloudFiles.schemaHints"</span>, <span class="c-s">"price DECIMAL(8,2)"</span>)
+        .option(<span class="c-s">"cloudFiles.schemaEvolutionMode"</span>, <span class="c-s">"rescue"</span>)      <span class="c-c"># never break; keep surprises</span>
+        .load(<span class="c-s">"/Volumes/bike_shop/raw/landing/rides/"</span>)
+        .withColumn(<span class="c-s">"source_file"</span>, F.col(<span class="c-s">"_metadata.file_path"</span>)))</code></pre>
+  <p>Outside a pipeline, the same source needs two paths you manage yourself (module 02 covers this fully):</p>
+<pre><code>(spark.readStream.format(<span class="c-s">"cloudFiles"</span>)
+   .option(<span class="c-s">"cloudFiles.format"</span>, <span class="c-s">"json"</span>)
+   .option(<span class="c-s">"cloudFiles.schemaLocation"</span>, <span class="c-s">"/Volumes/bike_shop/raw/_schemas/rides"</span>)
+   .load(<span class="c-s">"/Volumes/bike_shop/raw/landing/rides/"</span>)
+ .writeStream
+   .option(<span class="c-s">"checkpointLocation"</span>, <span class="c-s">"/Volumes/bike_shop/raw/_checkpoints/rides"</span>)
+   .trigger(availableNow=<span class="c-k">True</span>)
+   .toTable(<span class="c-s">"bike_shop.bronze.rides"</span>))</code></pre>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td><code>schemaEvolutionMode = addNewColumns</code></td><td>New column added; the stream fails once, then works after restart. Pipelines (and jobs with retries) restart automatically.</td></tr>
+    <tr><td><code>schemaEvolutionMode = rescue</code></td><td>Schema frozen; new or mistyped fields land in <code>_rescued_data</code>. The stream never stops for schema changes.</td></tr>
+    <tr><td><code>schemaEvolutionMode = failOnNewColumns</code></td><td>Stops and stays stopped until the schema is updated by hand. Strictest.</td></tr>
+    <tr><td><code>schemaEvolutionMode = none</code></td><td>New columns silently ignored. Add <code>rescuedDataColumn</code> if you want to keep them.</td></tr>
+    <tr><td><code>inferColumnTypes</code> false (default)</td><td>JSON/CSV columns become strings. Safe, but you must cast later.</td></tr>
+    <tr><td><code>schemaHints</code></td><td>Fix the type of named columns while letting the rest be inferred.</td></tr>
+    <tr><td><code>includeExistingFiles = false</code></td><td>Files already in the path when the stream first starts are skipped. Only checked on the very first run.</td></tr>
+    <tr><td><code>cloudFiles.maxFilesPerTrigger</code></td><td>Caps files per micro-batch (1,000 by default; verify in the docs) to keep batches a manageable size.</td></tr>
+    <tr><td><code>cloudFiles.useManagedFileEvents = true</code></td><td>Discover new files from Unity Catalog file events instead of listing the directory. Needs an external location with file events enabled.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th>Mode</th><th>Schema changes?</th><th>Stream stops?</th><th>New data kept?</th></tr></thead><tbody>
+    <tr><td><code>addNewColumns</code></td><td>Yes, adds column</td><td>Once, then restarts</td><td>Yes, as a real column</td></tr>
+    <tr><td><code>rescue</code></td><td>No</td><td>No</td><td>Yes, in <code>_rescued_data</code></td></tr>
+    <tr><td><code>failOnNewColumns</code></td><td>No</td><td>Yes, until fixed by hand</td><td>Not until fixed</td></tr>
+    <tr><td><code>none</code></td><td>No</td><td>No</td><td>Only if a rescued data column is set</td></tr>
+  </tbody></table></div>
+  <div class="grid2">
+    <div class="card"><p class="tag">Discovery</p><h3>Directory listing</h3><p>Lists the path to find new files. Simple; the first run always lists everything.</p></div>
+    <div class="card"><p class="tag">Discovery</p><h3>File events</h3><p>Uses Unity Catalog's file events on an external location. Recommended where available for large paths.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>An app adds a field and bronze must never stop</td><td>With addNewColumns there's a brief failure and restart.</td><td>Use <code>rescue</code>, and pull fields out of <code>_rescued_data</code> in silver.</td></tr>
+    <tr><td>All bronze columns are strings</td><td>Default inference for JSON/CSV.</td><td>Set <code>inferColumnTypes</code> or <code>schemaHints</code>, or cast in silver.</td></tr>
+    <tr><td>A source re-sends a file with the same name and new content</td><td>Auto Loader treats it as already processed (by default).</td><td>Ask the source to write new file names; Auto Loader has an option to reprocess changed files, which can create duplicates (module 02).</td></tr>
+    <tr><td>Listing millions of files makes each update slow</td><td>Directory listing scans a huge path.</td><td>Enable file events on the external location and use managed file events.</td></tr>
+    <tr><td>Values silently disappear after a type change</td><td>Mode <code>none</code> without a rescued data column.</td><td>Use <code>rescue</code> or set <code>rescuedDataColumn</code>.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>The addNewColumns "failure" is expected: the stream stops once to save the new schema. The fix is automatic restart (pipeline or job retries), not changing modes.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>In a pipeline, answers that set <code>checkpointLocation</code> or <code>schemaLocation</code> by hand are unnecessary: the pipeline manages them.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Auto Loader</b> (<code>cloudFiles</code>, streaming, incremental, exactly-once) vs <b>COPY INTO</b> (SQL batch command, also idempotent, fewer schema features; module 02).</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Rescued data column</b> (keeps unexpected values per row) vs <b>schema evolution</b> (changes the table's columns).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="1"><p>1. Bronze ingestion must never stop for schema changes, but no data may be lost. Which mode?</p>
+      <ol class="opts"><li><button><code>addNewColumns</code></button></li><li><button><code>rescue</code></button></li><li><button><code>failOnNewColumns</code></button></li><li><button><code>none</code> without a rescued data column</button></li></ol>
+      <p class="why" hidden><code>rescue</code> never changes the schema or fails, and keeps unknown data in <code>_rescued_data</code>.</p></div>
+    <div class="q" data-answer="3"><p>2. With <code>addNewColumns</code>, a new column arrives. What happens?</p>
+      <ol class="opts"><li><button>It is silently ignored</button></li><li><button>The stream stays down until fixed by hand</button></li><li><button>It goes to the rescued data column only</button></li><li><button>The stream fails once, saves the new schema, and works after restart</button></li></ol>
+      <p class="why" hidden>That one-off failure is by design. Pipelines and jobs with retries restart it automatically.</p></div>
+    <div class="q" data-answer="0"><p>3. Auto Loader infers a JSON <code>price</code> column as STRING. Why?</p>
+      <ol class="opts"><li><button>Without <code>inferColumnTypes</code>, JSON and CSV columns are inferred as strings</button></li><li><button>JSON can't store numbers</button></li><li><button>The schema location is missing</button></li><li><button>Rescue mode forces strings</button></li></ol>
+      <p class="why" hidden>Default inference is conservative. Turn on <code>inferColumnTypes</code> or give <code>schemaHints</code>.</p></div>
+    <div class="q" data-answer="2"><p>4. In a Lakeflow pipeline, where do you set the Auto Loader checkpoint location?</p>
+      <ol class="opts"><li><button>In <code>cloudFiles.schemaLocation</code></button></li><li><button>In the job settings</button></li><li><button>Nowhere: the pipeline manages checkpoints and schema locations</button></li><li><button>In a widget</button></li></ol>
+      <p class="why" hidden>Pipelines manage both for each streaming table.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>Auto Loader (<code>cloudFiles</code> / <code>STREAM read_files</code>) processes each new file exactly once.</li>
+    <li>Evolution modes: addNewColumns (fail once, restart), rescue (never fail, keep extras), failOnNewColumns (stop), none (ignore).</li>
+    <li>JSON/CSV infer as strings unless <code>inferColumnTypes</code> or <code>schemaHints</code> say otherwise.</li>
+    <li>In pipelines, checkpoints and schema locations are managed for you; file events speed discovery.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#auto-loader">Auto Loader</a>
+    <a class="chip" href="../../glossary.html#file-events">file events</a>
+    <a class="chip" href="../../glossary.html#rescued-data-column">rescued data column</a>
+    <a class="chip" href="../../glossary.html#schema-evolution-mode">schema evolution mode</a>
+    <a class="chip" href="../../glossary.html#schema-hints">schema hints</a>
+    <a class="chip" href="../../glossary.html#schema-inference">schema inference</a>
+    <a class="chip" href="../../glossary.html#schema-location">schema location</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/">What is Auto Loader?</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/schema">Schema inference and evolution in Auto Loader</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/options">Auto Loader options</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/load">Load data in pipelines</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  var DAYS = [
+    { file: 'day1.json', rows: [{ ride_id: 'r01', price: 6 }, { ride_id: 'r02', price: 11.5 }] },
+    { file: 'day2.json', rows: [{ ride_id: 'r03', price: 8, promo_code: 'SPRING' }], newCol: 'promo_code' },
+    { file: 'day3.json', rows: [{ ride_id: 'r04', price: 'free' }], badType: true }
+  ];
+  var landed, done, cols, rows, failed;
+  function draw() {
+    var s = $('d-schema'); s.textContent = '';
+    cols.forEach(function (c) { s.appendChild(Object.assign(document.createElement('div'), { className: 'item', textContent: c[0] + ' ' + c[1] })); });
+    var r = $('d-rows'); r.textContent = '';
+    if (!rows.length) r.appendChild(Object.assign(document.createElement('p'), { className: 'cap', textContent: 'empty' }));
+    rows.forEach(function (x) { r.appendChild(Object.assign(document.createElement('div'), { className: 'item' + (x.flag ? ' bad' : ''), textContent: x.text })); });
+  }
+  function priceType() { return $('d-types').checked ? 'DOUBLE' : 'STRING'; }
+  function reset() {
+    landed = 0; done = 0; failed = false; rows = [];
+    cols = [['ride_id', 'STRING'], ['price', priceType()], ['_rescued_data', 'STRING']];
+    if ($('d-mode').value === 'none') cols.pop();
+    $('d-log').textContent = ''; log('skip', 'reset · mode ' + $('d-mode').value + ' · price inferred as ' + priceType()); draw();
+  }
+  function hasCol(n) { return cols.some(function (c) { return c[0] === n; }); }
+  $('d-day').onclick = function () {
+    if (landed >= DAYS.length) { log('skip', 'no more days in this demo'); return; }
+    log('skip', '+ ' + DAYS[landed].file + ' lands' + (DAYS[landed].newCol ? ' (has a new field: ' + DAYS[landed].newCol + ')' : '') + (DAYS[landed].badType ? ' (price is the text "free")' : ''));
+    landed++;
+  };
+  $('d-upd').onclick = function () {
+    var mode = $('d-mode').value;
+    log('skip', '> pipeline update');
+    if (done === landed) { log('skip', '  no new files: all ' + done + ' already in the checkpoint'); return; }
+    while (done < landed) {
+      var d = DAYS[done];
+      if (d.newCol && !hasCol(d.newCol)) {
+        if (mode === 'addNewColumns') {
+          if (!failed) { failed = true; cols.splice(cols.length - 1, 0, [d.newCol, 'STRING']);
+            log('bad', '  ' + d.file + ': new column ' + d.newCol + ' → stream stops (UnknownFieldException), new schema saved');
+            log('ok', '  pipeline restarts the flow automatically'); }
+        } else if (mode === 'failOnNewColumns') {
+          log('bad', '  ' + d.file + ': new column → update FAILED. Stays failed until the schema is updated by hand'); draw(); return;
+        }
+      }
+      d.rows.forEach(function (r) {
+        var extra = [], price = r.price;
+        if (d.newCol && !hasCol(d.newCol)) { if (mode !== 'none') extra.push(d.newCol + ':' + r[d.newCol]); }
+        if (typeof price === 'string' && priceType() === 'DOUBLE') { if (mode !== 'none') extra.push('price:"' + price + '"'); price = null; }
+        var text = r.ride_id + '  price=' + (price === null ? 'NULL' : price) + (hasCol('promo_code') ? '  promo_code=' + (r.promo_code || 'NULL') : '') + (hasCol('_rescued_data') ? '  _rescued_data=' + (extra.length ? '{' + extra.join(', ') + '}' : 'NULL') : '');
+        rows.push({ text: text, flag: price === null || extra.length });
+      });
+      if (mode === 'none' && (d.newCol || d.badType)) log('bad', '  ' + d.file + ': ' + (d.newCol ? 'promo_code ignored' : '"free" became NULL') + ' with no trace (no rescued data column)');
+      else if (d.badType && priceType() === 'DOUBLE') log('ok', '  ' + d.file + ': "free" doesn\'t fit DOUBLE → price NULL, original kept in _rescued_data');
+      else if (d.newCol && mode === 'rescue') log('ok', '  ' + d.file + ': schema unchanged, promo_code kept in _rescued_data');
+      else log('ok', '  ' + d.file + ': ' + d.rows.length + ' row(s) loaded');
+      done++;
+    }
+    draw();
+  };
+  $('d-reset').onclick = reset; $('d-mode').onchange = reset; $('d-types').onchange = reset;
+  reset();
+})();
+</script>
+</body>
+</html>

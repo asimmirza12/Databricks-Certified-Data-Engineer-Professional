@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lakeflow pipelines: the declarative way · DE Pro Study Course</title>
+<meta name="description" content="Lakeflow pipelines (formerly Delta Live Tables): declare streaming tables, materialized views and views, and let the pipeline work out order, compute, retries and incremental processing.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="01-08">
+<aside class="disclaimer" role="note" aria-label="Disclaimer"><p><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the official Databricks documentation (<a href="https://docs.databricks.com">https://docs.databricks.com</a>) and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</p></aside>
+<main class="wrap" id="main">
+
+<header class="hero">
+  <p class="eyebrow">Module 01 · Lesson 08</p>
+  <h1>Lakeflow pipelines: the declarative way</h1>
+  <p class="lede">Instead of writing every read, write, checkpoint and retry yourself, you declare the tables you want and how each is computed. The pipeline figures out the rest.</p>
+</header>
+
+<section aria-labelledby="where">
+  <h2 id="where" class="sec-num">Where you are</h2>
+  <dl class="where">
+    <div><dt>Module</dt><dd>01 · Developing Code for Data Processing (23%)</dd></div>
+    <div><dt>Lesson</dt><dd>08 · Lakeflow pipelines: the declarative way</dd></div>
+    <div><dt>Exam objective</dt><dd>S1.4 — Build production streaming pipelines with Lakeflow pipelines and Auto Loader. This lesson: how pipelines work. Next lesson: Auto Loader inside them.</dd></div>
+    <div><dt>Time to read</dt><dd>~18 minutes</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="before">
+  <h2 id="before" class="sec-num">Before this</h2>
+  <ul class="prereq">
+    <li><a class="chip acc" href="../00-foundations/04-batch-vs-streaming.html">00-04 Batch vs streaming</a></li>
+    <li><a class="chip acc" href="../00-foundations/12-medallion-architecture.html">00-12 Medallion architecture</a></li>
+  </ul>
+</section>
+
+<section aria-labelledby="idea">
+  <p class="sec-num">The idea</p>
+  <h2 id="idea">The idea in plain English</h2>
+  <p><span class="def">Lakeflow pipelines</span> (formerly Delta Live Tables, then Lakeflow Declarative Pipelines) are Databricks' declarative way to build data pipelines. They are built on the open-source <span class="def">Apache Spark Declarative Pipelines</span> project, with extra Databricks features (such as the AUTO CDC APIs).</p>
+  <p>You write source files (SQL or Python) that each declare a <span class="def">dataset</span>:</p>
+  <ul>
+    <li>A <span class="def">streaming table</span>: a table fed incrementally; each new input row is processed once. Typical for bronze and silver.</li>
+    <li>A <span class="def">materialized view</span>: a table holding the up-to-date result of a query, recomputed (incrementally when possible) on each update. Typical for gold aggregates.</li>
+    <li>A <span class="def">temporary view</span>: a named step inside the pipeline that stores nothing and isn't published.</li>
+  </ul>
+  <p>The pipeline reads all the declarations, works out which dataset depends on which, and draws a <span class="def">dependency graph</span> (often called a DAG: directed acyclic graph). Running the pipeline is called an <span class="def">update</span>: it refreshes datasets in the right order, manages checkpoints and compute, retries failures, and writes an event log.</p>
+  <p>A pipeline runs in <b>triggered</b> mode (refresh what's new, then stop: usually scheduled by a job) or <b>continuous</b> mode (keep running and process data as it arrives).</p>
+  <p>In Python, the module is <code>pyspark.pipelines</code>, imported as <code>dp</code>. The old <code>dlt</code> module still works, but the new name is recommended.</p>
+  <div class="analogy">
+    <p>Ordering a house versus building it brick by brick. You give the architect a plan: kitchen here, bedroom above it, roof on top (declarations). The builder works out that foundations come before walls, hires the crew, redoes a wall if it cracks, and keeps a site diary. You change the plan; they work out what to rebuild.</p>
+  </div>
+</section>
+
+<section aria-labelledby="how">
+  <p class="sec-num">How it works</p>
+  <h2 id="how">How it works</h2>
+  <figure class="stage">
+    <svg viewBox="0 0 660 250" role="img" aria-labelledby="dia-t dia-d">
+      <title id="dia-t">A pipeline's dependency graph</title>
+      <desc id="dia-d">Raw files feed a bronze streaming table. A silver streaming table reads the bronze table as a stream. A temporary view prepares a lookup. A gold materialized view joins silver with the lookup and aggregates. An update runs them in dependency order.</desc>
+      <g font-family="var(--f-mono)" font-size="12" fill="var(--ink)">
+        <rect x="10" y="90" width="100" height="50" rx="8" fill="var(--surface)" stroke="var(--line)" stroke-dasharray="4 3"/><text x="60" y="113" text-anchor="middle" font-size="11">raw files</text><text x="60" y="129" text-anchor="middle" font-size="11" fill="var(--muted)">volume</text>
+        <rect x="150" y="90" width="130" height="50" rx="8" fill="var(--surface)" stroke="var(--bronze)" stroke-width="2"/><text x="215" y="111" text-anchor="middle" font-size="11">rides_bronze</text><text x="215" y="128" text-anchor="middle" font-size="11" fill="var(--muted)">streaming table</text>
+        <rect x="320" y="90" width="130" height="50" rx="8" fill="var(--surface)" stroke="var(--silver)" stroke-width="2"/><text x="385" y="111" text-anchor="middle" font-size="11">rides_silver</text><text x="385" y="128" text-anchor="middle" font-size="11" fill="var(--muted)">streaming table</text>
+        <rect x="320" y="180" width="130" height="50" rx="8" fill="var(--surface)" stroke="var(--line)" stroke-dasharray="2 2"/><text x="385" y="201" text-anchor="middle" font-size="11">towns_v</text><text x="385" y="218" text-anchor="middle" font-size="11" fill="var(--muted)">temporary view</text>
+        <rect x="500" y="130" width="150" height="50" rx="8" fill="var(--surface)" stroke="var(--gold)" stroke-width="2"/><text x="575" y="151" text-anchor="middle" font-size="11">revenue_by_town</text><text x="575" y="168" text-anchor="middle" font-size="11" fill="var(--muted)">materialized view</text>
+        <text x="330" y="40" text-anchor="middle" font-size="11" fill="var(--muted)">one update = refresh everything in dependency order</text>
+        <g fill="none" stroke="var(--line)" stroke-dasharray="3 4"><path id="a" d="M110 115 H150"/><path id="b" d="M280 115 H320"/><path id="c" d="M450 115 C475 115 475 150 500 150"/><path id="d" d="M450 205 C475 205 475 165 500 165"/></g>
+      </g>
+      <circle r="5" fill="var(--bronze)" data-rest="130,115"><animateMotion dur="2s" repeatCount="indefinite"><mpath href="#a"/></animateMotion></circle>
+      <circle r="5" fill="var(--silver)" data-rest="300,115"><animateMotion dur="2s" begin="0.5s" repeatCount="indefinite"><mpath href="#b"/></animateMotion></circle>
+      <circle r="5" fill="var(--gold)" data-rest="475,132"><animateMotion dur="2s" begin="1s" repeatCount="indefinite"><mpath href="#c"/></animateMotion></circle>
+      <circle r="5" fill="var(--gold)" data-rest="475,185"><animateMotion dur="2s" begin="1s" repeatCount="indefinite"><mpath href="#d"/></animateMotion></circle>
+    </svg>
+    <figcaption class="cap">Notice: you never wrote "run bronze, then silver, then gold". The pipeline <b>read the declarations</b> (each one names what it reads) and <b>worked out the order</b>. The temporary view (dashed) is a helper step that isn't saved.</figcaption>
+  </figure>
+</section>
+
+<section aria-labelledby="demo">
+  <p class="sec-num">Try it</p>
+  <h2 id="demo">Live demo: run pipeline updates</h2>
+  <p>Land files, run triggered updates, and watch which datasets process how many rows. Then try a full refresh, and a failure with and without retries.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <button type="button" id="d-land">+ 3 files land (300 rides)</button>
+      <button type="button" class="primary" id="d-upd">Start update</button>
+      <button type="button" id="d-full">Full refresh</button>
+      <label class="tog"><input type="checkbox" id="d-flaky"> Next update hits a temporary cloud error</label>
+      <label>Mode <select id="d-mode"><option value="prod">production (retries on)</option><option value="dev">development (no retries)</option></select></label>
+    </div>
+    <div class="flow">
+      <div class="pane"><h4><span class="chip bronze">ST</span> rides_bronze</h4><div class="big" id="d-b">0</div><p class="cap" id="d-bn"></p></div>
+      <div class="pane"><h4><span class="chip silver">ST</span> rides_silver</h4><div class="big" id="d-s">0</div><p class="cap" id="d-sn"></p></div>
+      <div class="pane"><h4><span class="chip gold">MV</span> revenue_by_town</h4><div class="big" id="d-g">0</div><p class="cap" id="d-gn"></p></div>
+    </div>
+    <div class="log" id="d-log" aria-live="polite" aria-label="Pipeline event log"></div>
+  </div>
+</section>
+
+<section aria-labelledby="code">
+  <p class="sec-num">Code</p>
+  <h2 id="code">In code</h2>
+  <p>The same pipeline in SQL. <code>STREAM(...)</code> marks an incremental read:</p>
+<pre><code><span class="c-c">-- bronze: streaming table fed by Auto Loader (lesson 01-09)</span>
+<span class="c-k">CREATE OR REFRESH STREAMING TABLE</span> rides_bronze
+<span class="c-k">AS SELECT</span> *, _metadata.file_path <span class="c-k">AS</span> source_file
+<span class="c-k">FROM STREAM</span> read_files(<span class="c-s">'/Volumes/bike_shop/raw/landing/rides/'</span>, format =&gt; <span class="c-s">'json'</span>);
+
+<span class="c-c">-- silver: streaming table reading bronze incrementally</span>
+<span class="c-k">CREATE OR REFRESH STREAMING TABLE</span> rides_silver
+<span class="c-k">AS SELECT</span> ride_id, town, <span class="c-k">CAST</span>(price <span class="c-k">AS DECIMAL</span>(8,2)) <span class="c-k">AS</span> price, <span class="c-k">CAST</span>(started_at <span class="c-k">AS TIMESTAMP</span>) <span class="c-k">AS</span> started_at
+<span class="c-k">FROM STREAM</span>(rides_bronze)
+<span class="c-k">WHERE</span> price <span class="c-k">IS NOT NULL</span>;
+
+<span class="c-c">-- gold: materialized view, always reflects the current silver data</span>
+<span class="c-k">CREATE OR REFRESH MATERIALIZED VIEW</span> revenue_by_town
+<span class="c-k">AS SELECT</span> town, <span class="c-k">DATE</span>(started_at) <span class="c-k">AS</span> ride_date, <span class="c-k">SUM</span>(price) <span class="c-k">AS</span> revenue
+<span class="c-k">FROM</span> rides_silver
+<span class="c-k">GROUP BY ALL</span>;</code></pre>
+  <p>And in Python, with <code>pyspark.pipelines</code>:</p>
+<pre><code><span class="c-k">from</span> pyspark <span class="c-k">import</span> pipelines <span class="c-k">as</span> dp
+<span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> functions <span class="c-k">as</span> F
+
+<span class="c-k">@dp.table</span>(comment=<span class="c-s">"Raw rides as they arrived"</span>)        <span class="c-c"># returns a streaming DataFrame → streaming table</span>
+<span class="c-k">def</span> rides_bronze():
+    <span class="c-k">return</span> (spark.readStream.format(<span class="c-s">"cloudFiles"</span>)
+            .option(<span class="c-s">"cloudFiles.format"</span>, <span class="c-s">"json"</span>)
+            .load(<span class="c-s">"/Volumes/bike_shop/raw/landing/rides/"</span>))
+
+<span class="c-k">@dp.table</span>
+<span class="c-k">def</span> rides_silver():
+    <span class="c-k">return</span> (spark.readStream.table(<span class="c-s">"rides_bronze"</span>)        <span class="c-c"># the pipeline sees this dependency</span>
+            .where(F.col(<span class="c-s">"price"</span>).isNotNull())
+            .withColumn(<span class="c-s">"price"</span>, F.col(<span class="c-s">"price"</span>).cast(<span class="c-s">"decimal(8,2)"</span>)))
+
+<span class="c-k">@dp.materialized_view</span>
+<span class="c-k">def</span> revenue_by_town():
+    <span class="c-k">return</span> (spark.read.table(<span class="c-s">"rides_silver"</span>)                <span class="c-c"># batch read → recomputed result</span>
+            .groupBy(<span class="c-s">"town"</span>, F.to_date(<span class="c-s">"started_at"</span>).alias(<span class="c-s">"ride_date"</span>))
+            .agg(F.sum(<span class="c-s">"price"</span>).alias(<span class="c-s">"revenue"</span>)))</code></pre>
+  <p class="note">Notice what's missing: no <code>writeStream</code>, no checkpoint paths, no <code>saveAsTable</code>, no ordering. The pipeline publishes each dataset to the pipeline's default catalog and schema.</p>
+</section>
+
+<section aria-labelledby="whatif">
+  <p class="sec-num">Options</p>
+  <h2 id="whatif">What if I change this?</h2>
+  <div class="tbl"><table class="whatif"><thead><tr><th>Change</th><th>Effect</th></tr></thead><tbody>
+    <tr><td>Triggered mode</td><td>Each update processes what's new, then compute stops. Schedule it with a job. Cheapest for most workloads.</td></tr>
+    <tr><td>Continuous mode</td><td>Compute keeps running and processes data as it arrives. Lowest latency, highest cost.</td></tr>
+    <tr><td>Full refresh</td><td>Streaming tables are emptied and rebuilt from all available source data; checkpoints reset. Use with care: sources whose old data is gone (e.g. expired messages) can't be replayed.</td></tr>
+    <tr><td>Development mode</td><td>For iterating: compute is reused between updates and automatic retries are off so errors show fast.</td></tr>
+    <tr><td>Production mode</td><td>Failed updates retry automatically (for example after transient cloud errors); compute restarts for recoverable problems.</td></tr>
+    <tr><td>Serverless pipeline</td><td>No compute settings; enables incremental refresh of materialized views and the pipeline environment for dependencies.</td></tr>
+    <tr><td>Read a table with <code>spark.read</code> instead of <code>readStream</code></td><td>You get a materialized view (batch, recomputed) rather than incremental streaming processing.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="compare">
+  <p class="sec-num">Compare</p>
+  <h2 id="compare">Side by side</h2>
+  <div class="tbl"><table><thead><tr><th></th><th>Hand-written Spark jobs</th><th>Lakeflow pipeline</th></tr></thead><tbody>
+    <tr><td>Order of steps</td><td>You code it</td><td>Worked out from declarations</td></tr>
+    <tr><td>Checkpoints</td><td>You choose and protect paths</td><td>Managed for you</td></tr>
+    <tr><td>Retries and compute</td><td>You configure</td><td>Built in (production mode), serverless option</td></tr>
+    <tr><td>Data quality rules</td><td>Custom code</td><td>Expectations (module 03)</td></tr>
+    <tr><td>Monitoring</td><td>Build your own</td><td>Graph UI + event log (module 04)</td></tr>
+    <tr><td>Full control (custom sinks, odd logic)</td><td>Yes</td><td>Less; see lesson 01-16</td></tr>
+  </tbody></table></div>
+  <div class="grid3">
+    <div class="card"><p class="tag">Dataset</p><h3>Streaming table</h3><p>Incremental, append-style. Each source row processed once. SQL: <code>CREATE OR REFRESH STREAMING TABLE</code>.</p></div>
+    <div class="card"><p class="tag">Dataset</p><h3>Materialized view</h3><p>Query result kept current. Handles updates and deletes upstream. SQL: <code>CREATE OR REFRESH MATERIALIZED VIEW</code>.</p></div>
+    <div class="card"><p class="tag">Dataset</p><h3>Temporary view</h3><p>Pipeline-only helper, not stored or published. Python: <code>@dp.temporary_view</code>.</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="scenarios">
+  <p class="sec-num">In real life</p>
+  <h2 id="scenarios">Real-life scenarios</h2>
+  <div class="tbl"><table><thead><tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr></thead><tbody>
+    <tr><td>A nightly report pipeline runs in continuous mode</td><td>Compute runs 24/7 for a once-a-day need.</td><td>Switch to triggered mode and schedule it.</td></tr>
+    <tr><td>An update fails at 3 a.m. on a brief storage hiccup and nobody reruns it</td><td>The pipeline was left in development mode, which doesn't retry.</td><td>Run production pipelines in production mode.</td></tr>
+    <tr><td>After a logic change, old silver rows still use the old rule</td><td>Streaming tables only process new rows with the new code.</td><td>Full refresh that table (if the source still has all history).</td></tr>
+    <tr><td>Team copy-pastes <code>import dlt</code> code from old blogs</td><td>Still works, but uses legacy names.</td><td>Use <code>from pyspark import pipelines as dp</code> for new code.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section aria-labelledby="traps">
+  <p class="sec-num">Exam traps</p>
+  <h2 id="traps">Exam traps and look-alikes</h2>
+  <div class="grid2">
+    <div class="card trap"><p class="tag">Trap</p><p>Old names in questions: Delta Live Tables / DLT and Lakeflow Declarative Pipelines are the same product as Lakeflow pipelines. <code>APPLY CHANGES</code> is now AUTO CDC.</p></div>
+    <div class="card trap"><p class="tag">Trap</p><p>Changing a streaming table's logic does <b>not</b> reprocess old rows. Only a full refresh does.</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Triggered vs continuous</b> (how the pipeline runs) vs <b>development vs production mode</b> (retries and compute reuse).</p></div>
+    <div class="card confuse"><p class="tag">Don't confuse</p><p><b>Temporary view</b> (pipeline-only, stores nothing) vs <b>materialized view</b> (stored, published, kept current).</p></div>
+  </div>
+</section>
+
+<section aria-labelledby="quiz">
+  <p class="sec-num">Check yourself</p>
+  <h2 id="quiz">Quiz</h2>
+  <div class="quiz">
+    <div class="q" data-answer="2"><p>1. How does a pipeline know to update bronze before silver?</p>
+      <ol class="opts"><li><button>You list the order in a config file</button></li><li><button>Alphabetical order of dataset names</button></li><li><button>It builds a dependency graph from what each declaration reads</button></li><li><button>Order of source files in the folder</button></li></ol>
+      <p class="why" hidden>Each declaration references its inputs, so the pipeline derives the graph and the order.</p></div>
+    <div class="q" data-answer="0"><p>2. A gold table must show correct totals even when silver rows are corrected or deleted. Which dataset type?</p>
+      <ol class="opts"><li><button>Materialized view</button></li><li><button>Streaming table</button></li><li><button>Temporary view</button></li><li><button>A Python UDF</button></li></ol>
+      <p class="why" hidden>Materialized views reflect the current state of their inputs, including updates and deletes. Streaming tables process each new row once.</p></div>
+    <div class="q" data-answer="3"><p>3. You need fresh data once a day at the lowest cost. Which setup?</p>
+      <ol class="opts"><li><button>Continuous mode</button></li><li><button>Development mode</button></li><li><button>Full refresh every hour</button></li><li><button>Triggered mode, scheduled daily</button></li></ol>
+      <p class="why" hidden>Triggered updates process new data and stop, so you pay only while they run.</p></div>
+    <div class="q" data-answer="1"><p>4. What is the recommended Python module for new pipeline code?</p>
+      <ol class="opts"><li><button><code>import dlt</code></button></li><li><button><code>from pyspark import pipelines as dp</code></button></li><li><button><code>import delta.pipelines</code></button></li><li><button><code>import lakeflow</code></button></li></ol>
+      <p class="why" hidden><code>dlt</code> still works, but <code>pyspark.pipelines</code> is the current name.</p></div>
+    <p class="score" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="takeaways">
+  <p class="sec-num">Wrap-up</p>
+  <h2 id="takeaways">Key takeaways</h2>
+  <ul class="takeaways">
+    <li>Declare streaming tables, materialized views and temporary views; the pipeline builds the graph and runs it.</li>
+    <li>Checkpoints, order, retries and compute are managed for you.</li>
+    <li>Triggered = process and stop; continuous = always on. Production mode retries; development mode doesn't.</li>
+    <li>Logic changes apply to new data only, unless you full refresh.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p class="terms">
+    <a class="chip" href="../../glossary.html#dag">DAG</a>
+    <a class="chip" href="../../glossary.html#dataset">dataset</a>
+    <a class="chip" href="../../glossary.html#full-refresh">full refresh</a>
+    <a class="chip" href="../../glossary.html#lakeflow-pipelines">Lakeflow pipelines</a>
+    <a class="chip" href="../../glossary.html#materialized-view">materialized view</a>
+    <a class="chip" href="../../glossary.html#pipeline-update">pipeline update</a>
+    <a class="chip" href="../../glossary.html#sdp">Spark Declarative Pipelines</a>
+    <a class="chip" href="../../glossary.html#streaming-table">streaming table</a>
+    <a class="chip" href="../../glossary.html#temporary-view-pipeline">temporary view (pipeline)</a>
+  </p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/">Lakeflow pipelines</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/concepts/">Pipeline concepts</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/developer/python-ref">Python language reference</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/updates">Run a pipeline update</a></li>
+  </ul>
+  <p class="verified">Last verified: 2026-11-19</p>
+</section>
+
+<section aria-label="Lesson navigation"><nav class="lesson-nav" id="lesson-nav"></nav></section>
+
+</main>
+<footer class="wrap">Independent, unofficial study guide. Not affiliated with Databricks.</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var log = function (c, m) { Course.log($('d-log'), c, m); };
+  var landed, bronze, silver, upd;
+  function towns() { return silver ? 3 : 0; }
+  function draw(bn, sn, gn) {
+    $('d-b').textContent = bronze; $('d-s').textContent = silver; $('d-g').textContent = towns() + ' towns';
+    $('d-bn').textContent = bn || ''; $('d-sn').textContent = sn || ''; $('d-gn').textContent = gn || '';
+  }
+  function run(full) {
+    upd++;
+    var mode = $('d-mode').value;
+    log('skip', '> update ' + upd + (full ? ' (FULL REFRESH)' : '') + ' · triggered · ' + mode + ' mode');
+    if ($('d-flaky').checked) {
+      $('d-flaky').checked = false;
+      log('bad', '  rides_bronze: transient storage error');
+      if (mode === 'dev') { log('bad', '  update FAILED · development mode does not retry; start it again yourself'); return; }
+      log('ok', '  retrying automatically (production mode)…');
+    }
+    var newRows = full ? landed : landed - bronze;
+    if (full) { bronze = 0; silver = 0; log('bad', '  streaming tables emptied, checkpoints reset, reading all source files again'); }
+    bronze += newRows;
+    var good = Math.round(newRows * 0.9);
+    silver += good;
+    log(newRows ? 'ok' : 'skip', '  rides_bronze: ' + newRows + ' new row(s) read');
+    log(newRows ? 'ok' : 'skip', '  rides_silver: ' + good + ' new row(s) (' + (newRows - good) + ' without price filtered)');
+    log('ok', '  revenue_by_town: refreshed from current silver (' + silver + ' rows)');
+    log('ok', '  update ' + upd + ' COMPLETED · compute stops (triggered)');
+    draw(newRows + ' new this update', good + ' new this update', 'recomputed / incrementally refreshed');
+    Course.flash($('d-s'));
+  }
+  $('d-land').onclick = function () { landed += 300; log('skip', '+ 3 files land in the volume (' + (landed - bronze) + ' rows waiting)'); };
+  $('d-upd').onclick = function () { run(false); };
+  $('d-full').onclick = function () { run(true); };
+  landed = 0; bronze = 0; silver = 0; upd = 0; draw();
+})();
+</script>
+</body>
+</html>
